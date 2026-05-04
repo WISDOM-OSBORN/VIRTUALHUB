@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { UserRole, ProjectStatus, Visibility, Project, ResearchArea, User } from '../types';
 import { StorageService } from '../services/storageService';
 import { useNavigate } from 'react-router-dom';
@@ -19,28 +20,40 @@ interface DashboardProps {
 }
 
 // --- MOBILE BOTTOM NAV ---
-const MobileNav: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; role: UserRole }> = ({ activeTab, setActiveTab, role }) => {
+const MobileNav: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; role: UserRole; unreadCount: number }> = ({ activeTab, setActiveTab, role, unreadCount }) => {
   const tabs = [
-    { id: 'overview', icon: LayoutGrid, label: 'OVERVIEW' },
-    { id: 'matches', icon: Target, label: 'MATCHES', hideFor: [UserRole.Student] },
-    { id: 'messages', icon: MessageSquare, label: 'CHAT' },
-    { id: 'profile', icon: UserIcon, label: 'PROFILE' },
-  ].filter(t => !t.hideFor || !t.hideFor.includes(role));
+    { id: 'overview', icon: LayoutGrid, label: 'Hub' },
+    { id: 'matches', icon: Target, label: role === UserRole.Student ? 'Discover' : 'Matches' },
+    { id: 'messages', icon: MessageSquare, label: 'Chat' },
+    { id: 'profile', icon: UserIcon, label: 'Me' },
+  ];
 
   return (
-    <div className="md:hidden fixed bottom-5 left-4 right-4 bg-white/80 backdrop-blur-xl border border-gray-100 shadow-2xl rounded-3xl z-[90] flex items-center justify-around p-3 px-6 h-18">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-100 z-[100] flex items-center justify-around pb-safe pt-2 px-2 h-20 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => setActiveTab(tab.id as any)}
-          className={`flex flex-col items-center gap-1 transition-all duration-300 ${
+          className={`flex flex-1 flex-col items-center justify-center gap-1 h-full transition-all duration-300 relative ${
             activeTab === tab.id ? 'text-ug-teal' : 'text-gray-400'
           }`}
         >
-          <tab.icon size={20} className={activeTab === tab.id ? 'scale-110' : ''} />
-          <span className="text-[8px] font-black tracking-tighter uppercase">{tab.label}</span>
+          <div className={`p-2 rounded-2xl transition-all duration-300 ${activeTab === tab.id ? 'bg-ug-teal/10 scale-110' : 'bg-transparent'}`}>
+            <tab.icon size={22} strokeWidth={activeTab === tab.id ? 2.5 : 2} />
+          </div>
+          {tab.id === 'messages' && unreadCount > 0 && (
+             <span className="absolute top-2 right-1/2 translate-x-4 w-5 h-5 bg-ug-teal text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-white shadow-lg">
+               {unreadCount > 9 ? '9+' : unreadCount}
+             </span>
+          )}
+          <span className={`text-[9px] font-black tracking-tight uppercase ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`}>
+            {tab.label}
+          </span>
           {activeTab === tab.id && (
-            <div className="absolute -bottom-1 h-1 w-1 bg-ug-teal rounded-full animate-pulse"></div>
+            <motion.div 
+              layoutId="mobile-indicator"
+              className="absolute -bottom-1 h-1 w-6 bg-ug-teal rounded-full"
+            />
           )}
         </button>
       ))}
@@ -50,7 +63,6 @@ const MobileNav: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; r
 
 // --- DESKTOP SIDEBAR ---
 const Sidebar: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; role: UserRole; user: User | null }> = ({ activeTab, setActiveTab, role, user }) => {
-  const navigate = useNavigate();
   const tabs = [
     { id: 'overview', icon: LayoutGrid, label: 'Overview' },
     { id: 'matches', icon: Target, label: 'My Matches', hideFor: [UserRole.Student], sparkles: true },
@@ -94,17 +106,19 @@ const Sidebar: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; rol
 
 // --- SHARED COMPONENTS ---
 
-const StatCard: React.FC<{ label: string; value: string | number; sub?: string; icon: any; color?: string }> = ({ label, value, sub, icon: Icon, color = 'bg-blue-50 text-blue-600' }) => (
-  <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition">
+const StatCard: React.FC<{ label: string; value: string | number; trend?: string; icon: any; color?: string }> = ({ label, value, trend, icon: Icon }) => (
+  <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm relative group hover:shadow-xl transition-all h-32 flex flex-col justify-between">
     <div className="flex justify-between items-start">
-      <div>
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</p>
-        <h3 className="text-3xl font-black text-ug-navy mt-2">{value}</h3>
-        {sub && <p className="text-xs text-ug-success font-bold mt-1 uppercase tracking-wide">{sub}</p>}
-      </div>
-      <div className={`p-4 rounded-2xl ${color}`}>
-        <Icon size={24} />
-      </div>
+      <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider">{label}</span>
+      <Icon size={16} className="text-gray-200 group-hover:text-ug-teal transition duration-500" />
+    </div>
+    <div className="flex items-baseline gap-3">
+      <h3 className="text-3xl font-black text-ug-navy tracking-tight">{value}</h3>
+      {trend && (
+        <span className="text-[8px] font-black text-ug-teal bg-ug-teal/5 px-2 py-0.5 rounded-full tracking-widest leading-none">
+          {trend}
+        </span>
+      )}
     </div>
   </div>
 );
@@ -166,7 +180,7 @@ const HubStreamSidebar: React.FC = () => {
                      <div className="flex items-center gap-2 mb-1">
                         <span className="text-[8px] font-black text-ug-teal uppercase tracking-widest">{p.research_area}</span>
                         <div className="h-1 w-1 bg-gray-200 rounded-full"></div>
-                        <span className="text-[8px] font-black text-ug-success uppercase tracking-widest">Stage {p.trl}</span>
+                        <span className="text-[8px] font-black text-ug-success uppercase tracking-widest">{p.status}</span>
                      </div>
                      <h4 className="font-black text-ug-navy text-xs leading-tight line-clamp-2 group-hover:text-ug-teal transition">{p.title}</h4>
                   </div>
@@ -289,130 +303,177 @@ const ProjectFormModal: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ug-navy/90 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-white rounded-[3rem] w-full max-w-4xl p-10 shadow-2xl relative my-10">
-        <div className="flex justify-between items-center mb-10">
-          <div>
-            <h2 className="text-3xl font-black text-ug-navy">{project ? 'Update Disclosure' : 'Project Disclosure'}</h2>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mt-1">University of Ghana Research Intelligence</p>
+    <div className="fixed inset-0 z-[1000] flex items-start justify-center p-4 md:p-10 bg-ug-navy/95 backdrop-blur-md overflow-y-auto custom-scrollbar">
+      <div className="bg-white rounded-[3rem] md:rounded-[4rem] w-full max-w-5xl p-6 md:p-12 shadow-2xl relative my-8">
+        <div className="flex justify-between items-start mb-10">
+          <div className="flex items-center gap-4">
+             <div className="w-12 h-12 bg-ug-teal text-white rounded-2xl flex items-center justify-center shadow-lg">
+                <FileCode size={24} />
+             </div>
+             <div>
+               <h2 className="text-2xl md:text-3xl font-black text-ug-navy tracking-tight">{project ? 'Update Disclosure' : 'New Project Disclosure'}</h2>
+               <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mt-1">University of Ghana Research Intelligence</p>
+             </div>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-gray-100 rounded-2xl transition"><X size={24} /></button>
+          <button onClick={onClose} className="p-3 hover:bg-gray-100 rounded-2xl transition hover:rotate-90 duration-300"><X size={24} /></button>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          {/* General Info */}
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Research Title / Product Name</label>
-              <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-bold text-gray-700 focus:ring-2 focus:ring-ug-teal/20 outline-none" placeholder="Enter disclosure title..." />
-            </div>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-11 gap-12">
+          {/* Left Column: Core Identity */}
+          <div className="lg:col-span-6 space-y-8">
+            <div className="space-y-4">
+               <div className="flex items-center gap-2 mb-2">
+                  <div className="h-4 w-1 bg-ug-teal rounded-full"></div>
+                  <span className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Identification</span>
+               </div>
+               <div className="space-y-2">
+                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Research Title / Product Name</label>
+                 <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none transition" placeholder="Enter formal project title..." />
+               </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Research Area</label>
-                <select value={formData.research_area} onChange={e => setFormData({...formData, research_area: e.target.value as ResearchArea})} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-bold text-gray-700 focus:ring-2 focus:ring-ug-teal/20 outline-none">
-                  {Object.values(ResearchArea).map(area => <option key={area} value={area}>{area}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Department</label>
-                <input required type="text" value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-bold text-gray-700 focus:ring-2 focus:ring-ug-teal/20 outline-none" placeholder="e.g. Biomedical Science" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Executive Summary</label>
-              <textarea required rows={4} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-medium text-gray-600 focus:ring-2 focus:ring-ug-teal/20 outline-none resize-none" placeholder="Describe your research methodology and potential impact..." />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Current Status</label>
-              <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as ProjectStatus})} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-bold text-gray-700 focus:ring-2 focus:ring-ug-teal/20 outline-none">
-                {Object.values(ProjectStatus).map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+               <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                   <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Research Area</label>
+                   <select value={formData.research_area} onChange={e => setFormData({...formData, research_area: e.target.value as ResearchArea})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none cursor-pointer">
+                     {Object.values(ResearchArea).map(area => <option key={area} value={area}>{area}</option>)}
+                   </select>
+                 </div>
+                 <div className="space-y-2">
+                   <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
+                   <input required type="text" value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none" placeholder="e.g. Computer Science" />
+                 </div>
+               </div>
             </div>
 
             <div className="space-y-4">
-               <label className="text-[10px] font-black text-ug-navy uppercase tracking-widest">File Disclosures</label>
-               <div className="grid grid-cols-1 gap-4">
-                  <div className="relative group">
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-3xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <Camera size={24} className="text-gray-400 mb-2" />
-                        <p className="text-xs font-black uppercase text-gray-400 tracking-widest">
-                          {mainImage ? mainImage.name : 'Upload Main Research Image'}
-                        </p>
-                      </div>
-                      <input type="file" accept="image/*" className="hidden" onChange={e => setMainImage(e.target.files?.[0] || null)} />
-                    </label>
-                  </div>
+               <div className="flex items-center gap-2 mb-2">
+                  <div className="h-4 w-1 bg-ug-teal rounded-full"></div>
+                  <span className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Content & Maturity</span>
+               </div>
+               <div className="space-y-2">
+                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Executive Summary</label>
+                 <textarea required rows={4} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 font-medium text-gray-600 focus:ring-2 focus:ring-ug-teal/20 outline-none resize-none leading-relaxed" placeholder="Describe your research methodology and potential impact..." />
+               </div>
 
-                  <div className="relative group">
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-3xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <ImageIcon size={24} className="text-gray-400 mb-2" />
-                        <p className="text-xs font-black uppercase text-gray-400 tracking-widest">
-                          {evidenceImage ? evidenceImage.name : 'Upload Visual Evidence'}
-                        </p>
+               <div className="space-y-2">
+                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Status</label>
+                 <select 
+                   value={formData.status} 
+                   onChange={e => setFormData({...formData, status: e.target.value as ProjectStatus, trl: Object.values(ProjectStatus).indexOf(e.target.value as ProjectStatus) + 1})}
+                   className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none cursor-pointer"
+                 >
+                   {Object.values(ProjectStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                 </select>
+               </div>
+            </div>
+
+            <div className="space-y-4 pt-4">
+               <div className="flex items-center gap-2 mb-2">
+                  <div className="h-4 w-1 bg-ug-teal rounded-full"></div>
+                  <span className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Visual Evidence</span>
+               </div>
+               <div className="grid grid-cols-2 gap-4">
+                  <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-100 rounded-[2.5rem] cursor-pointer bg-gray-50 hover:bg-white hover:border-ug-teal/30 transition group overflow-hidden">
+                    {mainImage ? (
+                       <div className="w-full h-full p-2">
+                          <img src={URL.createObjectURL(mainImage)} className="w-full h-full object-cover rounded-[2rem]" alt="" />
+                       </div>
+                    ) : (
+                      <div className="text-center group-hover:scale-110 transition duration-500">
+                        <Camera size={24} className="text-gray-300 mx-auto mb-2" />
+                        <p className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Primary Image</p>
                       </div>
-                      <input type="file" accept="image/*" className="hidden" onChange={e => setEvidenceImage(e.target.files?.[0] || null)} />
-                    </label>
-                  </div>
+                    )}
+                    <input type="file" accept="image/*" className="hidden" onChange={e => setMainImage(e.target.files?.[0] || null)} />
+                  </label>
+
+                  <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-100 rounded-[2.5rem] cursor-pointer bg-gray-50 hover:bg-white hover:border-ug-teal/30 transition group overflow-hidden">
+                    {evidenceImage ? (
+                       <div className="w-full h-full p-2">
+                          <img src={URL.createObjectURL(evidenceImage)} className="w-full h-full object-cover rounded-[2rem]" alt="" />
+                       </div>
+                    ) : (
+                      <div className="text-center group-hover:scale-110 transition duration-500">
+                        <ImageIcon size={24} className="text-gray-300 mx-auto mb-2" />
+                        <p className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Secondary Proof</p>
+                      </div>
+                    )}
+                    <input type="file" accept="image/*" className="hidden" onChange={e => setEvidenceImage(e.target.files?.[0] || null)} />
+                  </label>
                </div>
             </div>
           </div>
 
-          {/* Technical & Funding */}
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Budget Estimate</label>
-                <div className="relative">
-                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                  <input type="text" value={formData.budget} onChange={e => setFormData({...formData, budget: e.target.value})} className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-bold text-gray-700 focus:ring-2 focus:ring-ug-teal/20 outline-none" placeholder="e.g. $50,000" />
+          {/* Right Column: Technical & Logistics */}
+          <div className="lg:col-span-5 space-y-8 bg-gray-50/50 p-6 md:p-8 rounded-[3rem] border border-gray-100">
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-2">
+                 <div className="h-4 w-1 bg-ug-teal rounded-full"></div>
+                 <span className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Logistics & Funding</span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Budget Estimate</label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input type="text" value={formData.budget} onChange={e => setFormData({...formData, budget: e.target.value})} className="w-full pl-10 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none" placeholder="$0.00" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Start Date</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input type="date" value={formData.start_date} onChange={e => setFormData({...formData, start_date: e.target.value})} className="w-full pl-10 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none" />
+                  </div>
                 </div>
               </div>
+
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Start Date</label>
-                <div className="relative">
-                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                  <input type="date" value={formData.start_date} onChange={e => setFormData({...formData, start_date: e.target.value})} className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-bold text-gray-700 focus:ring-2 focus:ring-ug-teal/20 outline-none" />
-                </div>
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Key Achievements & Milestones</label>
+                <textarea rows={3} value={formData.achievements?.join('\n')} onChange={e => setFormData({...formData, achievements: e.target.value.split('\n').filter(s => s.trim())})} className="w-full bg-white border border-gray-100 rounded-2xl p-4 font-medium text-gray-600 focus:ring-2 focus:ring-ug-teal/20 outline-none resize-none text-xs" placeholder="• Lab validation completed&#10;• Prototype developed&#10;• Clinical testing phase..." />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Key Achievements (Newline separated)</label>
-              <textarea rows={3} value={formData.achievements?.join('\n')} onChange={e => setFormData({...formData, achievements: e.target.value.split('\n').filter(s => s.trim())})} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-medium text-gray-600 focus:ring-2 focus:ring-ug-teal/20 outline-none resize-none" placeholder="List major milestones reached..." />
-            </div>
+              <div className="space-y-2">
+                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Technical Briefing (PDF/DOC)</label>
+                 <label className="flex items-center gap-4 w-full p-4 bg-white border border-gray-100 rounded-2xl cursor-pointer hover:shadow-xl transition group">
+                    <div className="p-3 bg-ug-navy text-ug-teal rounded-xl shadow-lg group-hover:scale-110 transition">
+                      <FileUp size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-black text-ug-navy truncate">
+                         {technicalBrief ? technicalBrief.name : 'Upload Document'}
+                      </p>
+                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Formal Disclosure Brief</p>
+                    </div>
+                    <input type="file" className="hidden" onChange={e => setTechnicalBrief(e.target.files?.[0] || null)} />
+                 </label>
+              </div>
 
-            <div className="space-y-2">
-               <label className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Technical Briefing (PDF/DOC)</label>
-               <label className="flex items-center gap-4 w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl cursor-pointer hover:bg-gray-100 transition">
-                  <div className="p-3 bg-white rounded-xl shadow-sm text-ug-teal">
-                    <FileUp size={20} />
+              <div className="p-6 bg-white rounded-[2rem] border border-gray-100 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="collab" className="text-[10px] font-black text-ug-navy uppercase tracking-widest cursor-pointer">Open to Collaboration</label>
+                  <div className="relative inline-flex items-center h-6 rounded-full w-11 cursor-pointer">
+                    <input 
+                      type="checkbox" id="collab" 
+                      checked={formData.open_to_collaboration} 
+                      onChange={e => setFormData({...formData, open_to_collaboration: e.target.checked})} 
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-ug-teal"></div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-ug-navy truncate">
-                       {technicalBrief ? technicalBrief.name : 'Click to upload briefing'}
-                    </p>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Technical Disclosure Document</p>
-                  </div>
-                  <input type="file" className="hidden" onChange={e => setTechnicalBrief(e.target.files?.[0] || null)} />
-               </label>
-            </div>
+                </div>
+                <p className="text-[8px] font-medium text-gray-400 leading-normal">Enabling this makes your research discoverable to verified industry partners and technical investors.</p>
+              </div>
 
-            <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-              <input type="checkbox" id="collab" checked={formData.open_to_collaboration} onChange={e => setFormData({...formData, open_to_collaboration: e.target.checked})} className="w-5 h-5 rounded border-gray-300 text-ug-teal focus:ring-ug-teal" />
-              <label htmlFor="collab" className="text-sm font-black text-ug-navy uppercase tracking-widest">Open to Industry Collaboration</label>
-            </div>
-
-            <div className="pt-10 flex justify-end gap-4">
-              <button type="button" onClick={onClose} className="px-8 py-4 text-gray-400 font-black uppercase text-xs tracking-widest hover:text-ug-navy transition">Discard</button>
-              <button type="submit" disabled={loading} className="px-12 py-4 bg-ug-navy text-white rounded-[1.5rem] font-black uppercase text-xs tracking-[0.2em] shadow-2xl hover:bg-ug-teal transition-all flex items-center justify-center gap-3 disabled:opacity-50">
-                {loading ? <Loader2 className="animate-spin" size={18} /> : <ShieldCheck size={18} />}
-                {project ? 'Update Disclosure' : 'Submit Disclosure'}
-              </button>
+              <div className="pt-6 space-y-4">
+                <button type="submit" disabled={loading} className="w-full bg-ug-navy text-white py-5 rounded-[1.5rem] font-black uppercase text-[10px] tracking-[0.25em] shadow-xl hover:bg-ug-teal active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50">
+                  {loading ? <Loader2 className="animate-spin" size={18} /> : (project ? <ShieldCheck size={18} /> : <Check size={18} />)}
+                  {project ? 'Apply Disclosure Changes' : 'Finalize Disclosure'}
+                </button>
+                <button type="button" onClick={onClose} className="w-full py-4 text-gray-400 font-black uppercase text-[9px] tracking-widest hover:text-red-500 transition-colors">
+                  Discard Draft
+                </button>
+              </div>
             </div>
           </div>
         </form>
@@ -809,12 +870,16 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
 interface DashboardsProps extends DashboardProps {
   initialThreadId?: string | null;
   onThreadHandled?: () => void;
+  onLogout?: () => void;
 }
 
-const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, onThreadHandled }) => {
+const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, onThreadHandled, onLogout }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'matches' | 'messages' | 'profile'>('overview');
   const [localUser, setLocalUser] = useState<User | null>(user);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     if (initialThreadId) {
@@ -825,12 +890,31 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
 
   useEffect(() => {
     setLocalUser(user);
+    if (user?.id) {
+       StorageService.getUnreadCount(user.id).then(setInternalUnread);
+    }
   }, [user]);
+
+  const [internalUnread, setInternalUnread] = useState(0);
 
   const refreshProfile = async () => {
     if (!user?.id) return;
     const freshProfile = await StorageService.getProfile(user.id);
     setLocalUser(freshProfile);
+  };
+
+  const handleLogout = () => {
+    if (onLogout) {
+      onLogout();
+    } else {
+      // Fallback if prop not provided
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+      window.location.href = '/';
+    }
   };
 
   return (
@@ -876,14 +960,7 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
               </button>
               
               <button 
-                onClick={() => {
-                  document.cookie.split(";").forEach((c) => {
-                    document.cookie = c
-                      .replace(/^ +/, "")
-                      .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-                  });
-                  window.location.href = '/';
-                }}
+                onClick={handleLogout}
                 className="p-2 text-white/50 hover:text-red-400 transition-all group relative rounded-xl hover:bg-white/5"
               >
                 <LogOut size={20} />
@@ -899,13 +976,23 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
           <div className="max-w-7xl mx-auto w-full">
           {activeTab === 'overview' && (
             <div className="animate-fade-in">
-              {role === UserRole.Researcher && <ResearcherDashboard user={localUser} onUpdate={refreshProfile} />}
+              {role === UserRole.Researcher && (
+                <ResearcherDashboard 
+                  user={localUser} 
+                  onUpdate={refreshProfile} 
+                  onOpenModal={(proj) => {
+                    setSelectedProject(proj);
+                    setIsProjectModalOpen(true);
+                  }}
+                  refreshTrigger={refreshTrigger}
+                />
+              )}
               {role === UserRole.Student && <StudentDashboard user={localUser} />}
               {(role === UserRole.Partner || role === UserRole.Industry) && <PartnerDashboard user={localUser} />}
             </div>
           )}
 
-          {activeTab === 'matches' && role !== UserRole.Student && (
+          {activeTab === 'matches' && (
              <MatchesView user={localUser} />
           )}
 
@@ -914,18 +1001,25 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
         </div>
       </main>
 
-      <MobileNav role={role} activeTab={activeTab} setActiveTab={setActiveTab} />
+      <MobileNav role={role} activeTab={activeTab} setActiveTab={setActiveTab} unreadCount={internalUnread} />
     </div>
+
+    {isProjectModalOpen && (
+      <ProjectFormModal 
+        isOpen={isProjectModalOpen} 
+        onClose={() => setIsProjectModalOpen(false)} 
+        onSave={() => setRefreshTrigger(prev => prev + 1)} 
+        project={selectedProject} 
+      />
+    )}
   </div>
 );
 };
 
 // --- SUB-DASHBOARDS ---
 
-const ResearcherDashboard = ({ user, onUpdate }: { user: User | null; onUpdate: () => void }) => {
+const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { user: User | null; onUpdate: () => void; onOpenModal: (p: Project | null) => void; refreshTrigger: number }) => {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -938,7 +1032,7 @@ const ResearcherDashboard = ({ user, onUpdate }: { user: User | null; onUpdate: 
     } catch (err) {} finally { setLoading(false); }
   };
 
-  useEffect(() => { loadData(); }, [user?.id]);
+  useEffect(() => { loadData(); }, [user?.id, refreshTrigger]);
 
   const activeProject = projects[0]; // For visual demonstration of hero card
 
@@ -948,12 +1042,14 @@ const ResearcherDashboard = ({ user, onUpdate }: { user: User | null; onUpdate: 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
       <div className="lg:col-span-8 space-y-8">
-        <RedesignedResearcherProfile user={user} onDisclosure={() => setIsProjectModalOpen(true)} />
+        <UnifiedDashboardProfile user={user} onAction={() => {
+           onOpenModal(null);
+        }} actionLabel="New Project Disclosure" />
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <StatCardV2 label="Live Disclosures" value={projects.length} trend="+2" icon={FileText} />
-          <StatCardV2 label="Total Hub Views" value={totalViews >= 1000 ? `${(totalViews/1000).toFixed(1)}k` : totalViews} trend="+8%" icon={Eye} />
-          <StatCardV2 label="Interactions" value={totalInteractions} trend="+12%" icon={Handshake} />
+          <StatCard label="Live Disclosures" value={projects.length} trend="+2" icon={FileText} />
+          <StatCard label="Total Hub Views" value={totalViews >= 1000 ? `${(totalViews/1000).toFixed(1)}k` : totalViews} trend="+8%" icon={Eye} />
+          <StatCard label="Interactions" value={totalInteractions} trend="+12%" icon={Handshake} />
         </div>
 
         {activeProject && (
@@ -980,38 +1076,33 @@ const ResearcherDashboard = ({ user, onUpdate }: { user: User | null; onUpdate: 
                     <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider">{p.research_area}</span>
                   </div>
                 </div>
-                <ChevronRight size={16} className="text-gray-300" />
+                <div className="flex items-center gap-3">
+                   <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenModal(p);
+                    }}
+                    className="p-2 text-gray-400 hover:text-ug-teal transition"
+                   >
+                     <Pencil size={14} />
+                   </button>
+                   <ChevronRight size={16} className="text-gray-300" />
+                </div>
               </div>
             ))}
           </div>
         </section>
       </div>
 
-      <div className="lg:col-span-4">
+      <div className="lg:col-span-4 space-y-8">
         <HubStreamSidebar />
+        {user?.id && <BookmarkedProjectsList userId={user.id} />}
       </div>
-
-      <ProjectFormModal isOpen={isProjectModalOpen} onClose={() => setIsProjectModalOpen(false)} onSave={loadData} project={selectedProject} />
     </div>
   );
 };
 
-const StatCardV2 = ({ label, value, trend, icon: Icon }: any) => (
-  <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm relative group hover:shadow-xl transition-all h-32 flex flex-col justify-between">
-    <div className="flex justify-between items-start">
-      <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider">{label}</span>
-      <Icon size={16} className="text-gray-200 group-hover:text-ug-teal transition duration-500" />
-    </div>
-    <div className="flex items-baseline gap-3">
-      <h3 className="text-3xl font-black text-ug-navy tracking-tight">{value}</h3>
-      <span className="text-[8px] font-black text-ug-teal bg-ug-teal/5 px-2 py-0.5 rounded-full tracking-widest leading-none">
-        {trend}
-      </span>
-    </div>
-  </div>
-);
-
-const RedesignedResearcherProfile = ({ user, onDisclosure }: { user: User | null, onDisclosure: () => void }) => (
+const UnifiedDashboardProfile = ({ user, onAction, actionLabel }: { user: User | null, onAction: () => void, actionLabel: string }) => (
   <div className="bg-white p-6 md:p-10 rounded-[3rem] border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-8 relative overflow-hidden group">
     <div className="absolute top-0 right-0 w-32 h-32 bg-ug-teal/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition duration-1000"></div>
     
@@ -1026,7 +1117,7 @@ const RedesignedResearcherProfile = ({ user, onDisclosure }: { user: User | null
 
     <div className="flex-1 text-center md:text-left">
       <h2 className="text-3xl font-black text-ug-navy tracking-tight mb-1">{user?.name}</h2>
-      <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">Senior Researcher • {user?.department || 'Research & Innovation'}</p>
+      <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">{user?.role} • {user?.department || 'University of Ghana'}</p>
       <div className="flex items-center justify-center md:justify-start gap-2 bg-gray-50 w-fit px-3 py-1.5 rounded-xl border border-gray-100 mx-auto md:mx-0">
         <Plus size={10} className="text-ug-teal" />
         <span className="text-[8px] font-black text-ug-navy uppercase tracking-widest">Identity Verified</span>
@@ -1034,13 +1125,16 @@ const RedesignedResearcherProfile = ({ user, onDisclosure }: { user: User | null
     </div>
 
     <button 
-      onClick={onDisclosure}
+      onClick={onAction}
       className="bg-ug-navy text-white px-8 py-5 rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest shadow-2xl hover:bg-ug-teal transition-all flex items-center gap-3 active:scale-95"
     >
-      <Plus size={18} /> New Project Disclosure
+      <Plus size={18} /> {actionLabel}
     </button>
   </div>
 );
+
+const StatCardV2 = ({ label, value, trend, icon: Icon }: any) => null;
+const RedesignedResearcherProfile = ({ user, onDisclosure }: { user: User | null, onDisclosure: () => void }) => null;
 
 const ActiveProjectHero = ({ project }: { project: Project }) => (
   <div className="bg-white rounded-[3rem] border border-gray-100 shadow-xl overflow-hidden animate-fade-in group">
@@ -1055,31 +1149,31 @@ const ActiveProjectHero = ({ project }: { project: Project }) => (
       </div>
     </div>
 
-    <div className="p-10 space-y-10">
+        <div className="p-10 space-y-10">
       <div>
         <div className="flex justify-between items-center mb-6">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Technology Readiness Level (TRL)</span>
-          <span className="text-xs font-black text-ug-teal uppercase tracking-widest">TRL {project.trl}: Validation</span>
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</span>
+          <span className="text-xs font-black text-ug-teal uppercase tracking-widest">{project.status}</span>
         </div>
         
         <div className="relative pt-2">
           {/* Track */}
           <div className="h-1.5 w-full bg-gray-100 rounded-full flex justify-between px-0.5 items-center">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((lvl) => (
+            {Object.values(ProjectStatus).map((s, idx) => (
               <div 
-                key={lvl} 
-                className={`h-2.5 w-0.5 rounded-full ${lvl <= project.trl ? 'bg-ug-teal' : 'bg-gray-300'}`}
+                key={s} 
+                className={`h-2.5 w-0.5 rounded-full ${s === project.status ? 'bg-ug-teal' : 'bg-gray-300'}`}
               ></div>
             ))}
           </div>
           {/* Progress Overlay */}
-          <div className="absolute top-2 left-0 h-1.5 bg-ug-teal rounded-full" style={{ width: `${(project.trl - 1) / 8 * 100}%` }}></div>
+          <div className="absolute top-2 left-0 h-1.5 bg-ug-teal rounded-full transition-all duration-700" style={{ width: `${(Object.values(ProjectStatus).indexOf(project.status)) / (Object.values(ProjectStatus).length - 1) * 100}%` }}></div>
           {/* Thumb */}
-          <div className="absolute top-[3px] -translate-y-1/2 w-5 h-5 bg-white border-4 border-ug-teal rounded-full shadow-lg" style={{ left: `calc(${(project.trl - 1) / 8 * 100}% - 10px)` }}></div>
+          <div className="absolute top-[3px] -translate-y-1/2 w-5 h-5 bg-white border-4 border-ug-teal rounded-full shadow-lg transition-all duration-700" style={{ left: `calc(${(Object.values(ProjectStatus).indexOf(project.status)) / (Object.values(ProjectStatus).length - 1) * 100}% - 10px)` }}></div>
 
           <div className="flex justify-between mt-4">
-             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => (
-               <span key={i} className={`text-[8px] font-black ${i === project.trl ? 'text-ug-teal' : 'text-gray-300'}`}>{i}</span>
+             {Object.values(ProjectStatus).map((s, i) => (
+               <span key={s} className={`text-[8px] font-black ${s === project.status ? 'text-ug-teal' : 'text-gray-300'} max-w-[40px] truncate`}>{s}</span>
              ))}
           </div>
         </div>
@@ -1182,29 +1276,38 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
    useEffect(() => { StorageService.getProjects().then(setProjects); }, []);
    return (
       <div className="space-y-8">
-         <UserProfileCard user={user} />
+         <UnifiedDashboardProfile user={user} onAction={() => navigate('/projects')} actionLabel="Explore Research" />
+         
          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <StatCard label="Opportunities" value="12" icon={BookOpen} color="bg-orange-50 text-orange-600" />
-            <StatCard label="Lab Access" value="Granted" icon={GraduationCap} color="bg-blue-50 text-blue-600" />
+            <StatCard label="Opportunities" value="12" trend="+3 New" icon={BookOpen} />
+            <StatCard label="Lab Access" value="Granted" trend="Verified" icon={GraduationCap} />
          </div>
-         {user?.id && <BookmarkedProjectsList userId={user.id} />}
-         <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
-            <SectionTitle title="Collaboration Calls" subtitle="Active Research Projects Seeking Talent" />
-            <div className="space-y-4">
-               {projects.slice(0, 3).map(p => (
-                  <div key={p.id} className="flex flex-col md:flex-row md:items-center justify-between p-6 border border-gray-100 rounded-3xl bg-white hover:shadow-lg transition gap-4">
-                     <div className="flex gap-4">
-                        <div className="w-14 h-14 bg-ug-navy/5 rounded-2xl flex items-center justify-center text-ug-navy"><Briefcase size={24} /></div>
-                        <div>
-                           <h4 className="font-black text-ug-navy text-lg">{p.title}</h4>
-                           <p className="text-[10px] font-black uppercase text-ug-teal tracking-widest">{p.department}</p>
+
+         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="lg:col-span-8 space-y-8">
+               <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+                  <SectionTitle title="Collaboration Calls" subtitle="Active Research Projects Seeking Talent" />
+                  <div className="space-y-4">
+                     {projects.slice(0, 3).map(p => (
+                        <div key={p.id} className="flex flex-col md:flex-row md:items-center justify-between p-6 border border-gray-100 rounded-3xl bg-white hover:shadow-lg transition gap-4">
+                           <div className="flex gap-4">
+                              <div className="w-14 h-14 bg-ug-navy/5 rounded-2xl flex items-center justify-center text-ug-navy"><Briefcase size={24} /></div>
+                              <div>
+                                 <h4 className="font-black text-ug-navy text-lg">{p.title}</h4>
+                                 <p className="text-[10px] font-black uppercase text-ug-teal tracking-widest">{p.department}</p>
+                              </div>
+                           </div>
+                           <button onClick={() => navigate(`/projects/${p.id}`)} className="bg-ug-navy text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition">Apply for Assistantship</button>
                         </div>
-                     </div>
-                     <button onClick={() => navigate(`/projects/${p.id}`)} className="bg-ug-navy text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition">Apply for Assistantship</button>
+                     ))}
                   </div>
-               ))}
+               </section>
             </div>
-         </section>
+            <div className="lg:col-span-4 space-y-8">
+               {user?.id && <BookmarkedProjectsList userId={user.id} />}
+               <HubStreamSidebar />
+            </div>
+         </div>
       </div>
    );
 };
@@ -1215,50 +1318,41 @@ const PartnerDashboard = ({ user }: { user: User | null }) => {
    useEffect(() => { StorageService.getProjects().then(setProjects); }, []);
    return (
       <div className="space-y-8">
-         <UserProfileCard user={user} />
+         <UnifiedDashboardProfile user={user} onAction={() => navigate('/projects')} actionLabel="Invest in Tech" />
+         
          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard label="Market Ready" value={projects.filter(p => p.status === ProjectStatus.MarketReady).length} icon={ShoppingBag} color="bg-green-50 text-green-600" />
-            <StatCard label="In-Review" value="5" icon={Bookmark} color="bg-purple-50 text-purple-600" />
-            <StatCard label="NDA" value="Verified" icon={Lock} color="bg-ug-navy/10 text-ug-navy" />
+            <StatCard label="Market Ready" value={projects.filter(p => p.status === ProjectStatus.MarketReady).length} trend="High ROI" icon={ShoppingBag} />
+            <StatCard label="In-Review" value="5" trend="+1 Today" icon={Bookmark} />
+            <StatCard label="NDA" value="Verified" trend="Secure" icon={Lock} />
          </div>
-         {user?.id && <BookmarkedProjectsList userId={user.id} />}
-         <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
-            <SectionTitle title="Venture Portfolio" subtitle="Curated Technical Assets" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               {projects.slice(0, 4).map(p => (
-                  <div key={p.id} onClick={() => navigate(`/projects/${p.id}`)} className="bg-gray-50 rounded-3xl p-6 hover:bg-white hover:shadow-xl transition border border-gray-100 cursor-pointer group">
-                     <h4 className="font-black text-lg text-ug-navy mb-2 group-hover:text-ug-teal transition">{p.title}</h4>
-                     <div className="flex justify-between items-center pt-4 border-t border-gray-200/50">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Stage {p.trl}</span>
-                        <ArrowRight size={16} className="text-gray-300 group-hover:text-ug-teal" />
-                     </div>
+
+         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="lg:col-span-8 space-y-8">
+               <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+                  <SectionTitle title="Venture Portfolio" subtitle="Curated Technical Assets" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     {projects.slice(0, 4).map(p => (
+                        <div key={p.id} onClick={() => navigate(`/projects/${p.id}`)} className="bg-gray-50 rounded-3xl p-6 hover:bg-white hover:shadow-xl transition border border-gray-100 cursor-pointer group">
+                           <h4 className="font-black text-lg text-ug-navy mb-2 group-hover:text-ug-teal transition">{p.title}</h4>
+                           <div className="flex justify-between items-center pt-4 border-t border-gray-200/50">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{p.status}</span>
+                              <ArrowRight size={16} className="text-gray-300 group-hover:text-ug-teal" />
+                           </div>
+                        </div>
+                     ))}
                   </div>
-               ))}
+               </section>
             </div>
-         </section>
+            <div className="lg:col-span-4 space-y-8">
+               {user?.id && <BookmarkedProjectsList userId={user.id} />}
+               <HubStreamSidebar />
+            </div>
+         </div>
       </div>
    );
 };
 
 // --- CORE UTILITIES ---
-
-const UserProfileCard = ({ user }: { user: User | null }) => (
-  <div className="bg-ug-navy rounded-[2rem] p-8 text-white relative overflow-hidden shadow-2xl">
-    <div className="absolute top-0 right-0 w-64 h-64 bg-ug-teal/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-    <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-      <div className="w-24 h-24 rounded-3xl overflow-hidden border-2 border-ug-teal/50 shadow-lg shrink-0 bg-white/5">
-        {user?.avatar_url ? <img src={`${user.avatar_url}?t=${Date.now()}`} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center text-white/20"><UserIcon size={32} /></div>}
-      </div>
-      <div className="text-center md:text-left flex-1">
-        <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mb-2">
-          <h2 className="text-2xl font-black">{user?.name}</h2>
-          <span className="bg-ug-teal/30 text-ug-teal text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full border border-ug-teal/50 w-fit mx-auto md:mx-0">{user?.role}</span>
-        </div>
-        <p className="text-gray-300 text-sm font-normal opacity-80" style={{ fontFamily: "'Times New Roman', Times, serif" }}>{user?.bio || "Academic identity verified."}</p>
-      </div>
-    </div>
-  </div>
-);
 
 const BookmarkedProjectsList: React.FC<{ userId: string }> = ({ userId }) => {
   const [bookmarks, setBookmarks] = useState<Project[]>([]);

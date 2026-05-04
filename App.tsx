@@ -257,6 +257,7 @@ const AppContent: React.FC = () => {
                       user={userProfile} 
                       initialThreadId={selectedThreadId}
                       onThreadHandled={() => setSelectedThreadId(null)}
+                      onLogout={handleLogout}
                     />
                   </ProtectedRoute>
                 } 
