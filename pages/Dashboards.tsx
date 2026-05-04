@@ -580,8 +580,9 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
 
   const handleRecipientSearch = async (query: string) => {
     setComposeRecipient(query);
-    if (query.length > 1) {
-      const results = await StorageService.searchUsers(query);
+    if (query.trim().length >= 2) {
+      // Robust search: StorageService uses .or(name.ilike, email.ilike) which captures partial names
+      const results = await StorageService.searchUsers(query.trim());
       setRecipientResults(results.filter(u => u.id !== user?.id));
     } else {
       setRecipientResults([]);
@@ -589,15 +590,20 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
   };
 
   const handleSendDirectMessage = async () => {
-    if (!selectedRecipient || !composeMessage.trim() || !user) return;
+    if (!selectedRecipient || !composeMessage.trim() || !user) {
+      showToast("Please select a recipient and enter a message", "error");
+      return;
+    }
     setSending(true);
     try {
       await StorageService.submitEOI(null, user.name, composeMessage, selectedRecipient.id);
-      showToast("Direct Message Transmitted", "success");
+      showToast("Message Sent Successfully", "success");
       setIsComposing(false);
       setComposeMessage('');
+      setComposeSubject('');
       setComposeRecipient('');
       setSelectedRecipient(null);
+      
       const updated = await StorageService.getConversations(user.id);
       setThreads(updated);
     } catch (e) {
@@ -608,9 +614,173 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
   };
 
   return (
-    <div className="bg-white md:rounded-[2rem] border-x md:border border-gray-200 shadow-sm overflow-hidden h-[calc(100vh-180px)] md:h-[750px] flex animate-fade-in font-sans relative">
-      {/* Gmail Sidebar (Hidden on Mobile unless list open) */}
-      <div className={`w-full md:w-64 border-r border-gray-100 flex-col bg-white pt-4 absolute inset-0 z-20 md:relative md:flex transition-transform duration-300 ${isMobileListOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+    <div className="bg-white md:rounded-[2rem] border-x md:border border-gray-200 shadow-sm overflow-hidden h-[calc(100vh-180px)] md:h-[750px] flex flex-col md:flex-row animate-fade-in font-sans relative">
+      {/* Mobile Messages UI (Accordion Style) */}
+      <div className="md:hidden flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-white">
+        {!selectedThread ? (
+          <div className="flex flex-col">
+            <div className="p-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+              <h2 className="text-sm font-black text-ug-navy uppercase tracking-widest">Communications</h2>
+              <button 
+                onClick={() => setIsComposing(true)}
+                className="p-2 bg-ug-teal text-white rounded-xl shadow-lg"
+              >
+                <Plus size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1">
+              {[
+                { id: 'inbox', icon: Inbox, label: 'Inbox', count: unreadCount },
+                { id: 'starred', icon: Star, label: 'Starred' },
+                { id: 'sent', icon: SendIcon, label: 'Sent' },
+                { id: 'trash', icon: Trash, label: 'Trash' },
+              ].map((cat) => (
+                <div key={cat.id} className="border-b border-gray-50 last:border-none">
+                  <button
+                    onClick={() => {
+                      if (activeCategory === cat.id) {
+                        // Toggle or keep
+                      } else {
+                        setActiveCategory(cat.id as any);
+                      }
+                    }}
+                    className={`w-full flex items-center justify-between px-6 py-5 transition-all ${
+                      activeCategory === cat.id ? 'bg-blue-50/30' : 'bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <cat.icon size={20} className={activeCategory === cat.id ? 'text-blue-600' : 'text-gray-400'} />
+                      <span className={`text-sm tracking-wide ${activeCategory === cat.id ? 'font-black text-blue-700' : 'font-bold text-gray-700'}`}>
+                        {cat.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {cat.count ? (
+                        <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                          {cat.count}
+                        </span>
+                      ) : null}
+                      <ChevronRight size={16} className={`transition-transform duration-300 text-gray-300 ${activeCategory === cat.id ? 'rotate-90 text-blue-600' : ''}`} />
+                    </div>
+                  </button>
+
+                  <AnimatePresence>
+                    {activeCategory === cat.id && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden bg-gray-50/50"
+                      >
+                        {filteredThreads.length === 0 ? (
+                          <div className="p-10 text-center text-gray-400 text-[10px] font-bold uppercase tracking-widest italic">
+                            No {cat.label.toLowerCase()} yet
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-gray-100/50">
+                            {filteredThreads.map((thread, i) => {
+                              const lastMsg = thread[0];
+                              const isUnread = !lastMsg.read && lastMsg.recipient_id === user?.id;
+                              return (
+                                <div 
+                                  key={i}
+                                  onClick={() => handleSelectThread(thread)}
+                                  className={`p-5 flex items-center gap-4 active:bg-white transition-colors relative ${isUnread ? 'bg-white' : ''}`}
+                                >
+                                  {isUnread && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600"></div>}
+                                  <div className="w-10 h-10 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-center text-ug-navy shrink-0">
+                                    <UserIcon size={18} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-center mb-1">
+                                      <span className={`text-xs truncate ${isUnread ? 'font-black text-gray-900' : 'font-bold text-gray-700'}`}>
+                                        {lastMsg.user_name}
+                                      </span>
+                                      <span className="text-[9px] font-bold text-gray-400 uppercase">
+                                        {new Date(lastMsg.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                      </span>
+                                    </div>
+                                    <h4 className={`text-[11px] truncate mb-1 ${isUnread ? 'font-bold text-blue-600' : 'text-gray-500'}`}>
+                                      {lastMsg.projects?.title || 'General Inquiry'}
+                                    </h4>
+                                    <p className="text-[10px] text-gray-400 line-clamp-1 italic">
+                                      "{lastMsg.message}"
+                                    </p>
+                                  </div>
+                                  <ChevronRight size={14} className="text-gray-300" />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          /* Mobile Detail View */
+          <div className="flex-1 flex flex-col h-full bg-white animate-fade-in">
+            <div className="p-4 border-b border-gray-100 flex items-center gap-4 bg-white sticky top-0 z-10">
+              <button 
+                onClick={() => setSelectedThread(null)}
+                className="p-2 bg-gray-50 rounded-xl text-gray-600 active:scale-95 transition"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-gray-900 text-sm truncate">{selectedThread[0].projects?.title || 'General Inquiry'}</h4>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest truncate">{selectedThread[0].user_name}</p>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-gray-50/20">
+              {[...selectedThread].reverse().map((msg, i) => (
+                <div key={i} className={`flex items-start gap-3 ${msg.sender_id === user?.id ? 'flex-row-reverse' : ''}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 shadow-sm ${msg.sender_id === user?.id ? 'bg-ug-navy text-white' : 'bg-white border border-gray-100 text-ug-navy'}`}>
+                    {msg.user_name.charAt(0)}
+                  </div>
+                  <div className={`max-w-[80%] p-4 rounded-2xl text-[11px] leading-relaxed shadow-sm ${
+                    msg.sender_id === user?.id ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-gray-700 rounded-tl-none border border-gray-100'
+                  }`}>
+                    {msg.message}
+                    <div className={`text-[8px] mt-2 opacity-60 text-right ${msg.sender_id === user?.id ? 'text-white' : 'text-gray-400'}`}>
+                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-4 border-t border-gray-100 bg-white">
+              <div className="flex items-end gap-3">
+                <div className="flex-1 bg-gray-50 rounded-[1.5rem] p-2 flex flex-col border border-gray-100 focus-within:bg-white focus-within:shadow-lg transition-all">
+                  <textarea 
+                    value={reply}
+                    onChange={(e) => setReply(e.target.value)}
+                    placeholder="Type message..."
+                    className="w-full bg-transparent p-2 text-xs focus:outline-none resize-none min-h-[40px] max-h-[120px]"
+                    rows={1}
+                  />
+                </div>
+                <button 
+                  onClick={handleSendReply}
+                  disabled={sending || !reply.trim()}
+                  className="bg-blue-600 text-white p-3 rounded-full shadow-lg active:scale-90 transition disabled:opacity-50 h-10 w-10 flex items-center justify-center"
+                >
+                  {sending ? <Loader2 size={18} className="animate-spin" /> : <SendIcon size={18} />}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Gmail Sidebar (Hidden on Mobile) */}
+      <div className={`hidden md:flex w-64 border-r border-gray-100 flex-col bg-white pt-4 transition-transform duration-300`}>
         <div className="px-4 mb-4">
           <button 
             onClick={() => setIsComposing(true)}
@@ -654,8 +824,8 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
         </nav>
       </div>
 
-      {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col min-w-0 bg-white z-10 transition-transform duration-300 ${!isMobileListOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
+      {/* Desktop Main Content Area (Hidden on Mobile) */}
+      <div className={`hidden md:flex flex-1 flex flex-col min-w-0 bg-white z-10 transition-transform duration-300 ${!isMobileListOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
         {/* Search Bar & Actions (Only if list open) */}
         {isMobileListOpen || !selectedThread ? (
           <div className="h-16 border-b border-gray-100 flex items-center px-4 gap-4 bg-white">
@@ -806,82 +976,96 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
 
       {/* Compose Modal (Gmail Style) - Responsive Width */}
       {isComposing && (
-        <div className="fixed inset-0 md:inset-auto md:bottom-0 md:right-10 md:w-[500px] md:h-[600px] bg-white shadow-2xl md:rounded-t-2xl border border-gray-200 z-[200] flex flex-col animate-slide-up">
-          <div className="bg-ug-navy text-white px-4 py-4 md:py-3 md:rounded-t-2xl flex items-center justify-between shrink-0">
+        <div className="fixed inset-0 md:inset-auto md:bottom-0 md:right-10 md:w-[500px] md:h-[600px] bg-white shadow-2xl md:rounded-t-3xl border border-gray-200 z-[300] flex flex-col animate-slide-up">
+          <div className="bg-ug-navy text-white px-6 py-6 md:py-4 md:rounded-t-3xl flex items-center justify-between shrink-0">
             <span className="text-sm font-black uppercase tracking-widest text-ug-teal">New Interaction</span>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setIsComposing(false)} className="p-1 hover:bg-white/10 rounded transition hidden md:block"><Minimize2 size={16} /></button>
-              <button onClick={() => setIsComposing(false)} className="p-1 hover:bg-white/10 rounded transition md:hidden"><X size={20} /></button>
-              <button onClick={() => setIsComposing(false)} className="p-1 hover:bg-white/10 rounded transition hidden md:block"><X size={16} /></button>
-            </div>
+            <button onClick={() => setIsComposing(false)} className="p-2 hover:bg-white/10 rounded-2xl transition">
+              <X size={24} className="md:w-5 md:h-5" />
+            </button>
           </div>
-          <div className="p-4 md:p-6 flex-1 flex flex-col gap-4 overflow-y-auto">
+          <div className="p-6 md:p-8 flex-1 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
             <div className="relative">
-              <input 
-                type="text" 
-                placeholder="Search for collaborators..." 
-                value={selectedRecipient ? selectedRecipient.name : composeRecipient}
-                onChange={(e) => handleRecipientSearch(e.target.value)}
-                disabled={!!selectedRecipient}
-                className="w-full border-b border-gray-100 py-2 text-sm focus:outline-none" 
-              />
-              {selectedRecipient && (
-                <button 
-                  onClick={() => setSelectedRecipient(null)}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
-                >
-                  <X size={14} />
-                </button>
-              )}
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Recipient</label>
+              <div className="relative group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="Search collaborators by name..." 
+                  value={selectedRecipient ? selectedRecipient.name : composeRecipient}
+                  onChange={(e) => handleRecipientSearch(e.target.value)}
+                  disabled={!!selectedRecipient}
+                  className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 pl-12 pr-4 focus:bg-white focus:border-blue-500 outline-none transition-all text-sm font-bold disabled:opacity-50 disabled:bg-blue-50/50 disabled:border-blue-100"
+                />
+                {selectedRecipient && (
+                  <button 
+                    onClick={() => setSelectedRecipient(null)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-gray-200 hover:bg-gray-300 rounded-xl transition shadow-sm"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
               {recipientResults.length > 0 && !selectedRecipient && (
-                <div className="absolute top-full left-0 w-full bg-white shadow-xl border border-gray-100 rounded-xl mt-1 z-20 overflow-hidden">
-                  {recipientResults.map(u => (
-                    <div 
-                      key={u.id} 
-                      onClick={() => {
-                        setSelectedRecipient(u);
-                        setRecipientResults([]);
-                      }}
-                      className="p-3 hover:bg-gray-50 cursor-pointer flex items-center gap-3 border-b border-gray-50 last:border-none"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-ug-teal/10 flex items-center justify-center text-ug-teal text-xs font-bold">
-                        {u.name.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-gray-800">{u.name}</p>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-widest">{u.role}</p>
-                      </div>
-                    </div>
-                  ))}
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-3xl shadow-2xl z-[310] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="p-2 space-y-1">
+                    {recipientResults.map((u) => (
+                      <button
+                        key={u.id}
+                        onClick={() => {
+                          setSelectedRecipient(u);
+                          setRecipientResults([]);
+                        }}
+                        className="w-full flex items-center gap-4 p-4 hover:bg-blue-50/50 rounded-2xl transition-all group"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-ug-navy/5 flex items-center justify-center text-ug-navy group-hover:bg-blue-600 group-hover:text-white transition-all">
+                          <UserIcon size={20} />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-black text-gray-900 group-hover:text-blue-700 transition">{u.name}</p>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{u.role}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
-            <input 
-              type="text" 
-              placeholder="Subject" 
-              value={composeSubject}
-              onChange={(e) => setComposeSubject(e.target.value)}
-              className="w-full border-b border-gray-100 py-2 text-sm focus:outline-none" 
-            />
-            <textarea 
-              placeholder="Message" 
-              value={composeMessage}
-              onChange={(e) => setComposeMessage(e.target.value)}
-              className="w-full min-h-[300px] py-2 text-sm focus:outline-none resize-none" 
-            />
+
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Topic</label>
+              <input 
+                type="text" 
+                placeholder="Brief subject description" 
+                value={composeSubject}
+                onChange={(e) => setComposeSubject(e.target.value)}
+                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-6 focus:bg-white focus:border-blue-500 outline-none transition-all text-sm font-bold" 
+              />
+            </div>
+
+            <div className="flex-1 min-h-[200px]">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Message</label>
+              <textarea 
+                placeholder="Share your thoughts or research proposal..." 
+                value={composeMessage}
+                onChange={(e) => setComposeMessage(e.target.value)}
+                className="w-full h-full min-h-[200px] bg-gray-50 border-2 border-gray-100 rounded-2xl p-6 focus:bg-white focus:border-blue-500 outline-none transition-all text-sm font-medium resize-none shadow-inner" 
+              />
+            </div>
           </div>
-          <div className="p-4 border-t border-gray-100 flex items-center justify-between">
+          <div className="p-6 md:p-8 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6 bg-white sticky bottom-0">
             <button 
               onClick={handleSendDirectMessage}
               disabled={sending || !selectedRecipient || !composeMessage.trim()}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-lg text-sm font-bold transition-all shadow-lg disabled:opacity-50"
+              className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-10 py-5 rounded-[1.5rem] font-black text-[12px] uppercase tracking-[0.2em] transition-all shadow-[0_10px_30px_-10px_rgba(37,99,235,0.4)] disabled:opacity-50 active:scale-95 flex items-center justify-center gap-3"
             >
-              {sending ? <Loader2 size={16} className="animate-spin" /> : 'Send'}
+              {sending ? <Loader2 size={18} className="animate-spin" /> : <><SendIcon size={18} /> Transmit Message</>}
             </button>
-            <div className="flex items-center gap-2 text-gray-400">
-              <Paperclip size={18} className="cursor-pointer hover:text-gray-600" />
-              <ImageIcon size={18} className="cursor-pointer hover:text-gray-600" />
-              <Trash size={18} className="cursor-pointer hover:text-gray-600 ml-4" />
+            <div className="flex items-center gap-6 text-gray-300">
+              <button className="hover:text-blue-600 transition-colors"><Paperclip size={24} /></button>
+              <button className="hover:text-blue-600 transition-colors"><ImageIcon size={24} /></button>
+              <div className="w-px h-6 bg-gray-100 mx-2"></div>
+              <button onClick={() => setIsComposing(false)} className="hover:text-red-500 transition-colors"><Trash size={24} /></button>
             </div>
           </div>
         </div>
@@ -946,7 +1130,7 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
       <Sidebar role={role} user={localUser} activeTab={activeTab} setActiveTab={setActiveTab} />
       
       <div className="flex-1 flex flex-col min-w-0 relative h-full">
-        <header className="bg-ug-navy text-white flex items-center justify-between px-8 py-5 shrink-0 md:ml-64 shadow-2xl z-50">
+        <header className="bg-ug-navy text-white flex items-center justify-between px-4 sm:px-8 py-5 shrink-0 md:ml-64 shadow-2xl z-50">
           <nav className="hidden lg:flex items-center gap-10 ml-8">
              {['Home', 'Projects', 'Products', 'News'].map(link => (
                <button 
@@ -959,7 +1143,10 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
              ))}
           </nav>
 
-          <div className="flex items-center gap-4 sm:gap-6 mr-4 sm:mr-8">
+          {/* Mobile Spacer to push icons to the right */}
+          <div className="lg:hidden flex-1"></div>
+
+          <div className="flex items-center gap-2 sm:gap-6">
             <button 
               onClick={() => setActiveTab('messages')}
               className={`p-2 transition-all relative group rounded-xl hover:bg-white/10 ${activeTab === 'messages' ? 'text-ug-teal' : 'text-white/70 hover:text-white'}`}
@@ -971,29 +1158,18 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
               </span>
             </button>
 
-            {/* Mobile Home Icon - Only show on mobile */}
-            <button 
-              onClick={() => navigate('/')}
-              className="sm:hidden p-2 text-white/70 hover:text-white transition-all group relative rounded-xl hover:bg-white/10"
-            >
-              <HomeIcon size={20} />
-              <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1.5 bg-gray-900 text-[7px] font-black uppercase rounded shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
-                Home
-              </span>
-            </button>
-            
-            <div className="flex items-center gap-4 pl-4 sm:pl-6 border-l border-white/10">
+            <div className="flex items-center gap-2 sm:gap-4 pl-2 sm:pl-6 border-l border-white/10">
+              {/* Home Icon - Only show on mobile header as a symbol */}
               <button 
-                onClick={() => setActiveTab('profile')}
-                className="hidden sm:flex w-9 h-9 rounded-xl bg-white/10 ring-1 ring-white/20 items-center justify-center text-[10px] font-black overflow-hidden shadow-inner group cursor-pointer hover:ring-ug-teal/50 transition relative"
+                onClick={() => navigate('/')}
+                className="sm:hidden p-2 text-white/70 hover:text-white transition-all group relative rounded-xl hover:bg-white/10"
               >
-                {localUser?.avatar_url ? (
-                  <img src={localUser.avatar_url} className="w-full h-full object-cover" alt="" />
-                ) : (
-                  <UserIcon size={16} className="text-white/50 group-hover:text-ug-teal transition" />
-                )}
+                <HomeIcon size={20} />
+                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1.5 bg-gray-900 text-[7px] font-black uppercase rounded shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
+                  Home
+                </span>
               </button>
-              
+
               <button 
                 onClick={handleLogout}
                 className="p-2 text-white/50 hover:text-red-400 transition-all group relative rounded-xl hover:bg-white/5"
@@ -1138,21 +1314,21 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
 };
 
 const UnifiedDashboardProfile = ({ user, onAction, actionLabel }: { user: User | null, onAction: () => void, actionLabel: string }) => (
-  <div className="bg-white p-6 md:p-10 rounded-[3rem] border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-8 relative overflow-hidden group">
+  <div className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-6 md:gap-8 relative overflow-hidden group">
     <div className="absolute top-0 right-0 w-32 h-32 bg-ug-teal/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition duration-1000"></div>
     
-    <div className="relative">
-      <div className="w-28 h-28 rounded-[2.5rem] border-4 border-white shadow-2xl overflow-hidden bg-ug-navy">
+    <div className="relative shrink-0">
+      <div className="w-20 h-20 md:w-28 md:h-28 rounded-2xl md:rounded-[2.5rem] border-4 border-white shadow-2cl overflow-hidden bg-ug-navy">
         {user?.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" alt="" /> : <UserIcon className="w-full h-full p-6 text-white/20" />}
       </div>
-      <div className="absolute -bottom-1 -right-1 bg-ug-teal p-1.5 rounded-full border-4 border-white text-white shadow-lg">
-        <ShieldCheck size={14} />
+      <div className="absolute -bottom-1 -right-1 bg-ug-teal p-1.5 rounded-full border-2 md:border-4 border-white text-white shadow-lg">
+        <ShieldCheck size={12} className="md:w-3.5 md:h-3.5" />
       </div>
     </div>
 
-    <div className="flex-1 text-center md:text-left">
-      <h2 className="text-3xl font-black text-ug-navy tracking-tight mb-1">{user?.name}</h2>
-      <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">{user?.role} • {user?.department || 'University of Ghana'}</p>
+    <div className="flex-1 text-center md:text-left min-w-0">
+      <h2 className="text-xl md:text-3xl font-black text-ug-navy tracking-tight mb-1 truncate">{user?.name}</h2>
+      <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-4 truncate">{user?.role} • {user?.department || 'University of Ghana'}</p>
       <div className="flex items-center justify-center md:justify-start gap-2 bg-gray-50 w-fit px-3 py-1.5 rounded-xl border border-gray-100 mx-auto md:mx-0">
         <Plus size={10} className="text-ug-teal" />
         <span className="text-[8px] font-black text-ug-navy uppercase tracking-widest">Identity Verified</span>
@@ -1161,9 +1337,9 @@ const UnifiedDashboardProfile = ({ user, onAction, actionLabel }: { user: User |
 
     <button 
       onClick={onAction}
-      className="bg-ug-navy text-white px-8 py-5 rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest shadow-2xl hover:bg-ug-teal transition-all flex items-center gap-3 active:scale-95"
+      className="w-full md:w-auto bg-ug-navy text-white px-8 py-4 md:py-5 rounded-[1.25rem] md:rounded-[1.5rem] font-black text-[9px] md:text-[10px] uppercase tracking-widest shadow-2xl hover:bg-ug-teal transition-all flex items-center justify-center gap-3 active:scale-95"
     >
-      <Plus size={18} /> {actionLabel}
+      <Plus size={16} /> {actionLabel}
     </button>
   </div>
 );
@@ -1172,15 +1348,15 @@ const StatCardV2 = ({ label, value, trend, icon: Icon }: any) => null;
 const RedesignedResearcherProfile = ({ user, onDisclosure }: { user: User | null, onDisclosure: () => void }) => null;
 
 const ActiveProjectHero = ({ project }: { project: Project }) => (
-  <div className="bg-white rounded-[3rem] border border-gray-100 shadow-xl overflow-hidden animate-fade-in group">
-    <div className="relative h-64 overflow-hidden">
+  <div className="bg-white rounded-[2rem] md:rounded-[3rem] border border-gray-100 shadow-xl overflow-hidden animate-fade-in group">
+    <div className="relative h-48 md:h-64 overflow-hidden">
       <img src={project.image_url.split('|')[0]} className="w-full h-full object-cover group-hover:scale-105 transition duration-1000" alt="" />
       <div className="absolute inset-0 bg-gradient-to-t from-ug-navy via-ug-navy/40 to-transparent"></div>
-      <div className="absolute top-6 left-6 flex flex-col gap-2">
-        <div className="bg-ug-teal text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg animate-pulse w-fit">
+      <div className="absolute top-4 left-4 md:top-6 md:left-6 flex flex-col gap-2">
+        <div className="bg-ug-teal text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest shadow-lg animate-pulse w-fit">
           ACTIVE PROJECT
         </div>
-        <h3 className="text-3xl font-black text-white tracking-tight drop-shadow-md">{project.title}</h3>
+        <h3 className="text-xl md:text-3xl font-black text-white tracking-tight drop-shadow-md line-clamp-2">{project.title}</h3>
       </div>
     </div>
 
