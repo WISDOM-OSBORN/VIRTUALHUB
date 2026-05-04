@@ -9,6 +9,7 @@ import {
   Settings, Bell, ShieldCheck, Download, 
   ChevronRight, Globe, Lock, X, Check, Award, GraduationCap, Eye, Search, Loader2, Star, Trash, Inbox, Archive, MoreVertical, CornerUpLeft, Paperclip, Maximize2, Minimize2, ChevronLeft,
   Briefcase, BookOpen, Handshake, Image as ImageIcon, Upload, DollarSign, FileCode,
+  Home as HomeIcon,
   ShoppingBag, Bookmark, ArrowRight, User as UserIcon, Link as LinkIcon, Camera, AlertCircle, Info,
   Pencil, Trash2, FileUp, MessageSquare, MailOpen, Clock, Zap, Send as SendIcon, Calendar, File, LayoutGrid, Target, Sparkles, LogOut
 } from 'lucide-react';
@@ -22,7 +23,7 @@ interface DashboardProps {
 // --- MOBILE BOTTOM NAV ---
 const MobileNav: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; role: UserRole; unreadCount: number }> = ({ activeTab, setActiveTab, role, unreadCount }) => {
   const tabs = [
-    { id: 'overview', icon: LayoutGrid, label: 'Hub' },
+    { id: 'overview', icon: LayoutGrid, label: 'Overview' },
     { id: 'matches', icon: Target, label: role === UserRole.Student ? 'Discover' : 'Matches' },
     { id: 'messages', icon: MessageSquare, label: 'Chat' },
     { id: 'profile', icon: UserIcon, label: 'Me' },
@@ -107,15 +108,15 @@ const Sidebar: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; rol
 // --- SHARED COMPONENTS ---
 
 const StatCard: React.FC<{ label: string; value: string | number; trend?: string; icon: any; color?: string }> = ({ label, value, trend, icon: Icon }) => (
-  <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm relative group hover:shadow-xl transition-all h-32 flex flex-col justify-between">
+  <div className="bg-white p-4 md:p-6 rounded-[2rem] border border-gray-100 shadow-sm relative group hover:shadow-xl transition-all h-28 md:h-32 flex flex-col justify-between">
     <div className="flex justify-between items-start">
-      <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider">{label}</span>
-      <Icon size={16} className="text-gray-200 group-hover:text-ug-teal transition duration-500" />
+      <span className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-wider">{label}</span>
+      <Icon size={14} className="text-gray-200 group-hover:text-ug-teal transition duration-500 md:w-4 md:h-4" />
     </div>
-    <div className="flex items-baseline gap-3">
-      <h3 className="text-3xl font-black text-ug-navy tracking-tight">{value}</h3>
+    <div className="flex items-baseline gap-2 md:gap-3">
+      <h3 className="text-2xl md:text-3xl font-black text-ug-navy tracking-tight">{value}</h3>
       {trend && (
-        <span className="text-[8px] font-black text-ug-teal bg-ug-teal/5 px-2 py-0.5 rounded-full tracking-widest leading-none">
+        <span className="text-[7px] md:text-[8px] font-black text-ug-teal bg-ug-teal/5 px-2 py-0.5 rounded-full tracking-widest leading-none">
           {trend}
         </span>
       )}
@@ -496,7 +497,16 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
   const [composeMessage, setComposeMessage] = useState('');
   const [recipientResults, setRecipientResults] = useState<User[]>([]);
   const [selectedRecipient, setSelectedRecipient] = useState<User | null>(null);
+  const [isMobileListOpen, setIsMobileListOpen] = useState(true);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    if (selectedThread) {
+      setIsMobileListOpen(false);
+    } else {
+      setIsMobileListOpen(true);
+    }
+  }, [selectedThread]);
 
   useEffect(() => {
     if (user?.id) {
@@ -598,20 +608,20 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
   };
 
   return (
-    <div className="bg-white rounded-[2rem] border border-gray-200 shadow-sm overflow-hidden h-[750px] flex animate-fade-in font-sans">
-      {/* Gmail Sidebar */}
-      <div className="w-64 border-r border-gray-100 flex flex-col bg-white pt-4">
+    <div className="bg-white md:rounded-[2rem] border-x md:border border-gray-200 shadow-sm overflow-hidden h-[calc(100vh-180px)] md:h-[750px] flex animate-fade-in font-sans relative">
+      {/* Gmail Sidebar (Hidden on Mobile unless list open) */}
+      <div className={`w-full md:w-64 border-r border-gray-100 flex-col bg-white pt-4 absolute inset-0 z-20 md:relative md:flex transition-transform duration-300 ${isMobileListOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="px-4 mb-4">
           <button 
             onClick={() => setIsComposing(true)}
-            className="flex items-center gap-4 bg-white hover:shadow-lg transition-all px-6 py-4 rounded-2xl text-sm font-bold text-gray-700 border border-gray-100 w-full shadow-sm"
+            className="flex items-center gap-4 bg-white hover:shadow-lg transition-all px-6 py-3 md:py-4 rounded-2xl text-sm font-bold text-gray-700 border border-gray-100 w-full shadow-sm"
           >
             <Pencil size={20} className="text-ug-teal" />
             <span className="tracking-wide">Compose</span>
           </button>
         </div>
 
-        <nav className="flex-1">
+        <nav className="flex-1 overflow-y-auto px-2 md:px-0">
           {[
             { id: 'inbox', icon: Inbox, label: 'Inbox', count: unreadCount },
             { id: 'starred', icon: Star, label: 'Starred' },
@@ -624,7 +634,7 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
                 setActiveCategory(cat.id as any);
                 setSelectedThread(null);
               }}
-              className={`w-[95%] flex items-center justify-between px-6 py-2.5 rounded-r-full text-sm transition-all ${
+              className={`w-full md:w-[95%] flex items-center justify-between px-6 py-3 md:py-2.5 rounded-2xl md:rounded-r-full text-sm transition-all mb-1 ${
                 activeCategory === cat.id 
                   ? 'bg-blue-50 text-blue-700 font-black' 
                   : 'text-gray-600 hover:bg-gray-100 font-medium'
@@ -645,59 +655,65 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Search Bar & Actions */}
-        <div className="h-16 border-b border-gray-100 flex items-center px-4 gap-4 bg-white">
-          <div className="flex-1 max-w-2xl relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search messages"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-100 border-none rounded-xl py-2.5 pl-12 pr-4 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm"
-            />
+      <div className={`flex-1 flex flex-col min-w-0 bg-white z-10 transition-transform duration-300 ${!isMobileListOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
+        {/* Search Bar & Actions (Only if list open) */}
+        {isMobileListOpen || !selectedThread ? (
+          <div className="h-16 border-b border-gray-100 flex items-center px-4 gap-4 bg-white">
+            <div className="flex-1 max-w-2xl relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search messages"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-gray-100 border-none rounded-xl py-2.5 pl-12 pr-4 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+              />
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
+              <button className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition"><Archive size={18} /></button>
+              <button className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition"><Trash size={18} /></button>
+              <button className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition"><MoreVertical size={18} /></button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition"><Archive size={18} /></button>
-            <button className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition"><Trash size={18} /></button>
-            <button className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition"><MoreVertical size={18} /></button>
-          </div>
-        </div>
+        ) : null}
 
         {selectedThread ? (
           /* Message Detail View */
-          <div className="flex-1 flex flex-col bg-white overflow-hidden">
-            <div className="h-12 border-b border-gray-50 flex items-center px-4 gap-4">
+          <div className="flex-1 flex flex-col bg-white overflow-hidden absolute inset-0 md:relative">
+            <div className="h-14 border-b border-gray-50 flex items-center px-4 gap-4 bg-white shrink-0">
               <button 
                 onClick={() => setSelectedThread(null)}
                 className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition"
               >
                 <ChevronLeft size={20} />
               </button>
-              <h4 className="font-bold text-gray-800 truncate">
-                {selectedThread[0].projects?.title || 'General Inquiry'}
-              </h4>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-gray-800 truncate text-sm md:text-base">
+                  {selectedThread[0].projects?.title || 'General Inquiry'}
+                </h4>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest truncate">{selectedThread[0].user_name}</p>
+              </div>
+              <button className="md:hidden p-2 text-gray-400"><Trash size={18} /></button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8 custom-scrollbar bg-gray-50/20">
               {[...selectedThread].reverse().map((msg, i) => (
-                <div key={i} className="group">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">
-                      <UserIcon size={20} />
+                <div key={i} className="group animate-fade-in">
+                  <div className="flex items-start gap-3 md:gap-4">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-full bg-ug-navy/5 flex items-center justify-center text-ug-navy shrink-0 shadow-sm">
+                      <UserIcon size={16} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between mb-1 gap-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-gray-900">{msg.user_name}</span>
-                          <span className="text-xs text-gray-400 font-medium">&lt;{msg.sender_id.substring(0, 8)}...&gt;</span>
+                          <span className="font-bold text-gray-900 text-sm">{msg.user_name}</span>
+                          <span className="text-[10px] text-gray-400 font-medium hidden sm:inline">&lt;{msg.sender_id.substring(0, 8)}...&gt;</span>
                         </div>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-[10px] text-gray-400">
                           {new Date(msg.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                         </span>
                       </div>
-                      <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                      <div className="text-xs md:text-sm text-gray-700 leading-relaxed whitespace-pre-wrap p-3 md:p-0 bg-white md:bg-transparent rounded-2xl md:rounded-none shadow-sm md:shadow-none border border-gray-100 md:border-none">
                         {msg.message}
                       </div>
                     </div>
@@ -707,23 +723,23 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
             </div>
 
             {/* Reply Area */}
-            <div className="p-6 border-t border-gray-100 bg-gray-50/30">
+            <div className="p-4 md:p-6 border-t border-gray-100 bg-white">
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-100 transition-all">
                 <textarea 
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
                   placeholder="Type your reply here..."
-                  className="w-full p-4 text-sm focus:outline-none resize-none min-h-[100px]"
+                  className="w-full p-4 text-xs md:text-sm focus:outline-none resize-none min-h-[80px] md:min-h-[100px]"
                 />
                 <div className="px-4 py-3 border-t border-gray-50 flex items-center justify-between bg-gray-50/50">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 md:gap-2">
                     <button className="p-2 hover:bg-gray-200 rounded-lg text-gray-500 transition"><Paperclip size={18} /></button>
                     <button className="p-2 hover:bg-gray-200 rounded-lg text-gray-500 transition"><ImageIcon size={18} /></button>
                   </div>
                   <button 
                     onClick={handleSendReply}
                     disabled={sending || !reply.trim()}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all disabled:opacity-50"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-5 md:px-6 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 transition-all disabled:opacity-50"
                   >
                     {sending ? <Loader2 size={16} className="animate-spin" /> : <><SendIcon size={16} /> Send</>}
                   </button>
@@ -735,9 +751,12 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
           /* Thread List View */
           <div className="flex-1 overflow-y-auto">
             {filteredThreads.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400 p-20">
-                <MailOpen size={64} className="mb-4 opacity-20" />
-                <p className="text-sm font-medium">No messages found in {activeCategory}</p>
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 p-10 md:p-20 text-center">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                  <MailOpen size={40} className="opacity-20" />
+                </div>
+                <p className="text-sm font-black uppercase tracking-widest">No messages found</p>
+                <p className="text-xs mt-2 text-gray-400">Your conversations in {activeCategory} will appear here.</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-50">
@@ -748,28 +767,33 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
                     <div 
                       key={i} 
                       onClick={() => handleSelectThread(thread)}
-                      className={`flex items-center px-4 py-2 gap-4 cursor-pointer hover:shadow-sm transition-all border-b border-gray-50 group ${
-                        isUnread ? 'bg-white font-black' : 'bg-gray-50/20'
+                      className={`flex items-center px-4 py-4 md:py-3 gap-3 md:gap-4 cursor-pointer hover:bg-gray-50/50 transition-all relative ${
+                        isUnread ? 'bg-blue-50/30' : 'bg-white'
                       }`}
                     >
-                      <div className="flex items-center gap-3 shrink-0">
+                      {isUnread && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-blue-600 rounded-full ml-1 animate-pulse"></div>}
+                      <div className="hidden sm:flex items-center gap-3 shrink-0">
                         <div className="w-4 h-4 border border-gray-300 rounded sm group-hover:border-gray-400 transition-colors"></div>
                         <button className="text-gray-300 hover:text-yellow-400 transition"><Star size={18} /></button>
                       </div>
-                      <div className={`w-48 truncate text-sm ${isUnread ? 'text-gray-900' : 'text-gray-600'}`}>
-                        {lastMsg.user_name}
-                      </div>
-                      <div className="flex-1 min-w-0 flex items-center gap-2 overflow-hidden">
-                        <span className={`text-sm truncate shrink-0 ${isUnread ? 'text-gray-900' : 'text-gray-700'}`}>
-                          {lastMsg.projects?.title || 'General Inquiry'}
-                        </span>
-                        <span className="text-gray-400 text-sm shrink-0">-</span>
-                        <span className="text-gray-500 text-sm truncate opacity-60 font-normal">
-                          {lastMsg.message}
-                        </span>
-                      </div>
-                      <div className={`text-xs shrink-0 w-16 text-right ${isUnread ? 'text-gray-900' : 'text-gray-400'}`}>
-                        {new Date(lastMsg.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className={`text-sm truncate w-32 md:w-48 ${isUnread ? 'font-black text-gray-900' : 'font-bold text-gray-700'}`}>
+                            {lastMsg.user_name}
+                          </span>
+                          <span className={`text-[10px] shrink-0 font-bold uppercase tracking-tighter ${isUnread ? 'text-blue-600' : 'text-gray-400'}`}>
+                            {new Date(lastMsg.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 overflow-hidden">
+                           <span className={`text-xs truncate shrink-0 ${isUnread ? 'font-bold text-gray-800' : 'text-gray-600'}`}>
+                            {lastMsg.projects?.title || 'General Inquiry'}
+                          </span>
+                          <span className="text-gray-400 text-xs shrink-0">•</span>
+                          <span className="text-gray-500 text-xs truncate opacity-70">
+                            {lastMsg.message}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );
@@ -780,22 +804,22 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
         )}
       </div>
 
-      {/* Compose Modal (Gmail Style) */}
+      {/* Compose Modal (Gmail Style) - Responsive Width */}
       {isComposing && (
-        <div className="fixed bottom-0 right-10 w-[500px] bg-white shadow-2xl rounded-t-2xl border border-gray-200 z-[110] flex flex-col animate-slide-up">
-          <div className="bg-gray-800 text-white px-4 py-3 rounded-t-2xl flex items-center justify-between">
-            <span className="text-sm font-bold">New Message</span>
+        <div className="fixed inset-0 md:inset-auto md:bottom-0 md:right-10 md:w-[500px] md:h-[600px] bg-white shadow-2xl md:rounded-t-2xl border border-gray-200 z-[200] flex flex-col animate-slide-up">
+          <div className="bg-ug-navy text-white px-4 py-4 md:py-3 md:rounded-t-2xl flex items-center justify-between shrink-0">
+            <span className="text-sm font-black uppercase tracking-widest text-ug-teal">New Interaction</span>
             <div className="flex items-center gap-2">
-              <button onClick={() => setIsComposing(false)} className="p-1 hover:bg-white/10 rounded transition"><Minimize2 size={16} /></button>
-              <button className="p-1 hover:bg-white/10 rounded transition"><Maximize2 size={16} /></button>
-              <button onClick={() => setIsComposing(false)} className="p-1 hover:bg-white/10 rounded transition"><X size={16} /></button>
+              <button onClick={() => setIsComposing(false)} className="p-1 hover:bg-white/10 rounded transition hidden md:block"><Minimize2 size={16} /></button>
+              <button onClick={() => setIsComposing(false)} className="p-1 hover:bg-white/10 rounded transition md:hidden"><X size={20} /></button>
+              <button onClick={() => setIsComposing(false)} className="p-1 hover:bg-white/10 rounded transition hidden md:block"><X size={16} /></button>
             </div>
           </div>
-          <div className="p-4 space-y-4 relative">
+          <div className="p-4 md:p-6 flex-1 flex flex-col gap-4 overflow-y-auto">
             <div className="relative">
               <input 
                 type="text" 
-                placeholder="Recipients" 
+                placeholder="Search for collaborators..." 
                 value={selectedRecipient ? selectedRecipient.name : composeRecipient}
                 onChange={(e) => handleRecipientSearch(e.target.value)}
                 disabled={!!selectedRecipient}
@@ -935,7 +959,7 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
              ))}
           </nav>
 
-          <div className="flex items-center gap-6 mr-8">
+          <div className="flex items-center gap-4 sm:gap-6 mr-4 sm:mr-8">
             <button 
               onClick={() => setActiveTab('messages')}
               className={`p-2 transition-all relative group rounded-xl hover:bg-white/10 ${activeTab === 'messages' ? 'text-ug-teal' : 'text-white/70 hover:text-white'}`}
@@ -946,11 +970,22 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
                 Messages
               </span>
             </button>
+
+            {/* Mobile Home Icon - Only show on mobile */}
+            <button 
+              onClick={() => navigate('/')}
+              className="sm:hidden p-2 text-white/70 hover:text-white transition-all group relative rounded-xl hover:bg-white/10"
+            >
+              <HomeIcon size={20} />
+              <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1.5 bg-gray-900 text-[7px] font-black uppercase rounded shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
+                Home
+              </span>
+            </button>
             
-            <div className="flex items-center gap-4 pl-6 border-l border-white/10">
+            <div className="flex items-center gap-4 pl-4 sm:pl-6 border-l border-white/10">
               <button 
                 onClick={() => setActiveTab('profile')}
-                className="w-9 h-9 rounded-xl bg-white/10 ring-1 ring-white/20 flex items-center justify-center text-[10px] font-black overflow-hidden shadow-inner group cursor-pointer hover:ring-ug-teal/50 transition relative"
+                className="hidden sm:flex w-9 h-9 rounded-xl bg-white/10 ring-1 ring-white/20 items-center justify-center text-[10px] font-black overflow-hidden shadow-inner group cursor-pointer hover:ring-ug-teal/50 transition relative"
               >
                 {localUser?.avatar_url ? (
                   <img src={localUser.avatar_url} className="w-full h-full object-cover" alt="" />
@@ -972,10 +1007,10 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
           </div>
         </header>
 
-        <main className="flex-1 md:ml-64 overflow-y-auto p-4 md:p-8 pb-32 md:pb-12 bg-[#F8FAFC]">
-          <div className="max-w-7xl mx-auto w-full">
+        <main className="flex-1 md:ml-64 overflow-y-auto w-full bg-[#F8FAFC]">
+          <div className="max-w-7xl mx-auto w-full p-4 md:p-10 pb-32 md:pb-12 space-y-8 md:space-y-12">
           {activeTab === 'overview' && (
-            <div className="animate-fade-in">
+            <div className="animate-fade-in space-y-8 md:space-y-12">
               {role === UserRole.Researcher && (
                 <ResearcherDashboard 
                   user={localUser} 
@@ -1056,37 +1091,37 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
           <ActiveProjectHero project={activeProject} />
         )}
 
-        <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
-          <div className="flex justify-between items-center mb-8">
+        <section className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+          <div className="flex justify-between items-center mb-6 md:mb-8">
             <SectionTitle title="Core Assets" subtitle="Secure Research Record Management" />
           </div>
           <div className="space-y-4">
             {projects.length === 0 ? (
-              <div className="py-12 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">No assets disclosed yet.</p>
+              <div className="py-10 md:py-12 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                <p className="text-gray-400 font-bold uppercase text-[9px] md:text-[10px] tracking-widest px-4">No assets disclosed yet.</p>
               </div>
             ) : projects.slice(0, 3).map(p => (
-              <div key={p.id} onClick={() => navigate(`/projects/${p.id}`)} className="group flex items-center justify-between p-5 border border-gray-50 rounded-2xl bg-gray-50/30 hover:bg-white hover:border-ug-teal/30 hover:shadow-lg transition cursor-pointer">
-                <div className="flex items-center gap-6">
-                  <div className="w-14 h-14 rounded-xl overflow-hidden shadow-sm bg-gray-100">
+              <div key={p.id} onClick={() => navigate(`/projects/${p.id}`)} className="group flex items-center justify-between p-4 md:p-5 border border-gray-50 rounded-2xl bg-gray-50/30 hover:bg-white hover:border-ug-teal/30 hover:shadow-lg transition cursor-pointer">
+                <div className="flex items-center gap-4 md:gap-6">
+                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden shadow-sm bg-gray-100">
                     <img src={p.image_url.split('|')[0]} className="w-full h-full object-cover" alt="" />
                   </div>
                   <div>
-                    <h4 className="font-black text-ug-navy text-xs group-hover:text-ug-teal transition">{p.title}</h4>
-                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider">{p.research_area}</span>
+                    <h4 className="font-black text-ug-navy text-[11px] md:text-xs group-hover:text-ug-teal transition line-clamp-1">{p.title}</h4>
+                    <span className="text-[7px] md:text-[8px] font-bold text-gray-400 uppercase tracking-wider">{p.research_area}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3 shrink-0 ml-2">
                    <button 
                     onClick={(e) => {
                       e.stopPropagation();
                       onOpenModal(p);
                     }}
-                    className="p-2 text-gray-400 hover:text-ug-teal transition"
+                    className="p-1 md:p-2 text-gray-400 hover:text-ug-teal transition"
                    >
-                     <Pencil size={14} />
+                     <Pencil size={12} className="md:w-3.5 md:h-3.5" />
                    </button>
-                   <ChevronRight size={16} className="text-gray-300" />
+                   <ChevronRight size={14} className="text-gray-300 md:w-4 md:h-4" />
                 </div>
               </div>
             ))}
@@ -1149,11 +1184,11 @@ const ActiveProjectHero = ({ project }: { project: Project }) => (
       </div>
     </div>
 
-        <div className="p-10 space-y-10">
+        <div className="p-6 md:p-10 space-y-8 md:space-y-10">
       <div>
         <div className="flex justify-between items-center mb-6">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</span>
-          <span className="text-xs font-black text-ug-teal uppercase tracking-widest">{project.status}</span>
+          <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</span>
+          <span className="text-[10px] md:text-xs font-black text-ug-teal uppercase tracking-widest">{project.status}</span>
         </div>
         
         <div className="relative pt-2">
@@ -1169,17 +1204,17 @@ const ActiveProjectHero = ({ project }: { project: Project }) => (
           {/* Progress Overlay */}
           <div className="absolute top-2 left-0 h-1.5 bg-ug-teal rounded-full transition-all duration-700" style={{ width: `${(Object.values(ProjectStatus).indexOf(project.status)) / (Object.values(ProjectStatus).length - 1) * 100}%` }}></div>
           {/* Thumb */}
-          <div className="absolute top-[3px] -translate-y-1/2 w-5 h-5 bg-white border-4 border-ug-teal rounded-full shadow-lg transition-all duration-700" style={{ left: `calc(${(Object.values(ProjectStatus).indexOf(project.status)) / (Object.values(ProjectStatus).length - 1) * 100}% - 10px)` }}></div>
+          <div className="absolute top-[3px] -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 bg-white border-[3px] md:border-4 border-ug-teal rounded-full shadow-lg transition-all duration-700" style={{ left: `calc(${(Object.values(ProjectStatus).indexOf(project.status)) / (Object.values(ProjectStatus).length - 1) * 100}% - 10px)` }}></div>
 
-          <div className="flex justify-between mt-4">
+          <div className="flex justify-between mt-4 overflow-hidden">
              {Object.values(ProjectStatus).map((s, i) => (
-               <span key={s} className={`text-[8px] font-black ${s === project.status ? 'text-ug-teal' : 'text-gray-300'} max-w-[40px] truncate`}>{s}</span>
+               <span key={s} className={`text-[7px] md:text-[8px] font-black ${s === project.status ? 'text-ug-teal' : 'text-gray-300'} max-w-[40px] truncate`}>{s}</span>
              ))}
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-8 pt-8 border-t border-gray-50 font-sans">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8 pt-8 border-t border-gray-50 font-sans">
         <div>
           <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Collaborators</span>
           <div className="flex items-center -space-x-3">
@@ -1202,14 +1237,14 @@ const ActiveProjectHero = ({ project }: { project: Project }) => (
 );
 
 const MatchesView = ({ user }: { user: User | null }) => (
-  <div className="space-y-10 font-sans">
-    <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm">
-      <div className="flex items-center justify-between mb-8">
+  <div className="space-y-6 md:space-y-10 font-sans">
+    <div className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-gray-100 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 md:mb-8 gap-4">
         <div className="flex items-center gap-3">
           <Sparkles size={20} className="text-ug-teal" />
-          <h2 className="text-xl font-black text-ug-navy">AI-Driven Funding Matches</h2>
+          <h2 className="text-lg md:text-xl font-black text-ug-navy">AI-Driven Funding Matches</h2>
         </div>
-        <span className="bg-ug-teal/5 text-ug-teal px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest">Top Recommendations</span>
+        <span className="bg-ug-teal/5 text-ug-teal px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest w-fit">Top Recommendations</span>
       </div>
 
       <div className="space-y-4">
@@ -1217,52 +1252,52 @@ const MatchesView = ({ user }: { user: User | null }) => (
           { name: 'Astra Venture Capital', desc: 'Specialized in MedTech & Biotech Innovation', score: '98%' },
           { name: 'Global Health Initiative', desc: 'Preventative Healthcare Sustainability Grants', score: '85%' },
         ].map((fund, i) => (
-          <div key={i} className="flex items-center justify-between p-6 border border-gray-50 rounded-[2rem] bg-gray-50/50 hover:bg-white hover:border-ug-teal/20 hover:shadow-xl transition-all cursor-pointer group">
-            <div className="flex items-center gap-6">
-              <div className="w-14 h-14 bg-ug-navy/5 rounded-2xl flex items-center justify-center text-ug-navy group-hover:bg-ug-teal group-hover:text-white transition">
-                <Globe size={24} />
+          <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 md:p-6 border border-gray-50 rounded-[2rem] bg-gray-50/50 hover:bg-white hover:border-ug-teal/20 hover:shadow-xl transition-all cursor-pointer group gap-4">
+            <div className="flex items-center gap-4 md:gap-6">
+              <div className="w-12 h-12 md:w-14 md:h-14 bg-ug-navy/5 rounded-2xl flex items-center justify-center text-ug-navy group-hover:bg-ug-teal group-hover:text-white transition shrink-0">
+                <Globe size={20} className="md:w-6 md:h-6" />
               </div>
-              <div>
-                <h4 className="font-black text-ug-navy text-sm group-hover:text-ug-teal transition">{fund.name}</h4>
-                <p className="text-[10px] font-medium text-gray-400">{fund.desc}</p>
+              <div className="min-w-0">
+                <h4 className="font-black text-ug-navy text-sm group-hover:text-ug-teal transition truncate">{fund.name}</h4>
+                <p className="text-[10px] font-medium text-gray-400 line-clamp-1">{fund.desc}</p>
               </div>
             </div>
-            <div className="flex items-center gap-8">
-               <div className="text-right">
-                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Match Score</p>
-                  <p className="text-xl font-black text-ug-teal">{fund.score}</p>
+            <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-8 border-t sm:border-t-0 pt-4 sm:pt-0 border-gray-100">
+               <div className="text-left sm:text-right">
+                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Match Score</p>
+                  <p className="text-lg md:text-xl font-black text-ug-teal">{fund.score}</p>
                </div>
-               <button className="bg-ug-navy text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition shadow-lg">Connect</button>
+               <button className="bg-ug-navy text-white px-5 md:px-6 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition shadow-lg">Connect</button>
             </div>
           </div>
         ))}
       </div>
     </div>
 
-    <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm">
-      <div className="flex items-center gap-3 mb-8">
+    <div className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-gray-100 shadow-sm">
+      <div className="flex items-center gap-3 mb-6 md:mb-8">
         <Users size={20} className="text-ug-teal" />
-        <h2 className="text-xl font-black text-ug-navy">Research Collaborators</h2>
+        <h2 className="text-lg md:text-xl font-black text-ug-navy">Research Collaborators</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
          {[
            { name: 'Dr. Julian Marsh', role: 'Nanomaterials Specialist', alignment: '92% Match', img: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=400&q=80' },
            { name: 'Dr. Sarah Chen', role: 'Bio-Sensing Systems', alignment: '88% Match', img: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80' },
          ].map((collab, i) => (
-           <div key={i} className="bg-gray-50/50 border border-gray-50 rounded-[2.5rem] p-8 text-center hover:bg-white hover:shadow-2xl transition-all h-full flex flex-col justify-between group">
+           <div key={i} className="bg-gray-50/50 border border-gray-50 rounded-[2.5rem] p-6 md:p-8 text-center hover:bg-white hover:shadow-2xl transition-all h-full flex flex-col justify-between group">
               <div>
-                <div className="w-20 h-20 rounded-full mx-auto mb-6 shadow-xl border-4 border-white overflow-hidden bg-ug-navy">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full mx-auto mb-4 md:mb-6 shadow-xl border-4 border-white overflow-hidden bg-ug-navy">
                   <img src={collab.img} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition duration-700" alt="" />
                 </div>
                 <h4 className="font-black text-ug-navy text-sm mb-1">{collab.name}</h4>
                 <p className="text-[10px] font-bold text-ug-teal uppercase tracking-widest mb-4">{collab.role}</p>
-                <div className="inline-block px-3 py-1 bg-white border border-gray-100 rounded-full shadow-sm mb-8">
-                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-1">Alignment</p>
-                  <p className="text-xs font-black text-ug-navy">{collab.alignment}</p>
+                <div className="inline-block px-3 py-1.5 bg-white border border-gray-100 rounded-full shadow-sm mb-6 md:mb-8">
+                  <p className="text-[7px] md:text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-1">Alignment</p>
+                  <p className="text-[11px] md:text-xs font-black text-ug-navy">{collab.alignment}</p>
                 </div>
               </div>
-              <button className="w-full border-2 border-ug-navy text-ug-navy py-4 rounded-[1.25rem] text-[9px] font-black uppercase tracking-widest hover:bg-ug-navy hover:text-white transition-all shadow-sm">Invite to Collaborate</button>
+              <button className="w-full border-2 border-ug-navy text-ug-navy py-3 md:py-4 rounded-[1.25rem] text-[9px] font-black uppercase tracking-widest hover:bg-ug-navy hover:text-white transition-all shadow-sm">Invite to Collaborate</button>
            </div>
          ))}
       </div>
