@@ -1,5 +1,4 @@
-
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 const apiKey = process.env.GEMINI_API_KEY;
 
@@ -11,12 +10,14 @@ export const EmbeddingService = {
     }
 
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
-      const result = await model.embedContent(text);
+      const ai = new GoogleGenAI({ apiKey });
+      const result = await ai.models.embedContent({
+        model: "gemini-embedding-2-preview",
+        contents: [text],
+      });
       
-      if (!result.embedding || !result.embedding.values) return new Array(768).fill(0);
-      return result.embedding.values;
+      if (!result.embeddings || result.embeddings.length === 0) return new Array(768).fill(0);
+      return result.embeddings[0].values;
     } catch (error) {
       console.error("Embedding generation error:", error);
       return new Array(768).fill(0);
