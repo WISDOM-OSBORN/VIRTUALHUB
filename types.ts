@@ -39,6 +39,9 @@ export interface User {
   website_url?: string;
   website_url_2?: string;
   website_url_3?: string;
+  ai_profile?: any;
+  embedding?: number[];
+  semantic_summary?: string;
 }
 
 export interface Project {
@@ -63,6 +66,103 @@ export interface Project {
   views?: number;
   expressions_of_interest?: number;
   requests?: number;
+}
+
+export interface AIProfile {
+  personal_information: {
+    full_name: string;
+    email: string;
+    phone: string;
+    country: string;
+    city: string;
+    linkedin: string;
+    github: string;
+    portfolio_website: string;
+  };
+  professional_profile: {
+    professional_title: string;
+    current_role: string;
+    institution_or_company: string;
+    years_of_experience: string;
+    experience_level: string;
+  };
+  education: {
+    institution: string;
+    degree: string;
+    field_of_study: string;
+    graduation_year: string;
+    gpa?: string;
+  }[];
+  skills: {
+    technical_skills: string[];
+    research_skills: string[];
+    business_skills: string[];
+    soft_skills: string[];
+    tools_and_technologies: string[];
+  };
+  work_experience: {
+    role: string;
+    organization: string;
+    duration: string;
+    location: string;
+    responsibilities: string[];
+    achievements: string[];
+  }[];
+  research_information: {
+    research_interests: string[];
+    research_areas: string[];
+    research_keywords: string[];
+    methodologies: string[];
+    research_domains: string[];
+  };
+  projects: {
+    project_name: string;
+    description: string;
+    technologies_used: string[];
+    industry: string;
+    impact?: string;
+    commercialization_potential?: string;
+  }[];
+  publications: {
+    title: string;
+    year: string;
+    keywords: string[];
+    research_domain: string;
+    publication_type: string;
+  }[];
+  certifications: string[];
+  industries: string[];
+  startup_and_innovation_signals: {
+    startup_experience: boolean;
+    prototype_built: boolean;
+    patents: string[];
+    commercial_research: boolean;
+    market_validation: boolean;
+    entrepreneurial_interests: string[];
+  };
+  collaboration_profile: {
+    looking_for: string[];
+    can_offer: string[];
+    preferred_collaboration_types: string[];
+    availability: string;
+    preferred_regions: string[];
+  };
+  investment_and_funding_profile: {
+    seeking_funding: boolean;
+    investment_interests: string[];
+    funding_stage: string;
+    estimated_budget_needs: string;
+    target_industries: string[];
+  };
+  student_profile: {
+    internship_interests: string[];
+    career_goals: string[];
+    preferred_industries: string[];
+    learning_interests: string[];
+  };
+  semantic_tags: string[];
+  semantic_summary: string;
+  embedding_text: string;
 }
 
 export interface NewsItem {

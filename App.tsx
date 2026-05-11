@@ -10,6 +10,7 @@ import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
 import ResearcherPortfolio from './pages/ResearcherPortfolio';
 import Dashboards from './pages/Dashboards';
+import { Onboarding } from './pages/Onboarding';
 import Products from './pages/Products';
 import News from './pages/News';
 import Privacy from './pages/Privacy';
@@ -252,13 +253,20 @@ const AppContent: React.FC = () => {
                     isAuthenticated={isAuthenticated} 
                     onUnauthorized={handleUnauthorizedAccess}
                   >
-                    <Dashboards 
-                      role={userProfile?.role || UserRole.Researcher} 
-                      user={userProfile} 
-                      initialThreadId={selectedThreadId}
-                      onThreadHandled={() => setSelectedThreadId(null)}
-                      onLogout={handleLogout}
-                    />
+                    {!userProfile?.ai_profile ? (
+                      <Onboarding 
+                        user={userProfile} 
+                        onComplete={() => userProfile && loadProfile(userProfile.id)} 
+                      />
+                    ) : (
+                      <Dashboards 
+                        role={userProfile?.role || UserRole.Researcher} 
+                        user={userProfile} 
+                        initialThreadId={selectedThreadId}
+                        onThreadHandled={() => setSelectedThreadId(null)}
+                        onLogout={handleLogout}
+                      />
+                    )}
                   </ProtectedRoute>
                 } 
             />

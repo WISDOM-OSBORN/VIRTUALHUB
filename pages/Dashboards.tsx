@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { UserRole, ProjectStatus, Visibility, Project, ResearchArea, User } from '../types';
+import { UserRole, ProjectStatus, Visibility, Project, ResearchArea, User, AIProfile } from '../types';
 import { StorageService } from '../services/storageService';
+import { MatchingService } from '../services/matchingService';
 import { useNavigate } from 'react-router-dom';
 import { 
   TrendingUp, Users, Plus, FileText, 
@@ -11,7 +12,7 @@ import {
   Briefcase, BookOpen, Handshake, Image as ImageIcon, Upload, DollarSign, FileCode,
   Home as HomeIcon,
   ShoppingBag, Bookmark, ArrowRight, User as UserIcon, Link as LinkIcon, Camera, AlertCircle, Info,
-  Pencil, Trash2, FileUp, MessageSquare, MailOpen, Clock, Zap, Send as SendIcon, Calendar, File, LayoutGrid, Target, Sparkles, LogOut
+  Pencil, Trash2, FileUp, MessageSquare, MailOpen, Clock, Zap, Send as SendIcon, Calendar, File, LayoutGrid, Target, Sparkles, LogOut, Rocket
 } from 'lucide-react';
 import { useToast } from '../App';
 
@@ -1208,7 +1209,30 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
           )}
 
           {activeTab === 'messages' && <MessagesSection user={localUser} initialThreadId={initialThreadId} />}
-          {activeTab === 'profile' && <ProfileSettings user={localUser} onUpdate={refreshProfile} />}
+          {activeTab === 'profile' && (
+            <div className="space-y-12">
+              <div className="flex flex-col md:flex-row gap-8 items-start">
+                <div className="flex-1">
+                  <ProfileInsight profile={localUser?.ai_profile} />
+                </div>
+                <div className="w-full md:w-80 shrink-0">
+                   <div className="bg-ug-navy text-white p-8 rounded-[2.5rem] shadow-xl">
+                      <h4 className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-4">Ecosystem Identity</h4>
+                      <p className="text-xs font-medium leading-relaxed opacity-80 mb-6 font-sans">
+                        Your identity is verified by the University of Ghana Hub. AI insights are generated from your validated research documents.
+                      </p>
+                      <button 
+                         onClick={() => setActiveTab('overview')}
+                         className="w-full py-3 bg-white/10 hover:bg-white/20 transition rounded-xl text-[9px] font-black uppercase tracking-widest border border-white/10"
+                      >
+                         Back to Overview
+                      </button>
+                   </div>
+                </div>
+              </div>
+              <ProfileSettings user={localUser} onUpdate={refreshProfile} />
+            </div>
+          )}
         </div>
       </main>
 
@@ -1412,74 +1436,266 @@ const ActiveProjectHero = ({ project }: { project: Project }) => (
   </div>
 );
 
-const MatchesView = ({ user }: { user: User | null }) => (
-  <div className="space-y-6 md:space-y-10 font-sans">
-    <div className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-gray-100 shadow-sm">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 md:mb-8 gap-4">
-        <div className="flex items-center gap-3">
-          <Sparkles size={20} className="text-ug-teal" />
-          <h2 className="text-lg md:text-xl font-black text-ug-navy">AI-Driven Funding Matches</h2>
-        </div>
-        <span className="bg-ug-teal/5 text-ug-teal px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest w-fit">Top Recommendations</span>
-      </div>
-
-      <div className="space-y-4">
-        {[
-          { name: 'Astra Venture Capital', desc: 'Specialized in MedTech & Biotech Innovation', score: '98%' },
-          { name: 'Global Health Initiative', desc: 'Preventative Healthcare Sustainability Grants', score: '85%' },
-        ].map((fund, i) => (
-          <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 md:p-6 border border-gray-50 rounded-[2rem] bg-gray-50/50 hover:bg-white hover:border-ug-teal/20 hover:shadow-xl transition-all cursor-pointer group gap-4">
-            <div className="flex items-center gap-4 md:gap-6">
-              <div className="w-12 h-12 md:w-14 md:h-14 bg-ug-navy/5 rounded-2xl flex items-center justify-center text-ug-navy group-hover:bg-ug-teal group-hover:text-white transition shrink-0">
-                <Globe size={20} className="md:w-6 md:h-6" />
-              </div>
-              <div className="min-w-0">
-                <h4 className="font-black text-ug-navy text-sm group-hover:text-ug-teal transition truncate">{fund.name}</h4>
-                <p className="text-[10px] font-medium text-gray-400 line-clamp-1">{fund.desc}</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-8 border-t sm:border-t-0 pt-4 sm:pt-0 border-gray-100">
-               <div className="text-left sm:text-right">
-                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Match Score</p>
-                  <p className="text-lg md:text-xl font-black text-ug-teal">{fund.score}</p>
-               </div>
-               <button className="bg-ug-navy text-white px-5 md:px-6 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition shadow-lg">Connect</button>
-            </div>
-          </div>
-        ))}
-      </div>
+const ProfileInsight = ({ profile, onRefresh }: { profile: AIProfile | null, onRefresh?: () => void }) => {
+  if (!profile) return (
+    <div className="bg-ug-teal/5 border border-dashed border-ug-teal/20 p-8 rounded-[2.5rem] text-center">
+      <Sparkles size={32} className="text-ug-teal/30 mx-auto mb-4" />
+      <p className="text-xs font-black text-ug-navy uppercase tracking-widest mb-1">AI Profile Missing</p>
+      <p className="text-[10px] text-gray-400 font-medium italic">Complete onboarding to unlock intelligent matching.</p>
     </div>
+  );
 
-    <div className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-gray-100 shadow-sm">
-      <div className="flex items-center gap-3 mb-6 md:mb-8">
-        <Users size={20} className="text-ug-teal" />
-        <h2 className="text-lg md:text-xl font-black text-ug-navy">Research Collaborators</h2>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
-         {[
-           { name: 'Dr. Julian Marsh', role: 'Nanomaterials Specialist', alignment: '92% Match', img: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=400&q=80' },
-           { name: 'Dr. Sarah Chen', role: 'Bio-Sensing Systems', alignment: '88% Match', img: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80' },
-         ].map((collab, i) => (
-           <div key={i} className="bg-gray-50/50 border border-gray-50 rounded-[2.5rem] p-6 md:p-8 text-center hover:bg-white hover:shadow-2xl transition-all h-full flex flex-col justify-between group">
-              <div>
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full mx-auto mb-4 md:mb-6 shadow-xl border-4 border-white overflow-hidden bg-ug-navy">
-                  <img src={collab.img} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition duration-700" alt="" />
-                </div>
-                <h4 className="font-black text-ug-navy text-sm mb-1">{collab.name}</h4>
-                <p className="text-[10px] font-bold text-ug-teal uppercase tracking-widest mb-4">{collab.role}</p>
-                <div className="inline-block px-3 py-1.5 bg-white border border-gray-100 rounded-full shadow-sm mb-6 md:mb-8">
-                  <p className="text-[7px] md:text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-1">Alignment</p>
-                  <p className="text-[11px] md:text-xs font-black text-ug-navy">{collab.alignment}</p>
-                </div>
-              </div>
-              <button className="w-full border-2 border-ug-navy text-ug-navy py-3 md:py-4 rounded-[1.25rem] text-[9px] font-black uppercase tracking-widest hover:bg-ug-navy hover:text-white transition-all shadow-sm">Invite to Collaborate</button>
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm relative group">
+        <button 
+          onClick={onRefresh}
+          className="absolute top-8 right-8 p-3 bg-gray-50 text-gray-400 hover:text-ug-teal hover:bg-ug-teal/10 rounded-xl transition opacity-0 group-hover:opacity-100"
+          title="Re-process Resume"
+        >
+          <Upload size={14} />
+        </button>
+        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+          <Target size={14} className="text-ug-teal" /> AI Profile Narrative
+        </h4>
+        <p className="text-sm font-medium text-gray-600 leading-loose italic">"{profile.semantic_summary}"</p>
+        
+        <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-gray-50">
+           <div>
+              <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest mb-1 block">Experience</span>
+              <span className="text-[10px] font-black text-ug-navy uppercase">{profile.professional_profile?.experience_level}</span>
            </div>
-         ))}
+           <div>
+              <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest mb-1 block">Mode</span>
+              <span className="text-[10px] font-black text-ug-navy uppercase">{profile.collaboration_profile?.preferred_collaboration_types?.[0] || 'Flexible'}</span>
+           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm text-left">
+          <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Technological Stack</h4>
+          <div className="flex flex-wrap gap-2">
+            {((): string[] => {
+              const tech = profile.skills?.technical_skills || [];
+              const tools = profile.skills?.tools_and_technologies || [];
+              return [...tech, ...tools];
+            })().map((s, i) => (
+              <span key={i} className="px-3 py-1.5 bg-gray-50 rounded-xl text-[9px] font-bold text-gray-600 uppercase border border-gray-100">{s}</span>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm text-left">
+          <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Education & Level</h4>
+          <div className="space-y-4">
+            {(profile.education || []).map((edu, i) => (
+              <div key={i} className="flex gap-4 items-start">
+                <div className="w-8 h-8 rounded-lg bg-ug-teal/10 flex items-center justify-center text-ug-teal shrink-0">
+                  <GraduationCap size={16} />
+                </div>
+                <div className="text-left">
+                  <p className="text-[10px] font-black text-ug-navy leading-none mb-1">{edu.degree}</p>
+                  <p className="text-[8px] font-bold text-gray-400 uppercase">{edu.field_of_study}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {(profile.projects?.length || 0) > 0 && (
+        <div className="bg-ug-navy text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-ug-teal/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition duration-1000"></div>
+          <h4 className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-6 flex items-center gap-2">
+            <Rocket size={14} /> Key Initiatives
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+            {(profile.projects || []).map((p, i) => (
+              <div key={i} className="p-5 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition text-left">
+                <p className="text-xs font-black uppercase mb-1">{p.project_name}</p>
+                <p className="text-[10px] text-ug-teal font-black uppercase tracking-wider">{p.industry}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const MatchesView = ({ user }: { user: User | null }) => {
+  const [profileMatches, setProfileMatches] = useState<any[]>([]);
+  const [projectMatches, setProjectMatches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const fetchMatches = async () => {
+    if (!user?.id || !user?.embedding) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { profiles, projects } = await StorageService.getMatches(user.id, user.embedding);
+      
+      // Perform AI re-ranking if we have an AI profile
+      if (user.ai_profile) {
+        setIsProcessing(true);
+        const [rankedProfiles, rankedProjects] = await Promise.all([
+          MatchingService.rankMatches(user.ai_profile, profiles),
+          MatchingService.rankMatches(user.ai_profile, projects)
+        ]);
+        setProfileMatches(rankedProfiles);
+        setProjectMatches(rankedProjects);
+      } else {
+        setProfileMatches(profiles.map(p => ({ ...p, ai_score: Math.round(p.similarity * 100) })));
+        setProjectMatches(projects.map(p => ({ ...p, ai_score: Math.round(p.similarity * 100) })));
+      }
+    } catch (error) {
+      console.error("Failed to fetch matches:", error);
+    } finally {
+      setLoading(false);
+      setIsProcessing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMatches();
+  }, [user?.id, user?.embedding]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <Loader2 className="animate-spin text-ug-teal" size={40} />
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest animate-pulse">Running Neural Matching Engines...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 md:space-y-10 font-sans">
+      <div className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-8 opacity-10">
+          <Sparkles size={120} className="text-ug-teal" />
+        </div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 md:mb-8 gap-4 relative z-10">
+          <div className="flex items-center gap-3">
+            <Target size={20} className="text-ug-teal" />
+            <h2 className="text-lg md:text-xl font-black text-ug-navy">Intelligent Ecosystem Matching</h2>
+          </div>
+          <div className="flex items-center gap-2">
+             <span className={`${isProcessing ? 'animate-bounce' : 'animate-pulse'} w-2 h-2 bg-ug-teal rounded-full`}></span>
+             <span className="text-[9px] font-black text-ug-teal uppercase tracking-widest">
+               {isProcessing ? 'AI Reasoner Active' : 'Neural Stream Active'}
+             </span>
+          </div>
+        </div>
+
+        <div className="p-6 bg-ug-teal/5 rounded-[2rem] border border-ug-teal/10 mb-8">
+          <p className="text-[10px] text-ug-teal font-bold leading-relaxed uppercase tracking-widest">
+            {profileMatches.length + projectMatches.length === 0 ? 
+              "No semantic matches found. Try refining your research profile summary." :
+              `Analyzing ${user?.ai_profile?.skills?.technical_skills?.length || 0} skills and ${user?.ai_profile?.projects?.length || 0} initiatives for high-fidelity compatibility.`
+            }
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {projectMatches.map((proj, i) => (
+            <div key={proj.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 md:p-6 border border-gray-100 rounded-[2rem] bg-gray-50/30 hover:bg-white hover:border-ug-teal/20 hover:shadow-xl transition-all cursor-pointer group gap-4 text-left">
+              <div className="flex items-center gap-4 md:gap-6 flex-1 min-w-0">
+                <div className="w-12 h-12 md:w-16 md:h-16 bg-ug-navy/5 rounded-2xl flex items-center justify-center text-ug-navy group-hover:bg-ug-teal group-hover:text-white transition shrink-0 overflow-hidden">
+                  {proj.image_url ? 
+                    <img src={proj.image_url.split('|')[0]} className="w-full h-full object-cover" alt="" /> :
+                    <Globe size={24} />
+                  }
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[8px] font-black text-ug-teal uppercase tracking-widest px-2 py-0.5 bg-ug-teal/5 rounded-full">{proj.ai_label || 'Project Match'}</span>
+                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{proj.research_area}</span>
+                  </div>
+                  <h4 className="font-black text-ug-navy text-sm group-hover:text-ug-teal transition truncate uppercase tracking-tight">{proj.title}</h4>
+                  <p className="text-[10px] font-medium text-gray-400 line-clamp-1 italic">"{proj.ai_reasoning || proj.description}"</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-8 border-t sm:border-t-0 pt-4 sm:pt-0 border-gray-100">
+                 <div className="text-left sm:text-right">
+                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">AI Match Score</p>
+                    <p className="text-lg md:text-xl font-black text-ug-teal">{proj.ai_score}%</p>
+                 </div>
+                 <button className="bg-ug-navy text-white px-5 md:px-6 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition shadow-lg shrink-0">Express Interest</button>
+              </div>
+            </div>
+          ))}
+          {projectMatches.length === 0 && (
+            <div className="py-12 text-center text-gray-300 italic text-[10px] uppercase font-black tracking-widest">
+              Searching for relevant projects...
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-gray-100 shadow-sm">
+        <div className="flex items-center gap-3 mb-6 md:mb-8">
+          <Users size={20} className="text-ug-teal" />
+          <h2 className="text-lg md:text-xl font-black text-ug-navy">Strategic Research Collaborators</h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+           {profileMatches.map((collab, i) => (
+             <div key={collab.id} className="bg-gray-50/30 border border-gray-50 rounded-[2.5rem] p-6 md:p-8 text-center hover:bg-white hover:shadow-2xl transition-all h-full flex flex-col justify-between group relative overflow-hidden backdrop-blur-sm">
+                <div className="absolute top-0 right-0 p-4">
+                  <div className="text-[9px] font-black text-ug-teal bg-ug-teal/10 px-3 py-1 rounded-full uppercase tracking-widest">
+                    {collab.ai_label || 'High Alignment'}
+                  </div>
+                </div>
+                <div>
+                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl mx-auto mb-4 md:mb-6 shadow-xl border-4 border-white overflow-hidden bg-ug-navy relative group-hover:scale-105 transition-transform duration-500">
+                    {collab.avatar_url ? 
+                      <img src={collab.avatar_url} className="w-full h-full object-cover" alt="" /> :
+                      <UserIcon className="w-full h-full p-6 text-white/20" />
+                    }
+                  </div>
+                  <h4 className="font-black text-ug-navy text-sm mb-1">{collab.name}</h4>
+                  <p className="text-[10px] font-bold text-ug-teal uppercase tracking-widest mb-4">{collab.role}</p>
+                  
+                  <div className="p-4 bg-white/50 rounded-2xl border border-gray-100 mb-6 text-left">
+                    <p className="text-[9px] text-gray-500 font-medium leading-relaxed italic line-clamp-3">
+                      "{collab.ai_reasoning || collab.semantic_summary || 'Semantic profile match detected.'}"
+                    </p>
+                  </div>
+
+                  <div className="inline-block px-4 py-2 bg-white border border-gray-100 rounded-full shadow-sm mb-6 md:mb-8">
+                    <div className="flex items-center gap-4">
+                      <div className="text-left">
+                        <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Compatibility</p>
+                        <p className="text-xs font-black text-ug-navy">{collab.ai_score}%</p>
+                      </div>
+                      <div className="w-px h-6 bg-gray-100"></div>
+                      <div className="text-left">
+                        <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Rank</p>
+                        <p className="text-xs font-black text-ug-teal">#{i + 1}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <button className="w-full border-2 border-ug-navy text-ug-navy py-4 rounded-[1.5rem] text-[9px] font-black uppercase tracking-widest hover:bg-ug-navy hover:text-white transition-all shadow-sm active:scale-95">Initiate Collaboration</button>
+             </div>
+           ))}
+           {profileMatches.length === 0 && (
+             <div className="col-span-full py-20 text-center border-2 border-dashed border-gray-100 rounded-[3rem] bg-gray-50/50">
+                <Users size={32} className="text-gray-200 mx-auto mb-4" />
+                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">No matching researchers identified yet.</p>
+             </div>
+           )}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const StudentDashboard = ({ user }: { user: User | null }) => {
    const [projects, setProjects] = useState<Project[]>([]);

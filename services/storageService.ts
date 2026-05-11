@@ -316,20 +316,15 @@ export const StorageService = {
     }
   },
 
-  updateProfile: async (profile: Partial<User>) => {
+  updateProfile: async (profile: Partial<User & { embedding?: number[], semantic_summary?: string }>) => {
     if (!profile.id) throw new Error("Profile ID is required for update.");
     
     // First, check if the profile exists to decide between insert and update
-    // This can sometimes bypass RLS issues with upsert
-    const { data: existing, error: checkError } = await supabase
+    const { data: existing } = await supabase
       .from('profiles')
       .select('id')
       .eq('id', profile.id)
       .maybeSingle();
-
-    if (checkError) {
-      console.error("Error checking profile existence:", checkError);
-    }
 
     let result;
     if (existing) {
@@ -344,22 +339,53 @@ export const StorageService = {
     }
 
     if (result.error) {
-      // Handle missing column error specifically to guide the user
       const msg = result.error.message.toLowerCase();
+      // Handle missing column errors specifically
       if (msg.includes('column') && (msg.includes('not found') || msg.includes('does not exist'))) {
-        // Attempt a "Safe Update" without the problematic fields to at least save the name/bio
-        const { website_url_2, website_url_3, ...safeProfile } = profile;
+        console.warn("Database schema mismatch detected. Retrying with safe fields...");
+        
+        // Remove known problematic fields if schema is outdated
+        const { website_url_2, website_url_3, ai_profile, embedding, semantic_summary, ...safeProfile } = profile as any;
         const retryResult = existing 
           ? await supabase.from('profiles').update(safeProfile).eq('id', profile.id)
           : await supabase.from('profiles').insert([safeProfile]);
         
         if (!retryResult.error) {
-          throw new Error("DATABASE SCHEMA MISMATCH: Profile saved, but extra website links were skipped. FIX: Run 'ALTER TABLE profiles ADD COLUMN website_url_2 TEXT, ADD COLUMN website_url_3 TEXT;' in your Supabase SQL Editor.");
+          const missingCol = msg.includes('embedding') ? 'embedding' : (msg.includes('ai_profile') ? 'ai_profile' : 'website_url_x');
+          throw new Error(`SCHEMA ERROR: Column "${missingCol}" is missing in Supabase. Please run the SQL in your Supabase Editor to update the schema.`);
         }
       }
       
       console.error("Supabase Profile Update Error:", result.error);
       throw result.error;
+    }
+  },
+
+  getMatches: async (userId: string, embedding: number[]) => {
+    if (!userId || !embedding) return { profiles: [], projects: [] };
+
+    try {
+      const [{ data: profiles }, { data: projects }] = await Promise.all([
+        supabase.rpc('match_profiles', {
+          query_embedding: embedding,
+          match_threshold: 0.5,
+          match_count: 5,
+          excluded_id: userId
+        }),
+        supabase.rpc('match_projects', {
+          query_embedding: embedding,
+          match_threshold: 0.5,
+          match_count: 5
+        })
+      ]);
+
+      return {
+        profiles: profiles || [],
+        projects: projects || []
+      };
+    } catch (error) {
+      console.error("Matching engine error:", error);
+      return { profiles: [], projects: [] };
     }
   },
 

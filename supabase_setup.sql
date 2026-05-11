@@ -1,5 +1,16 @@
--- SUPABASE STORAGE SETUP
+-- SUPABASE STORAGE & VECTOR SETUP
 -- Run this in your Supabase SQL Editor
+
+-- Enable pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Profiles table schema enhancements
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS ai_profile JSONB;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS embedding vector(768); -- For text-embedding-004 (768 dims)
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS semantic_summary TEXT;
+
+-- Projects table schema enhancements
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS embedding vector(768);
 
 -- 1. Create Buckets
 INSERT INTO storage.buckets (id, name, public) 
@@ -14,39 +25,106 @@ ON CONFLICT (id) DO NOTHING;
 -- ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
 -- 3. Storage Policies for 'projects' bucket
--- Allow public access to view projects
+DROP POLICY IF EXISTS "Public Project Access" ON storage.objects;
 CREATE POLICY "Public Project Access" ON storage.objects FOR SELECT TO public USING (bucket_id = 'projects');
 
--- Allow authenticated users to upload to project bucket
+DROP POLICY IF EXISTS "Authenticated Project Upload" ON storage.objects;
 CREATE POLICY "Authenticated Project Upload" ON storage.objects FOR INSERT TO authenticated WITH CHECK (
   bucket_id = 'projects'
 );
 
--- Allow users to update their own files in projects
+DROP POLICY IF EXISTS "Owner Project Update" ON storage.objects;
 CREATE POLICY "Owner Project Update" ON storage.objects FOR UPDATE TO authenticated USING (
   bucket_id = 'projects' AND auth.uid() = owner
 );
 
--- Allow users to delete their own files in projects
+DROP POLICY IF EXISTS "Owner Project Delete" ON storage.objects;
 CREATE POLICY "Owner Project Delete" ON storage.objects FOR DELETE TO authenticated USING (
   bucket_id = 'projects' AND auth.uid() = owner
 );
 
 -- 4. Storage Policies for 'avatars' bucket
--- Allow public access to view avatars
+DROP POLICY IF EXISTS "Public Avatar Access" ON storage.objects;
 CREATE POLICY "Public Avatar Access" ON storage.objects FOR SELECT TO public USING (bucket_id = 'avatars');
 
--- Allow authenticated users to upload avatars
+DROP POLICY IF EXISTS "Authenticated Avatar Upload" ON storage.objects;
 CREATE POLICY "Authenticated Avatar Upload" ON storage.objects FOR INSERT TO authenticated WITH CHECK (
   bucket_id = 'avatars'
 );
 
--- Allow users to update their own avatars
+DROP POLICY IF EXISTS "Owner Avatar Update" ON storage.objects;
 CREATE POLICY "Owner Avatar Update" ON storage.objects FOR UPDATE TO authenticated USING (
   bucket_id = 'avatars' AND auth.uid() = owner
 );
 
--- Allow users to delete their own avatars
+DROP POLICY IF EXISTS "Owner Avatar Delete" ON storage.objects;
 CREATE POLICY "Owner Avatar Delete" ON storage.objects FOR DELETE TO authenticated USING (
   bucket_id = 'avatars' AND auth.uid() = owner
 );
+
+-- MATCHING FUNCTIONS
+-- Search profiles by similarity
+CREATE OR REPLACE FUNCTION match_profiles (
+  query_embedding vector(768),
+  match_threshold float,
+  match_count int,
+  excluded_id uuid
+)
+RETURNS TABLE (
+  id uuid,
+  name text,
+  role text,
+  ai_profile jsonb,
+  semantic_summary text,
+  similarity float
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    profiles.id,
+    profiles.name,
+    profiles.role,
+    profiles.ai_profile,
+    profiles.semantic_summary,
+    1 - (profiles.embedding <=> query_embedding) AS similarity
+  FROM profiles
+  WHERE profiles.id != excluded_id
+    AND 1 - (profiles.embedding <=> query_embedding) > match_threshold
+  ORDER BY profiles.embedding <=> query_embedding
+  LIMIT match_count;
+END;
+$$;
+
+-- Search projects by similarity
+CREATE OR REPLACE FUNCTION match_projects (
+  query_embedding vector(768),
+  match_threshold float,
+  match_count int
+)
+RETURNS TABLE (
+  id uuid,
+  title text,
+  description text,
+  image_url text,
+  research_area text,
+  similarity float
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    projects.id,
+    projects.title,
+    projects.description,
+    projects.image_url,
+    projects.research_area,
+    1 - (projects.embedding <=> query_embedding) AS similarity
+  FROM projects
+  WHERE 1 - (projects.embedding <=> query_embedding) > match_threshold
+  ORDER BY projects.embedding <=> query_embedding
+  LIMIT match_count;
+END;
+$$;
