@@ -8,6 +8,9 @@ CREATE EXTENSION IF NOT EXISTS vector;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS ai_profile JSONB;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS embedding vector(768); -- For text-embedding-004 (768 dims)
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS semantic_summary TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS website_url_2 TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS website_url_3 TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS website_url_4 TEXT;
 
 -- Projects table schema enhancements
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS embedding vector(768);

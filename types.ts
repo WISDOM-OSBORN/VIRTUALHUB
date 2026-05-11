@@ -39,6 +39,7 @@ export interface User {
   website_url?: string;
   website_url_2?: string;
   website_url_3?: string;
+  website_url_4?: string;
   ai_profile?: any;
   embedding?: number[];
   semantic_summary?: string;

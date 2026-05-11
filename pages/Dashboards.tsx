@@ -31,7 +31,7 @@ const MobileNav: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; r
   ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-100 z-[100] flex items-center justify-around pb-safe pt-2 px-2 h-20 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+    <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] md:w-[80%] lg:w-auto bg-white/95 backdrop-blur-xl border border-gray-100 z-[100] flex items-center justify-around pb-2 pt-2 px-2 h-20 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[2rem]">
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -67,13 +67,13 @@ const MobileNav: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; r
 const Sidebar: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; role: UserRole; user: User | null }> = ({ activeTab, setActiveTab, role, user }) => {
   const tabs = [
     { id: 'overview', icon: LayoutGrid, label: 'Overview' },
-    { id: 'matches', icon: Target, label: 'My Matches', hideFor: [UserRole.Student], sparkles: true },
+    { id: 'matches', icon: Target, label: role === UserRole.Student ? 'Discover' : 'My Matches', sparkles: role !== UserRole.Student },
     { id: 'messages', icon: MessageSquare, label: 'Messages' },
     { id: 'profile', icon: UserIcon, label: 'Profile' },
-  ].filter(t => !t.hideFor || !t.hideFor.includes(role));
+  ];
 
   return (
-    <div className="hidden md:flex w-64 h-screen fixed left-0 top-0 bg-white border-r border-gray-100 flex-col p-6 z-[80]">
+    <div className="hidden lg:flex w-64 h-full bg-white border-r border-gray-100 flex-col p-6 shrink-0">
       <div className="mb-12 px-4 flex items-center gap-3">
         <div className="bg-ug-navy p-2 rounded-xl text-white">
           <GraduationCap size={20} />
@@ -330,19 +330,19 @@ const ProjectFormModal: React.FC<{
                </div>
                <div className="space-y-2">
                  <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Research Title / Product Name</label>
-                 <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none transition" placeholder="Enter formal project title..." />
+                 <input required type="text" value={formData.title || ''} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none transition" placeholder="Enter formal project title..." />
                </div>
-
+ 
                <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-2">
                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Research Area</label>
-                   <select value={formData.research_area} onChange={e => setFormData({...formData, research_area: e.target.value as ResearchArea})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none cursor-pointer">
+                   <select value={formData.research_area || ''} onChange={e => setFormData({...formData, research_area: e.target.value as ResearchArea})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none cursor-pointer">
                      {Object.values(ResearchArea).map(area => <option key={area} value={area}>{area}</option>)}
                    </select>
                  </div>
                  <div className="space-y-2">
                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
-                   <input required type="text" value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none" placeholder="e.g. Computer Science" />
+                   <input required type="text" value={formData.department || ''} onChange={e => setFormData({...formData, department: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none" placeholder="e.g. Computer Science" />
                  </div>
                </div>
             </div>
@@ -354,13 +354,13 @@ const ProjectFormModal: React.FC<{
                </div>
                <div className="space-y-2">
                  <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Executive Summary</label>
-                 <textarea required rows={4} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 font-medium text-gray-600 focus:ring-2 focus:ring-ug-teal/20 outline-none resize-none leading-relaxed" placeholder="Describe your research methodology and potential impact..." />
+                 <textarea required rows={4} value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 font-medium text-gray-600 focus:ring-2 focus:ring-ug-teal/20 outline-none resize-none leading-relaxed" placeholder="Describe your research methodology and potential impact..." />
                </div>
-
+ 
                <div className="space-y-2">
                  <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Status</label>
                  <select 
-                   value={formData.status} 
+                   value={formData.status || ''} 
                    onChange={e => setFormData({...formData, status: e.target.value as ProjectStatus, trl: Object.values(ProjectStatus).indexOf(e.target.value as ProjectStatus) + 1})}
                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none cursor-pointer"
                  >
@@ -418,21 +418,21 @@ const ProjectFormModal: React.FC<{
                   <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Budget Estimate</label>
                   <div className="relative">
                     <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                    <input type="text" value={formData.budget} onChange={e => setFormData({...formData, budget: e.target.value})} className="w-full pl-10 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none" placeholder="$0.00" />
+                    <input type="text" value={formData.budget || ''} onChange={e => setFormData({...formData, budget: e.target.value})} className="w-full pl-10 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none" placeholder="$0.00" />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Start Date</label>
                   <div className="relative">
                     <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                    <input type="date" value={formData.start_date} onChange={e => setFormData({...formData, start_date: e.target.value})} className="w-full pl-10 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none" />
+                    <input type="date" value={formData.start_date || ''} onChange={e => setFormData({...formData, start_date: e.target.value})} className="w-full pl-10 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 outline-none" />
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Key Achievements & Milestones</label>
-                <textarea rows={3} value={formData.achievements?.join('\n')} onChange={e => setFormData({...formData, achievements: e.target.value.split('\n').filter(s => s.trim())})} className="w-full bg-white border border-gray-100 rounded-2xl p-4 font-medium text-gray-600 focus:ring-2 focus:ring-ug-teal/20 outline-none resize-none text-xs" placeholder="• Lab validation completed&#10;• Prototype developed&#10;• Clinical testing phase..." />
+                <textarea rows={3} value={formData.achievements?.join('\n') || ''} onChange={e => setFormData({...formData, achievements: e.target.value.split('\n').filter(s => s.trim())})} className="w-full bg-white border border-gray-100 rounded-2xl p-4 font-medium text-gray-600 focus:ring-2 focus:ring-ug-teal/20 outline-none resize-none text-xs" placeholder="• Lab validation completed&#10;• Prototype developed&#10;• Clinical testing phase..." />
               </div>
 
               <div className="space-y-2">
@@ -1106,6 +1106,8 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
 
   const [internalUnread, setInternalUnread] = useState(0);
 
+  const [profileMode, setProfileMode] = useState<'identity' | 'insights'>('identity');
+
   const refreshProfile = async () => {
     if (!user?.id) return;
     const freshProfile = await StorageService.getProfile(user.id);
@@ -1130,22 +1132,19 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
     <div className="flex h-screen overflow-hidden bg-[#F8FAFC]">
       <Sidebar role={role} user={localUser} activeTab={activeTab} setActiveTab={setActiveTab} />
       
-      <div className="flex-1 flex flex-col min-w-0 relative h-full">
-        <header className="bg-ug-navy text-white flex items-center justify-between px-4 sm:px-8 py-5 shrink-0 md:ml-64 shadow-2xl z-50">
-          <nav className="hidden lg:flex items-center gap-10 ml-8">
+      <div className="flex-1 flex flex-col min-w-0 relative h-full overflow-hidden">
+        <header className="bg-ug-navy text-white flex items-center justify-between px-4 sm:px-8 py-5 shrink-0 shadow-2xl z-50">
+          <nav className="flex items-center gap-6 lg:gap-10 ml-0 lg:ml-8">
              {['Home', 'Projects', 'Products', 'News'].map(link => (
                <button 
                  key={link} 
                  onClick={() => navigate(link === 'Home' ? '/' : `/${link.toLowerCase()}`)}
-                 className="text-[10px] font-black uppercase tracking-[0.25em] hover:text-ug-teal transition-all cursor-pointer opacity-80 hover:opacity-100"
+                 className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] lg:tracking-[0.25em] hover:text-ug-teal transition-all cursor-pointer opacity-80 hover:opacity-100"
                >
                  {link}
                </button>
              ))}
           </nav>
-
-          {/* Mobile Spacer to push icons to the right */}
-          <div className="lg:hidden flex-1"></div>
 
           <div className="flex items-center gap-2 sm:gap-6">
             <button 
@@ -1184,8 +1183,8 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
           </div>
         </header>
 
-        <main className="flex-1 md:ml-64 overflow-y-auto w-full bg-[#F8FAFC]">
-          <div className="max-w-7xl mx-auto w-full p-4 md:p-10 pb-32 md:pb-12 space-y-8 md:space-y-12">
+        <main className="flex-1 overflow-y-auto w-full bg-[#fcfdfe]">
+          <div className="max-w-[1600px] mx-auto w-full p-4 lg:p-10 pb-40 lg:pb-12 space-y-8 lg:space-y-12">
           {activeTab === 'overview' && (
             <div className="animate-fade-in space-y-8 md:space-y-12">
               {role === UserRole.Researcher && (
@@ -1210,27 +1209,73 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
 
           {activeTab === 'messages' && <MessagesSection user={localUser} initialThreadId={initialThreadId} />}
           {activeTab === 'profile' && (
-            <div className="space-y-12">
-              <div className="flex flex-col md:flex-row gap-8 items-start">
-                <div className="flex-1">
-                  <ProfileInsight profile={localUser?.ai_profile} />
+            <div className="space-y-10 animate-fade-in">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-8">
+                <div>
+                  <h2 className="text-3xl font-black text-ug-navy tracking-tight uppercase">Researcher Portfolio</h2>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mt-1 italic">Verified Hub Identity Management</p>
                 </div>
-                <div className="w-full md:w-80 shrink-0">
-                   <div className="bg-ug-navy text-white p-8 rounded-[2.5rem] shadow-xl">
-                      <h4 className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-4">Ecosystem Identity</h4>
-                      <p className="text-xs font-medium leading-relaxed opacity-80 mb-6 font-sans">
-                        Your identity is verified by the University of Ghana Hub. AI insights are generated from your validated research documents.
-                      </p>
-                      <button 
-                         onClick={() => setActiveTab('overview')}
-                         className="w-full py-3 bg-white/10 hover:bg-white/20 transition rounded-xl text-[9px] font-black uppercase tracking-widest border border-white/10"
-                      >
-                         Back to Overview
-                      </button>
-                   </div>
+                <div className="flex bg-gray-100 p-1 md:p-1.5 rounded-2xl md:rounded-3xl shadow-inner">
+                  <button 
+                    onClick={() => setProfileMode('identity')}
+                    className={`px-6 md:px-10 py-3 rounded-[1.25rem] md:rounded-[2rem] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${profileMode === 'identity' ? 'bg-ug-navy text-white shadow-xl' : 'text-gray-400 hover:text-ug-navy'}`}
+                  >
+                    Identity & Narrative
+                  </button>
+                  <button 
+                    onClick={() => setProfileMode('insights')}
+                    className={`px-6 md:px-10 py-3 rounded-[1.25rem] md:rounded-[2rem] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${profileMode === 'insights' ? 'bg-ug-navy text-white shadow-xl' : 'text-gray-400 hover:text-ug-navy'}`}
+                  >
+                    AI Research Analysis
+                  </button>
                 </div>
               </div>
-              <ProfileSettings user={localUser} onUpdate={refreshProfile} />
+
+              {profileMode === 'identity' ? (
+                <ProfileSettings user={localUser} onUpdate={refreshProfile} />
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+                  <div className="lg:col-span-8 flex flex-col gap-10">
+                    <ProfileInsight profile={localUser?.ai_profile} />
+                  </div>
+                  <div className="lg:col-span-4 shrink-0 space-y-8">
+                    <div className="bg-ug-navy text-white p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition duration-1000">
+                        <Target size={120} />
+                      </div>
+                      <div className="relative z-10 space-y-6">
+                        <div>
+                          <h4 className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-2">Ecosystem Compliance</h4>
+                          <h3 className="text-xl font-black tracking-tight uppercase leading-tight">Neural Sync Status</h3>
+                        </div>
+                        <p className="text-xs font-medium leading-loose opacity-70 italic">
+                          "AI insights are dynamically synthesized from your verified academic records. Significant changes to your biography may take up to 24 hours to re-index in the Neural Stream."
+                        </p>
+                        <div className="pt-6 border-t border-white/10 space-y-4">
+                           <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 bg-ug-teal rounded-2xl flex items-center justify-center shadow-lg"><Zap size={18} /></div>
+                              <div>
+                                <p className="text-[9px] font-black text-ug-teal uppercase tracking-widest">Matching Fidelity</p>
+                                <p className="text-sm font-black text-white">98.4% Accuracy</p>
+                              </div>
+                           </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4">
+                       <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Public Visibility</h4>
+                       <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                          <span className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Portfolio Visible</span>
+                          <div className="w-8 h-4 bg-ug-teal rounded-full relative">
+                             <div className="absolute right-1 top-1 w-2 h-2 bg-white rounded-full"></div>
+                          </div>
+                       </div>
+                       <p className="text-[9px] text-gray-400 font-medium italic">Your profile is currently discoverable to verified technical partners and industry delegates.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1275,13 +1320,13 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
   const totalInteractions = projects.reduce((acc, p) => acc + (p.expressions_of_interest || 0) + (p.requests || 0), 0);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-      <div className="lg:col-span-8 space-y-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 lg:gap-10">
+      <div className="md:col-span-2 lg:col-span-8 lg:col-start-1 space-y-8">
         <UnifiedDashboardProfile user={user} onAction={() => {
            onOpenModal(null);
         }} actionLabel="New Project Disclosure" />
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <StatCard label="Live Disclosures" value={projects.length} trend="+2" icon={FileText} />
           <StatCard label="Total Hub Views" value={totalViews >= 1000 ? `${(totalViews/1000).toFixed(1)}k` : totalViews} trend="+8%" icon={Eye} />
           <StatCard label="Interactions" value={totalInteractions} trend="+12%" icon={Handshake} />
@@ -1329,7 +1374,7 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
         </section>
       </div>
 
-      <div className="lg:col-span-4 space-y-8">
+      <div className="md:col-span-2 lg:col-span-4 space-y-8 border-t lg:border-t-0 pt-8 lg:pt-0">
         <HubStreamSidebar />
         {user?.id && <BookmarkedProjectsList userId={user.id} />}
       </div>
@@ -1438,65 +1483,109 @@ const ActiveProjectHero = ({ project }: { project: Project }) => (
 
 const ProfileInsight = ({ profile, onRefresh }: { profile: AIProfile | null, onRefresh?: () => void }) => {
   if (!profile) return (
-    <div className="bg-ug-teal/5 border border-dashed border-ug-teal/20 p-8 rounded-[2.5rem] text-center">
-      <Sparkles size={32} className="text-ug-teal/30 mx-auto mb-4" />
-      <p className="text-xs font-black text-ug-navy uppercase tracking-widest mb-1">AI Profile Missing</p>
-      <p className="text-[10px] text-gray-400 font-medium italic">Complete onboarding to unlock intelligent matching.</p>
+    <div className="bg-ug-navy/5 border border-dashed border-ug-navy/20 p-10 rounded-[3rem] text-center">
+      <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-gray-100">
+        <Sparkles size={32} className="text-ug-teal/50" />
+      </div>
+      <h3 className="text-sm font-black text-ug-navy uppercase tracking-widest mb-2">Neural Profile Pending</h3>
+      <p className="text-[11px] text-gray-500 font-medium italic max-w-xs mx-auto">Upload your academic documents or resume in the overview to unlock AI-powered semantic matching and profile insights.</p>
     </div>
   );
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm relative group">
-        <button 
-          onClick={onRefresh}
-          className="absolute top-8 right-8 p-3 bg-gray-50 text-gray-400 hover:text-ug-teal hover:bg-ug-teal/10 rounded-xl transition opacity-0 group-hover:opacity-100"
-          title="Re-process Resume"
-        >
-          <Upload size={14} />
-        </button>
-        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-          <Target size={14} className="text-ug-teal" /> AI Profile Narrative
-        </h4>
-        <p className="text-sm font-medium text-gray-600 leading-loose italic">"{profile.semantic_summary}"</p>
+    <div className="space-y-8 animate-fade-in group/insight">
+      {/* Narrative Section */}
+      <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:opacity-10 transition-opacity">
+          <Target size={180} />
+        </div>
         
-        <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-gray-50">
-           <div>
-              <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest mb-1 block">Experience</span>
-              <span className="text-[10px] font-black text-ug-navy uppercase">{profile.professional_profile?.experience_level}</span>
+        <div className="flex justify-between items-start mb-8 relative z-10">
+          <div>
+            <h4 className="text-[10px] font-black text-ug-teal uppercase tracking-[0.2em] mb-1 flex items-center gap-2">
+              <Sparkles size={12} /> Researcher Intelligence
+            </h4>
+            <h3 className="text-xl font-black text-ug-navy uppercase tracking-tight">AI Narrative Summary</h3>
+          </div>
+          <button 
+            onClick={onRefresh}
+            className="p-3 bg-gray-50 text-gray-400 hover:text-ug-teal hover:bg-ug-teal/10 rounded-2xl transition opacity-0 group-hover:opacity-100"
+            title="Re-process Profile"
+          >
+            <Upload size={16} />
+          </button>
+        </div>
+
+        <p className="text-sm md:text-base font-medium text-gray-600 leading-relaxed italic relative z-10">
+          "{profile.semantic_summary}"
+        </p>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-10 pt-10 border-t border-gray-50 relative z-10">
+           <div className="space-y-1">
+              <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Experience Level</span>
+              <span className="text-[10px] font-black text-ug-navy uppercase bg-ug-navy/5 px-3 py-1 rounded-full inline-block">{profile.professional_profile?.experience_level || 'General'}</span>
            </div>
-           <div>
-              <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest mb-1 block">Mode</span>
-              <span className="text-[10px] font-black text-ug-navy uppercase">{profile.collaboration_profile?.preferred_collaboration_types?.[0] || 'Flexible'}</span>
+           <div className="space-y-1">
+              <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Collab Mode</span>
+              <span className="text-[10px] font-black text-ug-navy uppercase bg-ug-navy/5 px-3 py-1 rounded-full inline-block">{profile.collaboration_profile?.preferred_collaboration_types?.[0] || 'Flexible'}</span>
+           </div>
+           <div className="space-y-1">
+              <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Projects</span>
+              <span className="text-[10px] font-black text-ug-navy uppercase">{profile.projects?.length || 0} Initiatives</span>
+           </div>
+           <div className="space-y-1">
+              <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Education</span>
+              <span className="text-[10px] font-black text-ug-navy uppercase">{profile.education?.length || 0} Credentials</span>
            </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm text-left">
-          <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Technological Stack</h4>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Skills Stack */}
+        <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm flex flex-col">
+          <div className="flex items-center gap-3 mb-8">
+             <div className="w-10 h-10 bg-ug-navy text-white rounded-xl flex items-center justify-center shadow-lg"><FileCode size={20} /></div>
+             <div>
+               <h4 className="text-sm font-black text-ug-navy uppercase tracking-tight">Technological Stack</h4>
+               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Validated Skillsets</p>
+             </div>
+          </div>
           <div className="flex flex-wrap gap-2">
             {((): string[] => {
               const tech = profile.skills?.technical_skills || [];
               const tools = profile.skills?.tools_and_technologies || [];
               return [...tech, ...tools];
             })().map((s, i) => (
-              <span key={i} className="px-3 py-1.5 bg-gray-50 rounded-xl text-[9px] font-bold text-gray-600 uppercase border border-gray-100">{s}</span>
+              <span key={i} className="px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-[10px] font-bold text-gray-600 uppercase transition hover:border-ug-teal/30 hover:bg-white hover:text-ug-teal cursor-default">
+                {s}
+              </span>
             ))}
           </div>
         </div>
 
-        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm text-left">
-          <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Education & Level</h4>
-          <div className="space-y-4">
+        {/* Education Stack */}
+        <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-3 mb-8">
+             <div className="w-10 h-10 bg-ug-teal text-white rounded-xl flex items-center justify-center shadow-lg"><Award size={20} /></div>
+             <div>
+               <h4 className="text-sm font-black text-ug-navy uppercase tracking-tight">Verified Education</h4>
+               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Academic Credentials</p>
+             </div>
+          </div>
+          <div className="space-y-6">
             {(profile.education || []).map((edu, i) => (
-              <div key={i} className="flex gap-4 items-start">
-                <div className="w-8 h-8 rounded-lg bg-ug-teal/10 flex items-center justify-center text-ug-teal shrink-0">
-                  <GraduationCap size={16} />
+              <div key={i} className="flex gap-5 items-start group/edu">
+                <div className="w-10 h-10 rounded-2xl bg-ug-navy/5 flex items-center justify-center text-ug-navy shrink-0 group-hover/edu:bg-ug-teal group-hover/edu:text-white transition duration-500">
+                  <GraduationCap size={18} />
                 </div>
-                <div className="text-left">
-                  <p className="text-[10px] font-black text-ug-navy leading-none mb-1">{edu.degree}</p>
-                  <p className="text-[8px] font-bold text-gray-400 uppercase">{edu.field_of_study}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black text-ug-navy leading-tight mb-1 uppercase tracking-tight">{edu.degree}</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{edu.institution}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[9px] font-bold text-ug-teal uppercase">{edu.field_of_study}</span>
+                    <span className="text-[9px] text-gray-300">•</span>
+                    <span className="text-[9px] font-bold text-gray-400">{edu.graduation_year}</span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -1504,17 +1593,26 @@ const ProfileInsight = ({ profile, onRefresh }: { profile: AIProfile | null, onR
         </div>
       </div>
 
+      {/* Initiatives Feed */}
       {(profile.projects?.length || 0) > 0 && (
-        <div className="bg-ug-navy text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-ug-teal/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition duration-1000"></div>
-          <h4 className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-6 flex items-center gap-2">
-            <Rocket size={14} /> Key Initiatives
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+        <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden group/projects">
+           <div className="flex items-center gap-3 mb-10">
+             <div className="w-10 h-10 bg-ug-teal/10 text-ug-teal rounded-xl flex items-center justify-center"><Rocket size={20} /></div>
+             <div>
+               <h4 className="text-sm font-black text-ug-navy uppercase tracking-tight">Key Initiatives</h4>
+               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Project Portfolio Analysis</p>
+             </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
             {(profile.projects || []).map((p, i) => (
-              <div key={i} className="p-5 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition text-left">
-                <p className="text-xs font-black uppercase mb-1">{p.project_name}</p>
-                <p className="text-[10px] text-ug-teal font-black uppercase tracking-wider">{p.industry}</p>
+              <div key={i} className="p-6 bg-gray-50/50 border border-gray-100 rounded-[2rem] hover:bg-white hover:shadow-xl hover:border-ug-teal/20 transition-all text-left group/p">
+                <div className="flex justify-between items-start mb-3">
+                  <span className="text-[9px] font-black text-ug-teal uppercase tracking-widest">{p.industry}</span>
+                  <div className="text-gray-200 group-hover/p:text-ug-teal transition"><LinkIcon size={14} /></div>
+                </div>
+                <h5 className="text-xs font-black text-ug-navy uppercase leading-tight mb-2">{p.project_name}</h5>
+                <p className="text-[10px] text-gray-400 font-medium leading-relaxed line-clamp-2">Research focused on {p.industry.toLowerCase()} innovation and technical implementation.</p>
               </div>
             ))}
           </div>
@@ -1710,9 +1808,9 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
             <StatCard label="Lab Access" value="Granted" trend="Verified" icon={GraduationCap} />
          </div>
 
-         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            <div className="lg:col-span-8 space-y-8">
-               <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 items-start">
+            <div className="md:col-span-2 lg:col-span-8 space-y-8">
+               <section className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
                   <SectionTitle title="Collaboration Calls" subtitle="Active Research Projects Seeking Talent" />
                   <div className="space-y-4">
                      {projects.slice(0, 3).map(p => (
@@ -1730,7 +1828,7 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
                   </div>
                </section>
             </div>
-            <div className="lg:col-span-4 space-y-8">
+            <div className="md:col-span-2 lg:col-span-4 space-y-8 border-t lg:border-t-0 pt-8 lg:pt-0">
                {user?.id && <BookmarkedProjectsList userId={user.id} />}
                <HubStreamSidebar />
             </div>
@@ -1753,9 +1851,9 @@ const PartnerDashboard = ({ user }: { user: User | null }) => {
             <StatCard label="NDA" value="Verified" trend="Secure" icon={Lock} />
          </div>
 
-         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            <div className="lg:col-span-8 space-y-8">
-               <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 items-start">
+            <div className="md:col-span-2 lg:col-span-8 space-y-8">
+               <section className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
                   <SectionTitle title="Venture Portfolio" subtitle="Curated Technical Assets" />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      {projects.slice(0, 4).map(p => (
@@ -1770,7 +1868,7 @@ const PartnerDashboard = ({ user }: { user: User | null }) => {
                   </div>
                </section>
             </div>
-            <div className="lg:col-span-4 space-y-8">
+            <div className="md:col-span-2 lg:col-span-4 space-y-8 border-t lg:border-t-0 pt-8 lg:pt-0">
                {user?.id && <BookmarkedProjectsList userId={user.id} />}
                <HubStreamSidebar />
             </div>
@@ -1811,6 +1909,7 @@ const ProfileSettings: React.FC<{ user: User | null; onUpdate: () => void }> = (
   const [website, setWebsite] = useState(user?.website_url || '');
   const [website2, setWebsite2] = useState(user?.website_url_2 || '');
   const [website3, setWebsite3] = useState(user?.website_url_3 || '');
+  const [website4, setWebsite4] = useState(user?.website_url_4 || '');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>(user?.avatar_url || '');
   const [loading, setLoading] = useState(false);
@@ -1819,11 +1918,12 @@ const ProfileSettings: React.FC<{ user: User | null; onUpdate: () => void }> = (
 
   useEffect(() => {
     if (user) {
-      setName(user.name);
+      setName(user.name || '');
       setBio(user.bio || '');
       setWebsite(user.website_url || '');
       setWebsite2(user.website_url_2 || '');
       setWebsite3(user.website_url_3 || '');
+      setWebsite4(user.website_url_4 || '');
       setAvatarPreview(user.avatar_url || '');
     }
   }, [user]);
@@ -1854,125 +1954,150 @@ const ProfileSettings: React.FC<{ user: User | null; onUpdate: () => void }> = (
         id: user.id, 
         name, 
         bio, 
-        role: user.role, // Ensure role is preserved
-        email: user.email, // Ensure email is preserved
+        role: user.role,
+        email: user.email,
         website_url: website,
         website_url_2: website2,
         website_url_3: website3,
+        website_url_4: website4,
         avatar_url: avatarUrl 
       });
       
-      showToast("Identity & Profile updated securely", "success");
+      showToast("Profile saved successfully", "success");
       onUpdate();
     } catch (err: any) { 
-      console.error("Profile Update Error:", err);
-      showToast(`Update failed: ${err.message || 'Secure channel error'}`, "error"); 
+      showToast(`Save failed: ${err.message}`, "error"); 
     } finally { 
       setLoading(false); 
     }
   };
 
   return (
-    <div className="bg-white rounded-[2.5rem] p-12 border border-gray-100 shadow-sm animate-fade-in">
-      <div className="flex items-center gap-4 mb-12">
-        <div className="p-3 bg-ug-navy text-white rounded-2xl shadow-lg"><Settings size={24} /></div>
-        <div>
-          <h3 className="text-2xl font-black text-ug-navy">Identity Management</h3>
-          <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mt-1">University Verified Records</p>
+    <div className="animate-fade-in space-y-8">
+      {/* Profile Header */}
+      <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-10">
+        <div 
+          onClick={handleAvatarClick}
+          className="w-32 h-32 md:w-40 md:h-40 rounded-[3rem] overflow-hidden bg-gray-50 border-8 border-white shadow-2xl cursor-pointer group relative flex-shrink-0"
+        >
+          {avatarPreview ? (
+            <img src={avatarPreview} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" alt="Avatar" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-200"><UserIcon size={64} /></div>
+          )}
+          <div className="absolute inset-0 bg-ug-navy/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white backdrop-blur-[2px]">
+            <Camera size={24} />
+          </div>
+          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+        </div>
+        
+        <div className="text-center md:text-left space-y-4 flex-1">
+          <div>
+            <h3 className="text-2xl font-black text-ug-navy tracking-tight uppercase">{name || 'My Profile'}</h3>
+            <p className="text-[10px] font-black text-ug-teal uppercase tracking-[0.3em] mt-1 italic">User Details</p>
+          </div>
+          <p className="text-xs text-gray-400 font-medium max-w-xl leading-relaxed">
+            Update your profile picture and details here. These will be visible to potential partners in the network.
+          </p>
+          <div className="flex flex-wrap justify-center md:justify-start gap-4">
+            <button type="button" onClick={handleAvatarClick} className="px-5 py-2.5 bg-gray-50 hover:bg-ug-navy hover:text-white transition rounded-xl text-[9px] font-black uppercase tracking-widest border border-gray-200">Change Profile Picture</button>
+            <div className="px-5 py-2.5 bg-ug-teal/5 text-ug-teal rounded-xl text-[9px] font-black uppercase tracking-widest border border-ug-teal/10">Member Status: Active</div>
+          </div>
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="max-w-4xl space-y-12">
-        {/* Avatar Upload Section */}
-        <div className="flex flex-col md:flex-row items-center gap-8 bg-gray-50/50 p-8 rounded-[2.5rem] border border-gray-100">
-           <div 
-            onClick={handleAvatarClick}
-            className="w-32 h-32 rounded-[2.5rem] overflow-hidden bg-white border-4 border-white shadow-xl cursor-pointer group relative flex-shrink-0"
-           >
-              {avatarPreview ? (
-                <img src={avatarPreview} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" alt="Avatar Preview" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-200"><UserIcon size={48} /></div>
-              )}
-              <div className="absolute inset-0 bg-ug-navy/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                <Camera size={24} />
+      <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Profile Details */}
+        <div className="lg:col-span-8 flex flex-col gap-8">
+          <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm space-y-10">
+            {/* Field Group: Core Info */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-1.5 h-6 bg-ug-teal rounded-full"></div>
+                <h4 className="text-sm font-black text-ug-navy uppercase tracking-widest">About Me</h4>
               </div>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept="image/*" 
-                onChange={handleFileChange} 
-              />
-           </div>
-           <div className="text-center md:text-left">
-              <h4 className="font-black text-ug-navy uppercase tracking-widest text-sm mb-2">Professional Identity Photo</h4>
-              <p className="text-xs text-gray-500 font-medium max-w-sm">Recommended: Clear face-forward headshot. This will be visible on your researcher portfolio and disclosures.</p>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
+                <input required type="text" value={name || ''} onChange={e => setName(e.target.value)} className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl p-5 font-bold text-ug-navy focus:bg-white focus:ring-4 focus:ring-ug-teal/5 outline-none transition" />
+              </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Bio</label>
+                <textarea rows={6} value={bio || ''} onChange={e => setBio(e.target.value)} className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl p-5 font-medium text-gray-600 focus:bg-white focus:ring-4 focus:ring-ug-teal/5 outline-none resize-none leading-relaxed text-sm" placeholder="A little about yourself..." />
+              </div>
+            </div>
+
+            {/* Field Group: Links */}
+            <div className="space-y-6 pt-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-1.5 h-6 bg-ug-teal rounded-full"></div>
+                <h4 className="text-sm font-black text-ug-navy uppercase tracking-widest">Personal Links</h4>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[
+                  { label: "Portfolio / Website", val: website, setter: setWebsite },
+                  { label: "LinkedIn Link", val: website2, setter: setWebsite2 },
+                  { label: "Other Link 1", val: website3, setter: setWebsite3 },
+                  { label: "Other Link 2", val: website4, setter: setWebsite4 },
+                ].map((input, idx) => (
+                  <div key={idx} className="space-y-3">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{input.label}</label>
+                    <div className="relative">
+                      <LinkIcon className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+                      <input type="url" placeholder="https://..." value={input.val || ''} onChange={e => input.setter(e.target.value)} className="w-full pl-12 pr-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl font-bold text-ug-navy focus:bg-white focus:ring-4 focus:ring-ug-teal/5 outline-none transition" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex justify-end pt-6">
               <button 
-                type="button"
-                onClick={handleAvatarClick}
-                className="mt-4 text-[10px] font-black text-ug-teal uppercase tracking-widest hover:text-ug-navy transition"
+                type="submit" 
+                disabled={loading} 
+                className="group relative bg-ug-navy text-white px-12 py-5 rounded-2xl font-black uppercase text-[11px] tracking-[0.3em] shadow-2xl hover:bg-ug-teal transition-all flex items-center gap-4 active:scale-95 disabled:opacity-50"
               >
-                Change Discovery Asset
+                {loading ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} className="group-hover:scale-110 transition-transform" />}
+                Save Changes
               </button>
-           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-ug-navy uppercase tracking-widest flex items-center gap-2">
-              <UserIcon size={14} className="text-ug-teal" /> Verified Academic/Corporate Name
-            </label>
-            <input required type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-bold text-ug-navy focus:outline-none focus:ring-2 focus:ring-ug-teal/20 transition-all" />
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-ug-navy uppercase tracking-widest flex items-center gap-2">
-              <LinkIcon size={14} className="text-ug-teal" /> Portfolio / LinkedIn URL
-            </label>
-            <input type="url" placeholder="https://..." value={website} onChange={e => setWebsite(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-bold text-ug-navy focus:outline-none focus:ring-2 focus:ring-ug-teal/20 transition-all" />
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-ug-navy uppercase tracking-widest flex items-center gap-2">
-              <LinkIcon size={14} className="text-ug-teal" /> Portfolio Link 2
-            </label>
-            <input type="url" placeholder="https://..." value={website2} onChange={e => setWebsite2(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-bold text-ug-navy focus:outline-none focus:ring-2 focus:ring-ug-teal/20 transition-all" />
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-ug-navy uppercase tracking-widest flex items-center gap-2">
-              <LinkIcon size={14} className="text-ug-teal" /> Portfolio Link 3
-            </label>
-            <input type="url" placeholder="https://..." value={website3} onChange={e => setWebsite3(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-bold text-ug-navy focus:outline-none focus:ring-2 focus:ring-ug-teal/20 transition-all" />
+            </div>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-ug-navy uppercase tracking-widest flex items-center gap-2">
-            <FileText size={14} className="text-ug-teal" /> Professional Biography & Narrative
-          </label>
-          <textarea rows={5} value={bio} onChange={e => setBio(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-ug-teal/20 transition-all resize-none" placeholder="Briefly describe your areas of expertise..." />
-        </div>
+        {/* Sidebar Info */}
+        <div className="lg:col-span-4 space-y-8">
+          <div className="bg-ug-navy text-white p-10 rounded-[3rem] shadow-xl relative overflow-hidden group/card">
+            <div className="absolute bottom-0 right-0 p-8 opacity-5 group-hover/card:opacity-10 transition-opacity"><ShieldCheck size={120} /></div>
+            <div className="relative z-10 space-y-6">
+              <div>
+                <h4 className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-2">Security</h4>
+                <h3 className="text-xl font-black tracking-tight uppercase">Account</h3>
+              </div>
+              <div className="pt-4 space-y-3 font-black uppercase tracking-widest text-[10px]">
+                 <button type="button" className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition group text-left">
+                    <span>Reset Password</span>
+                    <Lock size={14} className="text-ug-teal" />
+                 </button>
+                 <button type="button" className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition group text-left">
+                    <span>Privacy</span>
+                    <ShieldCheck size={14} className="text-ug-teal" />
+                 </button>
+              </div>
+            </div>
+          </div>
 
-        <div className="flex justify-end pt-4">
-          <button 
-            type="submit" 
-            disabled={loading} 
-            className="bg-ug-navy text-white px-12 py-5 rounded-[1.5rem] font-black uppercase tracking-widest shadow-2xl hover:bg-ug-teal transition-all flex items-center gap-3 disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="animate-spin" size={20} /> : <ShieldCheck size={20} />} 
-            Finalize Secure Update
-          </button>
+          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
+             <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Other Actions</h4>
+             <button type="button" className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl group transition">
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Download My Data</span>
+                <Download size={14} className="text-gray-300" />
+             </button>
+             <button type="button" className="w-full flex items-center justify-between p-4 hover:bg-red-50 rounded-2xl group transition group">
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest group-hover:text-red-600 transition">Delete Account</span>
+                <Trash2 size={14} className="text-gray-300 group-hover:text-red-300 transition" />
+             </button>
+          </div>
         </div>
       </form>
-
-      <div className="mt-20 p-10 bg-ug-navy/5 rounded-[3rem] border border-dashed border-ug-navy/10 flex flex-col md:flex-row items-center gap-8">
-         <div className="p-5 bg-white rounded-3xl shadow-sm text-ug-teal">
-           <AlertCircle size={32} />
-         </div>
-         <div>
-           <h4 className="font-black text-ug-navy uppercase tracking-widest text-sm mb-1">Identity Compliance</h4>
-           <p className="text-xs text-gray-500 font-medium leading-relaxed max-w-2xl">Updating your verified profile may trigger a re-validation from ORID administrators. All profile imagery is scanned for professional compliance with University of Ghana standards.</p>
-         </div>
-      </div>
     </div>
   );
 };

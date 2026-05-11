@@ -345,14 +345,14 @@ export const StorageService = {
         console.warn("Database schema mismatch detected. Retrying with safe fields...");
         
         // Remove known problematic fields if schema is outdated
-        const { website_url_2, website_url_3, ai_profile, embedding, semantic_summary, ...safeProfile } = profile as any;
+        const { website_url_2, website_url_3, website_url_4, ai_profile, embedding, semantic_summary, ...safeProfile } = profile as any;
         const retryResult = existing 
           ? await supabase.from('profiles').update(safeProfile).eq('id', profile.id)
           : await supabase.from('profiles').insert([safeProfile]);
         
         if (!retryResult.error) {
           const missingCol = msg.includes('embedding') ? 'embedding' : (msg.includes('ai_profile') ? 'ai_profile' : 'website_url_x');
-          throw new Error(`SCHEMA ERROR: Column "${missingCol}" is missing in Supabase. Please run the SQL in your Supabase Editor to update the schema.`);
+          throw new Error(`DATABASE UPDATE NEEDED: One or more columns (like portfolio links or AI profile) are missing. Please run the latest SQL setup in your Supabase Editor.`);
         }
       }
       
