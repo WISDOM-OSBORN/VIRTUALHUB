@@ -25,7 +25,7 @@ interface DashboardProps {
 const MobileNav: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; role: UserRole; unreadCount: number }> = ({ activeTab, setActiveTab, role, unreadCount }) => {
   const tabs = [
     { id: 'overview', icon: LayoutGrid, label: 'Overview' },
-    { id: 'matches', icon: Target, label: role === UserRole.Student ? 'Discover' : 'Matches' },
+    { id: 'matches', icon: Target, label: 'MY MATCHES' },
     { id: 'messages', icon: MessageSquare, label: 'Chat' },
     { id: 'profile', icon: UserIcon, label: 'Me' },
   ];
@@ -67,10 +67,19 @@ const MobileNav: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; r
 const Sidebar: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; role: UserRole; user: User | null }> = ({ activeTab, setActiveTab, role, user }) => {
   const tabs = [
     { id: 'overview', icon: LayoutGrid, label: 'Overview' },
-    { id: 'matches', icon: Target, label: role === UserRole.Student ? 'Discover' : 'My Matches', sparkles: role !== UserRole.Student },
+    { id: 'matches', icon: Target, label: 'MY MATCHES', sparkles: true },
     { id: 'messages', icon: MessageSquare, label: 'Messages' },
     { id: 'profile', icon: UserIcon, label: 'Profile' },
   ];
+
+  const getPortalTitle = () => {
+    switch(role) {
+      case UserRole.Student: return 'STUDENT';
+      case UserRole.Partner: return 'PARTNER';
+      case UserRole.Industry: return 'INDUSTRY';
+      default: return 'RESEARCHER';
+    }
+  };
 
   return (
     <div className="hidden lg:flex w-64 h-full bg-white border-r border-gray-100 flex-col p-6 shrink-0">
@@ -79,7 +88,7 @@ const Sidebar: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; rol
           <GraduationCap size={20} />
         </div>
         <h2 className="text-sm font-black text-ug-navy uppercase tracking-widest leading-none">
-          RESEARCHER<br/><span className="text-ug-teal">PORTAL</span>
+          {getPortalTitle()}<br/><span className="text-ug-teal">PORTAL</span>
         </h2>
       </div>
 
@@ -1681,13 +1690,37 @@ const MatchesView = ({ user }: { user: User | null }) => {
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 md:mb-8 gap-4 relative z-10">
           <div className="flex items-center gap-3">
             <Target size={20} className="text-ug-teal" />
-            <h2 className="text-lg md:text-xl font-black text-ug-navy">Intelligent Ecosystem Matching</h2>
+            <h2 className="text-lg md:text-xl font-black text-ug-navy">Neural Matching Logic</h2>
           </div>
           <div className="flex items-center gap-2">
              <span className={`${isProcessing ? 'animate-bounce' : 'animate-pulse'} w-2 h-2 bg-ug-teal rounded-full`}></span>
              <span className="text-[9px] font-black text-ug-teal uppercase tracking-widest">
                {isProcessing ? 'AI Reasoner Active' : 'Neural Stream Active'}
              </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 relative z-10">
+          <div className="p-4 bg-ug-teal/5 rounded-2xl border border-ug-teal/10 backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Zap size={14} className="text-ug-teal" />
+              <span className="text-[10px] font-black uppercase text-ug-navy">Vectorization</span>
+            </div>
+            <p className="text-[9px] text-gray-500 font-medium leading-relaxed">Your profile is converted into a 768-dimension semantic vector representing your total technical identity.</p>
+          </div>
+          <div className="p-4 bg-ug-navy/5 rounded-2xl border border-ug-navy/10 backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Target size={14} className="text-ug-navy" />
+              <span className="text-[10px] font-black uppercase text-ug-navy">Cosine Similarity</span>
+            </div>
+            <p className="text-[9px] text-gray-500 font-medium leading-relaxed">We calculate the mathematical distance between your profile and every project in the ecosystem.</p>
+          </div>
+          <div className="p-4 bg-ug-teal/5 rounded-2xl border border-ug-teal/10 backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles size={14} className="text-ug-teal" />
+              <span className="text-[10px] font-black uppercase text-ug-navy">AI Re-ranking</span>
+            </div>
+            <p className="text-[9px] text-gray-500 font-medium leading-relaxed">Top matches are re-analyzed by LLMs to determine strategic alignment and logical reasoning.</p>
           </div>
         </div>
 
@@ -1963,138 +1996,215 @@ const ProfileSettings: React.FC<{ user: User | null; onUpdate: () => void }> = (
         avatar_url: avatarUrl 
       });
       
-      showToast("Profile saved successfully", "success");
+      showToast("Profile identity updated", "success");
       onUpdate();
     } catch (err: any) { 
-      showToast(`Save failed: ${err.message}`, "error"); 
+      showToast(`Update failed: ${err.message}`, "error"); 
     } finally { 
       setLoading(false); 
     }
   };
 
   return (
-    <div className="animate-fade-in space-y-8">
-      {/* Profile Header */}
-      <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-10">
-        <div 
-          onClick={handleAvatarClick}
-          className="w-32 h-32 md:w-40 md:h-40 rounded-[3rem] overflow-hidden bg-gray-50 border-8 border-white shadow-2xl cursor-pointer group relative flex-shrink-0"
-        >
-          {avatarPreview ? (
-            <img src={avatarPreview} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" alt="Avatar" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-200"><UserIcon size={64} /></div>
-          )}
-          <div className="absolute inset-0 bg-ug-navy/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white backdrop-blur-[2px]">
-            <Camera size={24} />
+    <div className="animate-fade-in space-y-12 pb-24">
+      {/* Identity Card */}
+      <div className="bg-white p-10 md:p-14 rounded-[4rem] border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-12 md:gap-20">
+        <div className="relative group">
+          <div 
+            onClick={handleAvatarClick}
+            className="w-40 h-40 md:w-56 md:h-56 rounded-[4rem] overflow-hidden bg-gray-50 border-[12px] border-white shadow-2xl cursor-pointer relative"
+          >
+            {avatarPreview ? (
+              <img src={avatarPreview} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" alt="Avatar" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-200 bg-ug-navy/5"><UserIcon size={72} strokeWidth={1} /></div>
+            )}
+            <div className="absolute inset-0 bg-ug-navy/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center text-white backdrop-blur-[4px] gap-2">
+              <Camera size={28} />
+              <span className="text-[9px] font-black uppercase tracking-[0.2em]">Change Picture</span>
+            </div>
           </div>
+          <button 
+            type="button"
+            onClick={handleAvatarClick}
+            className="absolute -bottom-2 -right-2 w-14 h-14 bg-ug-teal text-white rounded-2xl flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all"
+          >
+            <Pencil size={24} />
+          </button>
           <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
         </div>
         
-        <div className="text-center md:text-left space-y-4 flex-1">
-          <div>
-            <h3 className="text-2xl font-black text-ug-navy tracking-tight uppercase">{name || 'My Profile'}</h3>
-            <p className="text-[10px] font-black text-ug-teal uppercase tracking-[0.3em] mt-1 italic">User Details</p>
+        <div className="text-center md:text-left space-y-6 flex-1">
+          <div className="space-y-1">
+            <h3 className="text-3xl md:text-4xl font-black text-ug-navy tracking-tight">{name || 'New Member'}</h3>
+            <div className="flex flex-wrap justify-center md:justify-start gap-3 items-center">
+              <span className="text-[10px] font-black text-ug-teal uppercase tracking-[0.3em] italic">Official Researcher Profile</span>
+              <span className="w-1.5 h-1.5 bg-gray-200 rounded-full"></span>
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{user?.email}</span>
+            </div>
           </div>
-          <p className="text-xs text-gray-400 font-medium max-w-xl leading-relaxed">
-            Update your profile picture and details here. These will be visible to potential partners in the network.
+          <p className="text-sm md:text-base text-gray-500 font-medium max-w-2xl leading-relaxed">
+            Update your profile details and personal links to ensure the intelligence engine can match you with the right projects and partners.
           </p>
           <div className="flex flex-wrap justify-center md:justify-start gap-4">
-            <button type="button" onClick={handleAvatarClick} className="px-5 py-2.5 bg-gray-50 hover:bg-ug-navy hover:text-white transition rounded-xl text-[9px] font-black uppercase tracking-widest border border-gray-200">Change Profile Picture</button>
-            <div className="px-5 py-2.5 bg-ug-teal/5 text-ug-teal rounded-xl text-[9px] font-black uppercase tracking-widest border border-ug-teal/10">Member Status: Active</div>
+            <button type="button" onClick={handleAvatarClick} className="px-8 py-4 bg-ug-navy text-white hover:bg-ug-teal transition rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl">Change Profile Picture</button>
+            <div className="px-8 py-4 bg-white text-gray-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-gray-100">Status: Verified</div>
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Profile Details */}
-        <div className="lg:col-span-8 flex flex-col gap-8">
-          <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm space-y-10">
-            {/* Field Group: Core Info */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-1.5 h-6 bg-ug-teal rounded-full"></div>
-                <h4 className="text-sm font-black text-ug-navy uppercase tracking-widest">About Me</h4>
+      <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+        <div className="lg:col-span-8 space-y-10">
+          <div className="bg-white p-10 md:p-14 rounded-[4rem] border border-gray-100 shadow-sm space-y-14">
+            {/* Biography Section */}
+            <div className="space-y-8">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-ug-teal/10 text-ug-teal rounded-2xl flex items-center justify-center"><FileText size={24} /></div>
+                <div>
+                  <h4 className="text-xl font-black text-ug-navy tracking-tight uppercase">My Information</h4>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">Professional Narrative</p>
+                </div>
               </div>
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
-                <input required type="text" value={name || ''} onChange={e => setName(e.target.value)} className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl p-5 font-bold text-ug-navy focus:bg-white focus:ring-4 focus:ring-ug-teal/5 outline-none transition" />
-              </div>
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Bio</label>
-                <textarea rows={6} value={bio || ''} onChange={e => setBio(e.target.value)} className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl p-5 font-medium text-gray-600 focus:bg-white focus:ring-4 focus:ring-ug-teal/5 outline-none resize-none leading-relaxed text-sm" placeholder="A little about yourself..." />
+              
+              <div className="grid grid-cols-1 gap-8">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Display Name</label>
+                  <input 
+                    required type="text" 
+                    value={name || ''} 
+                    onChange={e => setName(e.target.value)} 
+                    className="w-full bg-gray-50/50 border-2 border-transparent rounded-[1.5rem] p-6 font-bold text-ug-navy focus:bg-white focus:border-ug-teal focus:ring-8 focus:ring-ug-teal/5 outline-none transition-all shadow-inner text-lg" 
+                    placeholder="Enter your full name..."
+                  />
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Short Bio</label>
+                  <textarea 
+                    rows={8} 
+                    value={bio || ''} 
+                    onChange={e => setBio(e.target.value)} 
+                    className="w-full bg-gray-50/50 border-2 border-transparent rounded-[1.5rem] p-6 font-medium text-gray-600 focus:bg-white focus:border-ug-teal focus:ring-8 focus:ring-ug-teal/5 outline-none resize-none leading-relaxed text-base shadow-inner" 
+                    placeholder="Tell us about your expertise, research interests, and goals..." 
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Field Group: Links */}
-            <div className="space-y-6 pt-4">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-1.5 h-6 bg-ug-teal rounded-full"></div>
-                <h4 className="text-sm font-black text-ug-navy uppercase tracking-widest">Personal Links</h4>
+            {/* Portfolio Links */}
+            <div className="space-y-8">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-ug-navy text-white rounded-2xl flex items-center justify-center shadow-2xl"><LinkIcon size={24} /></div>
+                <div>
+                  <h4 className="text-xl font-black text-ug-navy tracking-tight uppercase">Portfolio Slots</h4>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">External Research Links (Up to 4)</p>
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {[
-                  { label: "Portfolio / Website", val: website, setter: setWebsite },
-                  { label: "LinkedIn Link", val: website2, setter: setWebsite2 },
-                  { label: "Other Link 1", val: website3, setter: setWebsite3 },
-                  { label: "Other Link 2", val: website4, setter: setWebsite4 },
+                  { label: "Main Portfolio Website", val: website, setter: setWebsite, placeholder: "https://yourwebsite.com" },
+                  { label: "LinkedIn Profile", val: website2, setter: setWebsite2, placeholder: "https://linkedin.com/in/..." },
+                  { label: "Research Archive Link", val: website3, setter: setWebsite3, placeholder: "Scholar or Project link" },
+                  { label: "Extra Portfolio Slot", val: website4, setter: setWebsite4, placeholder: "Any other relevant link" },
                 ].map((input, idx) => (
                   <div key={idx} className="space-y-3">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{input.label}</label>
-                    <div className="relative">
-                      <LinkIcon className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
-                      <input type="url" placeholder="https://..." value={input.val || ''} onChange={e => input.setter(e.target.value)} className="w-full pl-12 pr-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl font-bold text-ug-navy focus:bg-white focus:ring-4 focus:ring-ug-teal/5 outline-none transition" />
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">{input.label}</label>
+                    <div className="relative group">
+                      <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-ug-teal transition-colors">
+                        <LinkIcon size={16} />
+                      </div>
+                      <input 
+                        type="url" 
+                        placeholder={input.placeholder}
+                        value={input.val || ''} 
+                        onChange={e => input.setter(e.target.value)} 
+                        className="w-full pl-16 pr-6 py-5 bg-gray-50/50 border-2 border-transparent rounded-[1.5rem] font-bold text-ug-navy focus:bg-white focus:border-ug-teal focus:ring-8 focus:ring-ug-teal/5 outline-none transition-all shadow-inner text-sm" 
+                      />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            
-            <div className="flex justify-end pt-6">
+
+            <div className="flex justify-end pt-8">
               <button 
                 type="submit" 
                 disabled={loading} 
-                className="group relative bg-ug-navy text-white px-12 py-5 rounded-2xl font-black uppercase text-[11px] tracking-[0.3em] shadow-2xl hover:bg-ug-teal transition-all flex items-center gap-4 active:scale-95 disabled:opacity-50"
+                className="group w-full md:w-auto bg-ug-navy text-white px-16 py-6 rounded-[1.5rem] font-black uppercase text-[12px] tracking-[0.3em] shadow-2xl hover:bg-ug-teal transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
               >
-                {loading ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} className="group-hover:scale-110 transition-transform" />}
-                Save Changes
+                {loading ? <Loader2 className="animate-spin" size={24} /> : <Check size={24} className="group-hover:scale-125 transition-transform" />}
+                Save My Profile
               </button>
             </div>
           </div>
         </div>
 
-        {/* Sidebar Info */}
-        <div className="lg:col-span-4 space-y-8">
-          <div className="bg-ug-navy text-white p-10 rounded-[3rem] shadow-xl relative overflow-hidden group/card">
-            <div className="absolute bottom-0 right-0 p-8 opacity-5 group-hover/card:opacity-10 transition-opacity"><ShieldCheck size={120} /></div>
-            <div className="relative z-10 space-y-6">
+        <div className="lg:col-span-4 space-y-10">
+          <div className="bg-ug-navy text-white p-10 md:p-12 rounded-[4rem] shadow-2xl relative overflow-hidden group/secure">
+            <div className="absolute -bottom-10 -right-10 opacity-5 group-hover/secure:opacity-10 transition-all duration-1000 rotate-12">
+              <ShieldCheck size={240} />
+            </div>
+            
+            <div className="relative z-10 space-y-10">
               <div>
-                <h4 className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-2">Security</h4>
-                <h3 className="text-xl font-black tracking-tight uppercase">Account</h3>
+                <h4 className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-2 flex items-center gap-2">
+                  <ShieldCheck size={14} /> Security Hub
+                </h4>
+                <h3 className="text-2xl font-black tracking-tight leading-tight uppercase">Privacy Controls</h3>
               </div>
-              <div className="pt-4 space-y-3 font-black uppercase tracking-widest text-[10px]">
-                 <button type="button" className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition group text-left">
-                    <span>Reset Password</span>
-                    <Lock size={14} className="text-ug-teal" />
-                 </button>
-                 <button type="button" className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition group text-left">
-                    <span>Privacy</span>
-                    <ShieldCheck size={14} className="text-ug-teal" />
-                 </button>
+              
+              <div className="space-y-4">
+                <button 
+                  type="button" 
+                  className="w-full flex items-center justify-between p-6 bg-white/5 hover:bg-white/10 rounded-3xl border border-white/5 transition group text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-ug-teal/10 text-ug-teal rounded-xl shadow-lg border border-ug-teal/20"><Lock size={18} /></div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Reset Password</span>
+                  </div>
+                  <ChevronRight size={18} className="text-white/20 group-hover:text-ug-teal group-hover:translate-x-1 transition" />
+                </button>
+                
+                <button 
+                  type="button" 
+                  className="w-full flex items-center justify-between p-6 bg-white/5 hover:bg-white/10 rounded-3xl border border-white/5 transition group text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-blue-500/10 text-blue-400 rounded-xl shadow-lg border border-blue-500/20"><Eye size={18} /></div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Visibility Mode</span>
+                  </div>
+                  <ChevronRight size={18} className="text-white/20 group-hover:text-blue-400 group-hover:translate-x-1 transition" />
+                </button>
+              </div>
+
+              <div className="bg-white/5 p-6 rounded-3xl border border-white/5 space-y-4">
+                 <p className="text-[10px] font-medium text-white/50 leading-relaxed italic">
+                   "Your data is used specifically for matchmaking and is never shared with third-party advertisers."
+                 </p>
+                 <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 bg-ug-success rounded-full animate-pulse"></span>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-ug-success">Encrypted & Secure</span>
+                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-             <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Other Actions</h4>
-             <button type="button" className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl group transition">
-                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Download My Data</span>
-                <Download size={14} className="text-gray-300" />
-             </button>
-             <button type="button" className="w-full flex items-center justify-between p-4 hover:bg-red-50 rounded-2xl group transition group">
-                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest group-hover:text-red-600 transition">Delete Account</span>
-                <Trash2 size={14} className="text-gray-300 group-hover:text-red-300 transition" />
-             </button>
+          <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm space-y-6">
+            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Administrative</h4>
+            <div className="space-y-2">
+              <button type="button" className="w-full flex items-center justify-between p-5 hover:bg-gray-50 rounded-2xl transition group text-left border border-transparent hover:border-gray-100">
+                <div className="flex items-center gap-4">
+                  <Download size={18} className="text-gray-300 group-hover:text-ug-navy transition" />
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Download Data</span>
+                </div>
+              </button>
+              <button type="button" className="w-full flex items-center justify-between p-5 hover:bg-red-50 rounded-2xl transition group text-left border border-transparent hover:border-red-100">
+                <div className="flex items-center gap-4">
+                  <Trash2 size={18} className="text-gray-300 group-hover:text-red-500 transition" />
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest group-hover:text-red-600 transition">Delete Account</span>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </form>

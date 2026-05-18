@@ -12,7 +12,7 @@ export const EmbeddingService = {
     try {
       const ai = new GoogleGenAI({ apiKey });
       const result = await ai.models.embedContent({
-        model: "gemini-embedding-2-preview",
+        model: "text-embedding-004", // Most stable for matching
         contents: [text],
       });
       

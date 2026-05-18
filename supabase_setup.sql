@@ -6,14 +6,17 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Profiles table schema enhancements
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS ai_profile JSONB;
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS embedding vector(768); -- For text-embedding-004 (768 dims)
+-- Recreate embedding column for new dimensions (drops existing 768-dim data)
+ALTER TABLE profiles DROP COLUMN IF EXISTS embedding;
+ALTER TABLE profiles ADD COLUMN embedding vector(768);
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS semantic_summary TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS website_url_2 TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS website_url_3 TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS website_url_4 TEXT;
 
 -- Projects table schema enhancements
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS embedding vector(768);
+ALTER TABLE projects DROP COLUMN IF EXISTS embedding;
+ALTER TABLE projects ADD COLUMN embedding vector(768);
 
 -- 1. Create Buckets
 INSERT INTO storage.buckets (id, name, public) 
@@ -67,6 +70,7 @@ CREATE POLICY "Owner Avatar Delete" ON storage.objects FOR DELETE TO authenticat
 
 -- MATCHING FUNCTIONS
 -- Search profiles by similarity
+DROP FUNCTION IF EXISTS match_profiles(vector, double precision, integer, uuid);
 CREATE OR REPLACE FUNCTION match_profiles (
   query_embedding vector(768),
   match_threshold float,
@@ -101,6 +105,7 @@ END;
 $$;
 
 -- Search projects by similarity
+DROP FUNCTION IF EXISTS match_projects(vector, double precision, integer);
 CREATE OR REPLACE FUNCTION match_projects (
   query_embedding vector(768),
   match_threshold float,

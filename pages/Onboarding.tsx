@@ -54,11 +54,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
         reader.onload = async (e) => {
           try {
             const arrayBuffer = e.target?.result as ArrayBuffer;
-            
-            // Standard dynamic import for pdfjs is tricky in build envs,
-            // we use the library directly as it was installed via npm.
             const pdfjsLib = await import('pdfjs-dist');
-            // Using a slightly more robust CDN link pattern
             const workerUrl = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
             pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -90,7 +86,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
           }
         };
         reader.readAsArrayBuffer(file);
-      } else {
+      } else if (file.type === 'text/plain') {
         // Handle basic text files
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -99,6 +95,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
           showToast("Document registered", "success");
         };
         reader.readAsText(file);
+      } else {
+        // Word or other binary formats not directly supported for extraction
+        setIsUploading(false);
+        showToast("Word documents (.docx) cannot be parsed directly. Please paste the text below.", "warning");
       }
     } catch (error) {
       setIsUploading(false);
@@ -223,6 +223,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
           <input 
             type="text" 
             placeholder="e.g. Molecular Biology, FinTech, Robotics..."
+            value={answers.expertise || ''}
             onChange={(e) => setAnswers({...answers, expertise: e.target.value})}
             className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-5 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
           />
@@ -232,6 +233,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
           <div>
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Education Level</label>
             <select 
+              value={answers.edu_level || ''}
               onChange={(e) => setAnswers({...answers, edu_level: e.target.value})}
               className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-5 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold cursor-pointer"
             >
@@ -247,6 +249,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
             <input 
               type="text" 
               placeholder="e.g. Computer Science"
+              value={answers.program || ''}
               onChange={(e) => setAnswers({...answers, program: e.target.value})}
               className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-5 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
             />
