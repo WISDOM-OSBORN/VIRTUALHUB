@@ -37,57 +37,87 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
     setStep('questionnaire');
   };
 
+  const handleLookingForToggle = (option: string) => {
+    const currentSelections = Array.isArray(answers.looking_for)
+      ? answers.looking_for
+      : answers.looking_for
+        ? [answers.looking_for]
+        : [];
+
+    let nextSelections: string[];
+    if (currentSelections.includes(option)) {
+      nextSelections = currentSelections.filter(item => item !== option);
+    } else {
+      nextSelections = [...currentSelections, option];
+    }
+
+    setAnswers({
+      ...answers,
+      looking_for: nextSelections
+    });
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.type !== 'application/pdf' && !file.type.includes('text') && !file.type.includes('word')) {
-      showToast("Please upload a PDF or Document file", "error");
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+    const isPDF = file.type === 'application/pdf' || fileExt === 'pdf';
+    const isText = file.type === 'text/plain' || fileExt === 'txt';
+    const isDoc = file.type.includes('word') || ['doc', 'docx'].includes(fileExt || '');
+
+    if (!isPDF && !isText && !isDoc) {
+      showToast("Please upload a PDF, DOCX or TXT file", "error");
       return;
     }
 
     setIsUploading(true);
     
     try {
-      if (file.type === 'application/pdf') {
+      if (isPDF) {
         const reader = new FileReader();
         reader.onload = async (e) => {
           try {
             const arrayBuffer = e.target?.result as ArrayBuffer;
+            // Robust dynamic import for pdfjs
             const pdfjsLib = await import('pdfjs-dist');
-            const workerUrl = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-            pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+            // We use a fixed version that matches the package.json
+            const pdfjsVersion = '5.7.284'; 
+            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.mjs`;
 
-            const pdf = await pdfjsLib.getDocument({ 
+            const loadingTask = pdfjsLib.getDocument({ 
               data: arrayBuffer,
               useWorkerFetch: false,
-              isEvalSupported: false,
-            } as any).promise;
+            });
+
+            const pdf = await loadingTask.promise;
             let fullText = '';
             
             for (let i = 1; i <= pdf.numPages; i++) {
               const page = await pdf.getPage(i);
               const textContent = await page.getTextContent();
-              const pageText = textContent.items.map((item: any) => item.str).join(' ');
+              const pageText = textContent.items
+                .map((item: any) => item.str)
+                .join(' ');
               fullText += pageText + '\n';
             }
 
-            if (fullText.trim().length < 50) {
-              showToast("Low text density detected. Consider pasting text manually.", "info");
+            // Cleanup
+            if (fullText.trim().length < 20) {
+              throw new Error("Empty extraction");
             }
 
-            setCvText(fullText);
+            setCvText(fullText.trim());
             showToast("Resume parsed successfully", "success");
           } catch (err) {
             console.error("PDF Parse Error:", err);
-            showToast("Failed to parse PDF structure. Please paste text manually.", "error");
+            showToast("Parsing failed. Please paste text directly into the area below.", "warning");
           } finally {
             setIsUploading(false);
           }
         };
         reader.readAsArrayBuffer(file);
-      } else if (file.type === 'text/plain') {
-        // Handle basic text files
+      } else if (isText) {
         const reader = new FileReader();
         reader.onload = (e) => {
           setCvText(e.target?.result as string);
@@ -96,7 +126,6 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
         };
         reader.readAsText(file);
       } else {
-        // Word or other binary formats not directly supported for extraction
         setIsUploading(false);
         showToast("Word documents (.docx) cannot be parsed directly. Please paste the text below.", "warning");
       }
@@ -122,8 +151,9 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
       let embedding: number[] | undefined;
       try {
         embedding = await EmbeddingService.getEmbedding(profile.embedding_text);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Embedding generation failed:", err);
+        showToast(err?.message || "AI Vector Matching setup failed due to missing credentials. Using local fallbacks.", "warning");
       }
 
       // Save to Supabase
@@ -134,7 +164,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
           ai_profile: profile,
           bio: profile.semantic_summary,
           embedding,
-          semantic_summary: profile.semantic_summary
+          semantic_summary: profile.semantic_summary,
+          answers: answers // Added answers here
         });
       }
       
@@ -163,10 +194,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { id: UserRole.Researcher, icon: Users, label: 'Researcher', desc: 'Secure funding & industry partners.' },
           { id: UserRole.Student, icon: GraduationCap, label: 'Student', desc: 'Find internships & mentors.' },
-          { id: UserRole.Industry, icon: Building, label: 'Industry', desc: 'Scale solutions & hire talent.' },
-          { id: UserRole.Partner, icon: Wallet, label: 'Investor', desc: 'Discover high-impact research.' },
+          { id: UserRole.Researcher, icon: Users, label: 'Researcher', desc: 'Secure funding & assistants.' },
+          { id: UserRole.Investor, icon: Wallet, label: 'Investor', desc: 'Discover high-impact research.' },
+          { id: UserRole.IndustryPartner, icon: Building, label: 'Industry', desc: 'Scale solutions & hire talent.' },
         ].map((role) => (
           <motion.button
             key={role.id}
@@ -200,65 +231,168 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
         <p className="text-gray-400 text-sm font-medium mt-2 italic">Tell us what you want to achieve today.</p>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-8 max-h-[60vh] overflow-y-auto pr-4 scroll-smooth">
+        {/* COMMON QUESTIONS */}
         <div>
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">What are you currently looking for?</label>
-          <div className="grid grid-cols-2 gap-4">
-            {(selectedRole === UserRole.Researcher ? ['Funding', 'Industry Partner', 'Collaborator', 'Commercialization'] : ['Internships', 'Mentorship', 'Scholarships', 'Jobs']).map(option => (
-              <button
-                key={option}
-                onClick={() => setAnswers({...answers, looking_for: option})}
-                className={`py-4 px-6 rounded-2xl border-2 text-xs font-black uppercase tracking-wider transition-all ${
-                  answers.looking_for === option ? 'bg-ug-navy text-white border-ug-navy shadow-lg' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
-                }`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Your primary area of expertise?</label>
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Primary Focus</label>
           <input 
             type="text" 
             placeholder="e.g. Molecular Biology, FinTech, Robotics..."
             value={answers.expertise || ''}
             onChange={(e) => setAnswers({...answers, expertise: e.target.value})}
-            className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-5 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+            className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Education Level</label>
-            <select 
-              value={answers.edu_level || ''}
-              onChange={(e) => setAnswers({...answers, edu_level: e.target.value})}
-              className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-5 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold cursor-pointer"
-            >
-              <option value="">Select Level</option>
-              <option value="Undergraduate">Undergraduate</option>
-              <option value="Masters">Masters</option>
-              <option value="PhD">PhD</option>
-              <option value="Professional">Professional</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Program / Field</label>
-            <input 
-              type="text" 
-              placeholder="e.g. Computer Science"
-              value={answers.program || ''}
-              onChange={(e) => setAnswers({...answers, program: e.target.value})}
-              className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-5 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
-            />
+        <div>
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">What are you currently looking for?</label>
+          <div className="grid grid-cols-2 gap-3">
+            {(selectedRole === UserRole.Researcher 
+              ? ['Funding', 'Industry Partner', 'Student Assistants', 'Commercialization'] 
+              : selectedRole === UserRole.Student 
+              ? ['Internships', 'Mentorship', 'Research Collab', 'Scholarships']
+              : selectedRole === UserRole.Investor
+              ? ['High-Impact Research', 'Student Startups', 'Patent Portfolios', 'Commercial Ready']
+              : ['Skilled Talent', 'Problem Solving', 'Research Funding', 'Joint Ventures']
+            ).map(option => {
+              const isSelected = Array.isArray(answers.looking_for)
+                ? answers.looking_for.includes(option)
+                : answers.looking_for === option;
+              
+              return (
+                <button
+                  key={option}
+                  onClick={() => handleLookingForToggle(option)}
+                  className={`py-3 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all ${
+                    isSelected ? 'bg-ug-navy text-white border-ug-navy' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
+                  }`}
+                >
+                  {option}
+                </button>
+              );
+            })}
           </div>
         </div>
 
+        {/* ROLE-SPECIFIC QUESTIONS */}
+        {selectedRole === UserRole.Student && (
+          <div className="space-y-6 pt-4 border-t border-gray-50">
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Current Program</label>
+              <input 
+                type="text" 
+                placeholder="e.g. BSc Computer Science"
+                value={answers.program || ''}
+                onChange={(e) => setAnswers({...answers, program: e.target.value})}
+                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Availability</label>
+              <select 
+                value={answers.availability || ''}
+                onChange={(e) => setAnswers({...answers, availability: e.target.value})}
+                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold appearance-none"
+              >
+                <option value="">Select Availability</option>
+                <option value="immediate">Immediate</option>
+                <option value="next_month">Next Month</option>
+                <option value="part_time">Part-time</option>
+                <option value="internship_window">Specific Internship Window</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {selectedRole === UserRole.Researcher && (
+          <div className="space-y-6 pt-4 border-t border-gray-50">
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Research Stage</label>
+              <select 
+                value={answers.research_stage || ''}
+                onChange={(e) => setAnswers({...answers, research_stage: e.target.value})}
+                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold appearance-none"
+              >
+                <option value="">Select Stage</option>
+                <option value="conceptual">Conceptual / Literature Review</option>
+                <option value="prototype">Active Prototyping</option>
+                <option value="validation">Clinical / Market Validation</option>
+                <option value="scaling">Ready for Commercial Scaling</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-3 p-4 bg-ug-teal/5 rounded-2xl border border-ug-teal/10">
+              <input 
+                type="checkbox" 
+                id="needs_funding"
+                checked={!!answers.funding_needed}
+                onChange={(e) => setAnswers({...answers, funding_needed: e.target.checked})}
+                className="w-5 h-5 rounded-lg border-2 border-ug-teal text-ug-teal focus:ring-ug-teal"
+              />
+              <label htmlFor="needs_funding" className="text-xs font-black text-ug-navy uppercase tracking-widest cursor-pointer">Seeking External Funding</label>
+            </div>
+          </div>
+        )}
+
+        {selectedRole === UserRole.Investor && (
+          <div className="space-y-6 pt-4 border-t border-gray-50">
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Funding Range (USD)</label>
+              <select 
+                value={answers.funding_range || ''}
+                onChange={(e) => setAnswers({...answers, funding_range: e.target.value})}
+                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold appearance-none"
+              >
+                <option value="">Select Range</option>
+                <option value="seed">Seed: $10k - $50k</option>
+                <option value="pre_a">Pre-Series A: $50k - $250k</option>
+                <option value="growth">Growth: $250k+</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Investment Focus</label>
+              <input 
+                type="text" 
+                placeholder="e.g. Biotech, AI, Agri-tech"
+                value={answers.investment_focus || ''}
+                onChange={(e) => setAnswers({...answers, investment_focus: e.target.value})}
+                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+              />
+            </div>
+          </div>
+        )}
+
+        {selectedRole === UserRole.IndustryPartner && (
+          <div className="space-y-6 pt-4 border-t border-gray-50">
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Industry Sector</label>
+              <input 
+                type="text" 
+                placeholder="e.g. Manufacturing, Logistics, Retail"
+                value={answers.sector || ''}
+                onChange={(e) => setAnswers({...answers, sector: e.target.value})}
+                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Preferred Collaboration</label>
+              <select 
+                value={answers.collab_type || ''}
+                onChange={(e) => setAnswers({...answers, collab_type: e.target.value})}
+                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold appearance-none"
+              >
+                <option value="">Select Type</option>
+                <option value="internship">Internship Programs</option>
+                <option value="research">Sponsored Research</option>
+                <option value="advisory">Advisory & Mentorship</option>
+                <option value="licensing">Technology Licensing</option>
+              </select>
+            </div>
+          </div>
+        )}
+
         <button 
           onClick={() => setStep('resume')}
-          className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-8 flex items-center justify-center gap-3"
+          className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3"
         >
           Next Step <ChevronRight size={18} />
         </button>

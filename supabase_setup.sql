@@ -104,7 +104,7 @@ BEGIN
 END;
 $$;
 
--- Search projects by similarity
+-- 4. Search projects by similarity
 DROP FUNCTION IF EXISTS match_projects(vector, double precision, integer);
 CREATE OR REPLACE FUNCTION match_projects (
   query_embedding vector(768),
@@ -136,3 +136,44 @@ BEGIN
   LIMIT match_count;
 END;
 $$;
+
+-- 5. ROLE-SPECIFIC TABLES (Plan Implementation)
+-- Student profiles
+CREATE TABLE IF NOT EXISTS student_profiles (
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE PRIMARY KEY,
+  education_level text,
+  availability text,
+  looking_for text,
+  program text
+);
+
+-- Researcher profiles
+CREATE TABLE IF NOT EXISTS researcher_profiles (
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE PRIMARY KEY,
+  research_stage text,
+  funding_needed boolean DEFAULT false,
+  needs_students boolean DEFAULT false
+);
+
+-- Investor profiles
+CREATE TABLE IF NOT EXISTS investor_profiles (
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE PRIMARY KEY,
+  funding_range text,
+  investment_focus text
+);
+
+-- Industry profiles
+CREATE TABLE IF NOT EXISTS industry_profiles (
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE PRIMARY KEY,
+  sector text,
+  collaboration_type text
+);
+
+-- Behavioral Learning Table (Phase 10)
+CREATE TABLE IF NOT EXISTS interaction_logs (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
+  target_id uuid, -- Profile or Project ID
+  interaction_type text, -- 'click', 'accept', 'ignore', 'message'
+  created_at timestamp with time zone DEFAULT now()
+);

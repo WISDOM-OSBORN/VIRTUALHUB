@@ -1,9 +1,9 @@
 
 export enum UserRole {
-  Researcher = 'Researcher',
   Student = 'Student',
-  Partner = 'Partner',
-  Industry = 'Industry'
+  Researcher = 'Researcher',
+  Investor = 'Investor',
+  IndustryPartner = 'Industry/Partner'
 }
 
 export enum ProjectStatus {
@@ -67,6 +67,7 @@ export interface Project {
   views?: number;
   expressions_of_interest?: number;
   requests?: number;
+  embedding?: number[];
 }
 
 export interface AIProfile {

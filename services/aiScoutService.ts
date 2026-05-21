@@ -124,7 +124,14 @@ export const AIScoutService = {
 
   scoutGlobalTrends: async (): Promise<NewsItem[]> => {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY || "";
+      if (!apiKey) {
+        const errMsg = "AI Scout: GEMINI_API_KEY is missing. AI News Scouting and image generation will be skipped. Please add GEMINI_API_KEY or VITE_GEMINI_API_KEY in your settings.";
+        console.error(errMsg);
+        throw new Error(errMsg);
+      }
+      
+      const ai = new GoogleGenAI({ apiKey });
       const sitesPrompt = UG_SOURCES.join(", ");
       const globalPrompt = GLOBAL_ACCREDITED.join(", ");
       

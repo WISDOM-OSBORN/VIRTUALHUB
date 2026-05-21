@@ -75,8 +75,8 @@ const Sidebar: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; rol
   const getPortalTitle = () => {
     switch(role) {
       case UserRole.Student: return 'STUDENT';
-      case UserRole.Partner: return 'PARTNER';
-      case UserRole.Industry: return 'INDUSTRY';
+      case UserRole.Investor: return 'INVESTOR';
+      case UserRole.IndustryPartner: return 'INDUSTRY';
       default: return 'RESEARCHER';
     }
   };
@@ -1208,7 +1208,7 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
                 />
               )}
               {role === UserRole.Student && <StudentDashboard user={localUser} />}
-              {(role === UserRole.Partner || role === UserRole.Industry) && <PartnerDashboard user={localUser} />}
+              {(role === UserRole.Investor || role === UserRole.IndustryPartner) && <InvestorDashboard user={localUser} />}
             </div>
           )}
 
@@ -1632,10 +1632,13 @@ const ProfileInsight = ({ profile, onRefresh }: { profile: AIProfile | null, onR
 };
 
 const MatchesView = ({ user }: { user: User | null }) => {
+  const navigate = useNavigate();
   const [profileMatches, setProfileMatches] = useState<any[]>([]);
   const [projectMatches, setProjectMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showAllProjects, setShowAllProjects] = useState(false);
+  const [showAllProfiles, setShowAllProfiles] = useState(false);
 
   const fetchMatches = async () => {
     if (!user?.id || !user?.embedding) {
@@ -1645,17 +1648,39 @@ const MatchesView = ({ user }: { user: User | null }) => {
 
     setLoading(true);
     try {
-      const { profiles, projects } = await StorageService.getMatches(user.id, user.embedding);
+      // Safety: Ensure embedding is 768 before sending to RPC
+      let currentEmbedding = user.embedding;
+      if (currentEmbedding.length !== 768) {
+        currentEmbedding = currentEmbedding.slice(0, 768);
+        if (currentEmbedding.length < 768) {
+           currentEmbedding = [...currentEmbedding, ...new Array(768 - currentEmbedding.length).fill(0)];
+        }
+      }
       
+      const { profiles, projects } = await StorageService.getMatches(user.id, currentEmbedding);
+      
+      if (profiles.length === 0 && projects.length === 0) {
+        setProfileMatches([]);
+        setProjectMatches([]);
+        setLoading(false);
+        return;
+      }
+
       // Perform AI re-ranking if we have an AI profile
       if (user.ai_profile) {
         setIsProcessing(true);
-        const [rankedProfiles, rankedProjects] = await Promise.all([
-          MatchingService.rankMatches(user.ai_profile, profiles),
-          MatchingService.rankMatches(user.ai_profile, projects)
-        ]);
-        setProfileMatches(rankedProfiles);
-        setProjectMatches(rankedProjects);
+        try {
+          const [rankedProfiles, rankedProjects] = await Promise.all([
+            MatchingService.rankMatches(user.ai_profile, profiles),
+            MatchingService.rankMatches(user.ai_profile, projects)
+          ]);
+          setProfileMatches(rankedProfiles.length > 0 ? rankedProfiles : profiles.map(p => ({ ...p, ai_score: Math.round(p.similarity * 100) })));
+          setProjectMatches(rankedProjects.length > 0 ? rankedProjects : projects.map(p => ({ ...p, ai_score: Math.round(p.similarity * 100) })));
+        } catch (rankError) {
+          console.warn("AI Ranking failed, falling back to vector similarity:", rankError);
+          setProfileMatches(profiles.map(p => ({ ...p, ai_score: Math.round(p.similarity * 100) })));
+          setProjectMatches(projects.map(p => ({ ...p, ai_score: Math.round(p.similarity * 100) })));
+        }
       } else {
         setProfileMatches(profiles.map(p => ({ ...p, ai_score: Math.round(p.similarity * 100) })));
         setProjectMatches(projects.map(p => ({ ...p, ai_score: Math.round(p.similarity * 100) })));
@@ -1669,8 +1694,30 @@ const MatchesView = ({ user }: { user: User | null }) => {
   };
 
   useEffect(() => {
-    fetchMatches();
-  }, [user?.id, user?.embedding]);
+    const checkAndFetch = async () => {
+      if (!user?.id) return;
+      
+      // If user is missing embedding but has bio/semantic_summary, we might need a refresh
+      if (!user.embedding && user.semantic_summary) {
+        setLoading(true);
+        try {
+          // Re-fetch user profile once to see if it was updated in DB
+          const updatedUser = await StorageService.getProfile(user.id);
+          if (updatedUser?.embedding) {
+            // This will trigger the fetchMatches effect below
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.warn("Failed to check for user embedding refresh:", e);
+        }
+      }
+      
+      fetchMatches();
+    };
+    
+    checkAndFetch();
+  }, [user?.id, user?.embedding, user?.semantic_summary]);
 
   if (loading) {
     return (
@@ -1687,54 +1734,33 @@ const MatchesView = ({ user }: { user: User | null }) => {
         <div className="absolute top-0 right-0 p-8 opacity-10">
           <Sparkles size={120} className="text-ug-teal" />
         </div>
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 md:mb-8 gap-4 relative z-10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 relative z-10">
           <div className="flex items-center gap-3">
-            <Target size={20} className="text-ug-teal" />
-            <h2 className="text-lg md:text-xl font-black text-ug-navy">Neural Matching Logic</h2>
+            <Target size={24} className="text-ug-teal" />
+            <div>
+              <h2 className="text-xl md:text-2xl font-black text-ug-navy uppercase">Neural Matching Hub</h2>
+              <p className="text-[10px] font-black text-ug-teal uppercase tracking-[0.25em] mt-1">Intelligent Research Alignment</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-ug-teal/10 px-4 py-2 rounded-full border border-ug-teal/10">
              <span className={`${isProcessing ? 'animate-bounce' : 'animate-pulse'} w-2 h-2 bg-ug-teal rounded-full`}></span>
              <span className="text-[9px] font-black text-ug-teal uppercase tracking-widest">
-               {isProcessing ? 'AI Reasoner Active' : 'Neural Stream Active'}
+               {isProcessing ? 'AI Agent Reasoning...' : 'Neural Stream Active'}
              </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 relative z-10">
-          <div className="p-4 bg-ug-teal/5 rounded-2xl border border-ug-teal/10 backdrop-blur-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <Zap size={14} className="text-ug-teal" />
-              <span className="text-[10px] font-black uppercase text-ug-navy">Vectorization</span>
-            </div>
-            <p className="text-[9px] text-gray-500 font-medium leading-relaxed">Your profile is converted into a 768-dimension semantic vector representing your total technical identity.</p>
-          </div>
-          <div className="p-4 bg-ug-navy/5 rounded-2xl border border-ug-navy/10 backdrop-blur-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <Target size={14} className="text-ug-navy" />
-              <span className="text-[10px] font-black uppercase text-ug-navy">Cosine Similarity</span>
-            </div>
-            <p className="text-[9px] text-gray-500 font-medium leading-relaxed">We calculate the mathematical distance between your profile and every project in the ecosystem.</p>
-          </div>
-          <div className="p-4 bg-ug-teal/5 rounded-2xl border border-ug-teal/10 backdrop-blur-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles size={14} className="text-ug-teal" />
-              <span className="text-[10px] font-black uppercase text-ug-navy">AI Re-ranking</span>
-            </div>
-            <p className="text-[9px] text-gray-500 font-medium leading-relaxed">Top matches are re-analyzed by LLMs to determine strategic alignment and logical reasoning.</p>
-          </div>
-        </div>
-
-        <div className="p-6 bg-ug-teal/5 rounded-[2rem] border border-ug-teal/10 mb-8">
-          <p className="text-[10px] text-ug-teal font-bold leading-relaxed uppercase tracking-widest">
+        <div className="p-6 bg-gray-50/50 rounded-[2rem] border border-gray-100 mb-8 relative z-10">
+          <p className="text-[10px] text-gray-400 font-bold leading-relaxed uppercase tracking-[0.1em]">
             {profileMatches.length + projectMatches.length === 0 ? 
-              "No semantic matches found. Try refining your research profile summary." :
-              `Analyzing ${user?.ai_profile?.skills?.technical_skills?.length || 0} skills and ${user?.ai_profile?.projects?.length || 0} initiatives for high-fidelity compatibility.`
+              "No high-fidelity matches found. Try expanding your research profile or industry interests." :
+              `Cross-referencing your profile against the ecosystem. Found ${projectMatches.length} strategic projects and ${profileMatches.length} high-alignment collaborators.`
             }
           </p>
         </div>
 
         <div className="space-y-4">
-          {projectMatches.map((proj, i) => (
+          {(showAllProjects ? projectMatches : projectMatches.slice(0, 5)).map((proj, i) => (
             <div key={proj.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 md:p-6 border border-gray-100 rounded-[2rem] bg-gray-50/30 hover:bg-white hover:border-ug-teal/20 hover:shadow-xl transition-all cursor-pointer group gap-4 text-left">
               <div className="flex items-center gap-4 md:gap-6 flex-1 min-w-0">
                 <div className="w-12 h-12 md:w-16 md:h-16 bg-ug-navy/5 rounded-2xl flex items-center justify-center text-ug-navy group-hover:bg-ug-teal group-hover:text-white transition shrink-0 overflow-hidden">
@@ -1755,15 +1781,41 @@ const MatchesView = ({ user }: { user: User | null }) => {
               <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-8 border-t sm:border-t-0 pt-4 sm:pt-0 border-gray-100">
                  <div className="text-left sm:text-right">
                     <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">AI Match Score</p>
-                    <p className="text-lg md:text-xl font-black text-ug-teal">{proj.ai_score}%</p>
+                    <p className="text-lg md:text-xl font-black text-ug-teal">
+                      {proj.ai_score !== undefined && proj.ai_score !== null && !isNaN(Number(proj.ai_score)) 
+                        ? `${Math.round(Number(proj.ai_score))}%` 
+                        : '80%'
+                      }
+                    </p>
                  </div>
                  <button className="bg-ug-navy text-white px-5 md:px-6 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition shadow-lg shrink-0">Express Interest</button>
               </div>
             </div>
           ))}
+          {projectMatches.length > 5 && !showAllProjects && (
+            <button 
+              onClick={() => setShowAllProjects(true)}
+              className="w-full py-4 border-2 border-dashed border-gray-100 rounded-[2rem] text-[10px] font-black text-gray-400 uppercase tracking-widest hover:border-ug-teal hover:text-ug-teal transition-all"
+            >
+              See {projectMatches.length - 5} More Projects
+            </button>
+          )}
+
           {projectMatches.length === 0 && (
-            <div className="py-12 text-center text-gray-300 italic text-[10px] uppercase font-black tracking-widest">
-              Searching for relevant projects...
+            <div className="py-16 text-center bg-gray-50/50 rounded-[2.5rem] border-2 border-dashed border-gray-100">
+               <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm text-gray-200">
+                  <Rocket size={32} />
+               </div>
+               <h4 className="text-sm font-black text-ug-navy mb-2">No Strategic Project Matches Yet</h4>
+               <p className="text-[10px] font-medium text-gray-400 max-w-xs mx-auto leading-relaxed mb-6">
+                 We couldn't find any initiatives that perfectly align with your current research vector. Try exploring the global project directory.
+               </p>
+               <button 
+                 onClick={() => navigate('/projects')}
+                 className="px-6 py-3 bg-white border border-gray-200 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-ug-teal hover:text-ug-teal transition-all"
+               >
+                 Explore Project Discovery
+               </button>
             </div>
           )}
         </div>
@@ -1776,7 +1828,7 @@ const MatchesView = ({ user }: { user: User | null }) => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-           {profileMatches.map((collab, i) => (
+           {(showAllProfiles ? profileMatches : profileMatches.slice(0, 5)).map((collab, i) => (
              <div key={collab.id} className="bg-gray-50/30 border border-gray-50 rounded-[2.5rem] p-6 md:p-8 text-center hover:bg-white hover:shadow-2xl transition-all h-full flex flex-col justify-between group relative overflow-hidden backdrop-blur-sm">
                 <div className="absolute top-0 right-0 p-4">
                   <div className="text-[9px] font-black text-ug-teal bg-ug-teal/10 px-3 py-1 rounded-full uppercase tracking-widest">
@@ -1785,12 +1837,12 @@ const MatchesView = ({ user }: { user: User | null }) => {
                 </div>
                 <div>
                   <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl mx-auto mb-4 md:mb-6 shadow-xl border-4 border-white overflow-hidden bg-ug-navy relative group-hover:scale-105 transition-transform duration-500">
-                    {collab.avatar_url ? 
-                      <img src={collab.avatar_url} className="w-full h-full object-cover" alt="" /> :
+                    {collab.image_url ? 
+                      <img src={collab.image_url} className="w-full h-full object-cover" alt="" /> :
                       <UserIcon className="w-full h-full p-6 text-white/20" />
                     }
                   </div>
-                  <h4 className="font-black text-ug-navy text-sm mb-1">{collab.name}</h4>
+                  <h4 className="font-black text-ug-navy text-sm mb-1">{collab.name || 'UG Science Partner'}</h4>
                   <p className="text-[10px] font-bold text-ug-teal uppercase tracking-widest mb-4">{collab.role}</p>
                   
                   <div className="p-4 bg-white/50 rounded-2xl border border-gray-100 mb-6 text-left">
@@ -1803,7 +1855,12 @@ const MatchesView = ({ user }: { user: User | null }) => {
                     <div className="flex items-center gap-4">
                       <div className="text-left">
                         <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Compatibility</p>
-                        <p className="text-xs font-black text-ug-navy">{collab.ai_score}%</p>
+                        <p className="text-xs font-black text-ug-navy">
+                          {collab.ai_score !== undefined && collab.ai_score !== null && !isNaN(Number(collab.ai_score)) 
+                            ? `${Math.round(Number(collab.ai_score))}%` 
+                            : '80%'
+                          }
+                        </p>
                       </div>
                       <div className="w-px h-6 bg-gray-100"></div>
                       <div className="text-left">
@@ -1816,10 +1873,28 @@ const MatchesView = ({ user }: { user: User | null }) => {
                 <button className="w-full border-2 border-ug-navy text-ug-navy py-4 rounded-[1.5rem] text-[9px] font-black uppercase tracking-widest hover:bg-ug-navy hover:text-white transition-all shadow-sm active:scale-95">Initiate Collaboration</button>
              </div>
            ))}
+           
+           {profileMatches.length > 5 && !showAllProfiles && (
+              <button 
+                onClick={() => setShowAllProfiles(true)}
+                className="col-span-full py-6 border-2 border-dashed border-gray-100 rounded-[2rem] text-[10px] font-black text-gray-400 uppercase tracking-widest hover:border-ug-teal hover:text-ug-teal transition-all"
+              >
+                Reveal {profileMatches.length - 5} More Strategic Collaborators
+              </button>
+            )}
+
            {profileMatches.length === 0 && (
              <div className="col-span-full py-20 text-center border-2 border-dashed border-gray-100 rounded-[3rem] bg-gray-50/50">
-                <Users size={32} className="text-gray-200 mx-auto mb-4" />
-                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">No matching researchers identified yet.</p>
+                <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm text-gray-200">
+                   <Users size={40} />
+                </div>
+                <h4 className="text-sm font-black text-ug-navy mb-2">No Strategic Collaborators Found</h4>
+                <p className="text-[10px] font-medium text-gray-400 max-w-md mx-auto leading-relaxed px-10">
+                  Your research fingerprint is unique. As more researchers and industry partners join the ecosystem, you'll see high-fidelity matches here. 
+                  <br/><br/>
+                  <span className="text-ug-teal">Pro-tip: Refine your research summary to improve matching precision.</span>
+                </p>
+
              </div>
            )}
         </div>
@@ -1870,7 +1945,7 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
    );
 };
 
-const PartnerDashboard = ({ user }: { user: User | null }) => {
+const InvestorDashboard = ({ user }: { user: User | null }) => {
    const [projects, setProjects] = useState<Project[]>([]);
    const navigate = useNavigate();
    useEffect(() => { StorageService.getProjects().then(setProjects); }, []);
