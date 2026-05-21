@@ -253,10 +253,16 @@ const AppContent: React.FC = () => {
                     isAuthenticated={isAuthenticated} 
                     onUnauthorized={handleUnauthorizedAccess}
                   >
-                    {!userProfile?.ai_profile ? (
+                    {!userProfile?.ai_profile && !localStorage.getItem(`onboarding_skipped_${userProfile?.id}`) ? (
                       <Onboarding 
                         user={userProfile} 
                         onComplete={() => userProfile && loadProfile(userProfile.id)} 
+                        onSkip={() => {
+                          if (userProfile?.id) {
+                            localStorage.setItem(`onboarding_skipped_${userProfile.id}`, 'true');
+                            loadProfile(userProfile.id);
+                          }
+                        }}
                       />
                     ) : (
                       <Dashboards 

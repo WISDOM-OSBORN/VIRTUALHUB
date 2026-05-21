@@ -17,13 +17,15 @@ import { useNavigate } from 'react-router-dom';
 interface OnboardingProps {
   user: any;
   onComplete: () => void;
+  onSkip?: () => void;
+  isEmbedded?: boolean;
 }
 
 type OnboardingStep = 'role' | 'questionnaire' | 'resume' | 'processing' | 'summary';
 
-export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
-  const [step, setStep] = useState<OnboardingStep>('role');
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip, isEmbedded = false }) => {
+  const [step, setStep] = useState<OnboardingStep>(isEmbedded ? 'questionnaire' : 'role');
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(user?.role || null);
   const [cvText, setCvText] = useState('');
   const [answers, setAnswers] = useState<any>({});
   const [isUploading, setIsUploading] = useState(false);
@@ -585,6 +587,59 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
     </div>
   );
 
+  if (isEmbedded) {
+    return (
+      <div className="w-full bg-white p-6 md:p-10 rounded-[2.5rem] border border-gray-150 shadow-sm font-sans text-ug-navy relative overflow-hidden selection:bg-ug-teal/20">
+        <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[400px] h-[400px] bg-ug-teal/5 rounded-full blur-[80px] pointer-events-none" />
+        
+        {/* Simplified Header for Embedded status monitoring */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-100 pb-6 mb-8 relative z-10 gap-4">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black text-ug-teal uppercase tracking-[0.2em] mb-1">Interactive Match Setup</span>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-black text-ug-navy uppercase tracking-tight">AI Matching Portal</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-6 self-stretch sm:self-auto justify-between sm:justify-start">
+            <div className="flex gap-1.5">
+              {['role', 'questionnaire', 'resume', 'summary'].map((s, i) => (
+                <div key={s} className={`h-1.5 rounded-full transition-all duration-700 ${
+                  ['role', 'questionnaire', 'resume', 'summary'].indexOf(step) >= i ? 'w-8 bg-ug-teal' : 'w-3 bg-gray-100'
+                }`} />
+              ))}
+            </div>
+            {onSkip && (
+              <button 
+                onClick={onSkip} 
+                className="text-gray-400 hover:text-ug-navy font-black text-[9px] uppercase tracking-widest transition-colors border border-gray-200 hover:border-gray-300 px-3.5 py-2 rounded-xl active:scale-95 duration-150 shrink-0"
+              >
+                Close Portal
+              </button>
+            )}
+          </div>
+        </div>
+
+        <main className="relative z-10 pb-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            >
+              {step === 'role' && renderRoleStep()}
+              {step === 'questionnaire' && renderQuestionnaire()}
+              {step === 'resume' && renderResumeStep()}
+              {step === 'processing' && renderProcessing()}
+              {step === 'summary' && renderSummary()}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white font-sans text-ug-navy overflow-x-hidden selection:bg-ug-teal/20">
       {/* Background elements */}
@@ -598,7 +653,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
             </div>
             <span className="font-black tracking-[0.3em] uppercase text-sm">UG Hub</span>
         </div>
-        <div className="flex items-center gap-10">
+        <div className="flex items-center gap-3 sm:gap-10">
             <div className="hidden md:flex gap-2">
                 {['role', 'questionnaire', 'resume', 'summary'].map((s, i) => (
                     <div key={s} className={`h-1 rounded-full transition-all duration-700 ${
@@ -606,6 +661,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
                     }`} />
                 ))}
             </div>
+            {onSkip && (
+              <button 
+                onClick={onSkip} 
+                className="bg-ug-teal/10 hover:bg-ug-teal text-ug-navy hover:text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-sm active:scale-95"
+              >
+                Skip Setup
+              </button>
+            )}
             <button onClick={() => navigate('/')} className="text-gray-400 hover:text-ug-navy font-black text-[10px] uppercase tracking-widest transition-colors">Abort</button>
         </div>
       </header>

@@ -15,6 +15,7 @@ import {
   Pencil, Trash2, FileUp, MessageSquare, MailOpen, Clock, Zap, Send as SendIcon, Calendar, File, LayoutGrid, Target, Sparkles, LogOut, Rocket
 } from 'lucide-react';
 import { useToast } from '../App';
+import { Onboarding } from './Onboarding';
 
 interface DashboardProps {
   role: UserRole;
@@ -551,6 +552,66 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
     }
   };
 
+  const handleAcceptReveal = async (msg: any) => {
+    if (!user) return;
+    try {
+      const releaseToken = `released:${Date.now()}`;
+      await StorageService.updateEOIStatus(msg.id, releaseToken);
+      showToast("Access Granted Successfully! Secure 1-hour session is live.", "success");
+      
+      // Auto reply with Access Granted notification message
+      await StorageService.submitEOI(
+        msg.project_id,
+        user.name,
+        `🟢 Access Granted. You have been granted secure, 1-hour decrypted access to download the Technical Disclosure PDF.`,
+        msg.sender_id
+      );
+      
+      // Refresh Conversations & Threads
+      const updated = await StorageService.getConversations(user.id);
+      setThreads(updated);
+      
+      // If we are currently viewing the thread, refresh it
+      if (selectedThread) {
+        const firstMsg = selectedThread[0];
+        const partnerId = firstMsg.sender_id === user.id ? firstMsg.recipient_id : firstMsg.sender_id;
+        const newThread = updated.find(t => t[0].project_id === firstMsg.project_id && (t[0].sender_id === partnerId || t[0].recipient_id === partnerId));
+        if (newThread) setSelectedThread(newThread);
+      }
+    } catch (e: any) {
+      showToast(e.message || "Failed to grant clearance", "error");
+    }
+  };
+
+  const handleDeclineReveal = async (msg: any) => {
+    if (!user) return;
+    try {
+      await StorageService.updateEOIStatus(msg.id, 'declined');
+      showToast("Access Request Declined.", "info");
+      
+      // Auto reply with Access Declined notification
+      await StorageService.submitEOI(
+        msg.project_id,
+        user.name,
+        `🔴 Access Declined. Your request for technical brief access has been declined.`,
+        msg.sender_id
+      );
+      
+      // Refresh Conversations & Threads
+      const updated = await StorageService.getConversations(user.id);
+      setThreads(updated);
+      
+      if (selectedThread) {
+        const firstMsg = selectedThread[0];
+        const partnerId = firstMsg.sender_id === user.id ? firstMsg.recipient_id : firstMsg.sender_id;
+        const newThread = updated.find(t => t[0].project_id === firstMsg.project_id && (t[0].sender_id === partnerId || t[0].recipient_id === partnerId));
+        if (newThread) setSelectedThread(newThread);
+      }
+    } catch (e: any) {
+      showToast(e.message || "Failed to decline clearance", "error");
+    }
+  };
+
   const handleSelectThread = async (thread: any[]) => {
     setSelectedThread(thread);
     if (user?.id) {
@@ -754,9 +815,45 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
                     {msg.user_name.charAt(0)}
                   </div>
                   <div className={`max-w-[80%] p-4 rounded-2xl text-[11px] leading-relaxed shadow-sm ${
-                    msg.sender_id === user?.id ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-gray-700 rounded-tl-none border border-gray-100'
+                    msg.sender_id === user?.id ? 'bg-[#0092B0] text-white rounded-tr-none' : 'bg-white text-gray-700 rounded-tl-none border border-gray-100'
                   }`}>
-                    {msg.message}
+                    <div className="whitespace-pre-wrap">{msg.message}</div>
+
+                    {msg.message.includes('🔐 Technical Disclosure Request') && (
+                      <div className="mt-4 pt-3 border-t border-gray-100 space-y-3">
+                        {(!msg.status || msg.status === 'pending') ? (
+                          msg.sender_id !== user?.id ? (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleAcceptReveal(msg)}
+                                className="flex-1 bg-ug-teal hover:bg-emerald-600 text-white font-black text-[9px] uppercase tracking-wider py-2 rounded-xl transition shadow-sm active:scale-95"
+                              >
+                                Accept Request
+                              </button>
+                              <button
+                                onClick={() => handleDeclineReveal(msg)}
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black text-[9px] uppercase tracking-wider py-2 rounded-xl transition shadow-sm active:scale-95"
+                              >
+                                Decline
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 justify-center py-1.5 bg-pink-50 text-pink-700 rounded-xl border border-pink-100 text-[9px] font-black uppercase tracking-wider">
+                              🔒 Clearance Pending
+                            </div>
+                          )
+                        ) : msg.status.startsWith('released') ? (
+                          <div className="flex items-center gap-1.5 justify-center py-1.5 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 text-[9px] font-black uppercase tracking-wider">
+                            <Check size={12} strokeWidth={3} /> Access Granted
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 justify-center py-1.5 bg-red-50 text-red-700 rounded-xl border border-red-100 text-[9px] font-black uppercase tracking-wider">
+                            Access Declined 🔴
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div className={`text-[8px] mt-2 opacity-60 text-right ${msg.sender_id === user?.id ? 'text-white' : 'text-gray-400'}`}>
                       {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
@@ -894,7 +991,43 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
                         </span>
                       </div>
                       <div className="text-xs md:text-sm text-gray-700 leading-relaxed whitespace-pre-wrap p-3 md:p-0 bg-white md:bg-transparent rounded-2xl md:rounded-none shadow-sm md:shadow-none border border-gray-100 md:border-none">
-                        {msg.message}
+                        <div>{msg.message}</div>
+
+                        {msg.message.includes('🔐 Technical Disclosure Request') && (
+                          <div className="mt-4 pt-3 border-t border-gray-100 space-y-3 max-w-md">
+                            {(!msg.status || msg.status === 'pending') ? (
+                              msg.sender_id !== user?.id ? (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleAcceptReveal(msg)}
+                                    className="flex-1 bg-ug-teal hover:bg-emerald-600 text-white font-black text-[9px] uppercase tracking-wider py-2 rounded-xl transition shadow-sm active:scale-95"
+                                  >
+                                    Accept Request
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeclineReveal(msg)}
+                                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black text-[9px] uppercase tracking-wider py-2 rounded-xl transition shadow-sm active:scale-95"
+                                  >
+                                    Decline
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5 justify-center py-1.5 bg-pink-50 text-pink-700 rounded-xl border border-pink-100 text-[9px] font-black uppercase tracking-wider">
+                                  🔒 Clearance Pending
+                                </div>
+                              )
+                            ) : msg.status.startsWith('released') ? (
+                              <div className="flex items-center gap-1.5 justify-center py-1.5 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 text-[9px] font-black uppercase tracking-wider">
+                                <Check size={12} strokeWidth={3} /> Access Granted
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 justify-center py-1.5 bg-red-50 text-red-700 rounded-xl border border-red-100 text-[9px] font-black uppercase tracking-wider">
+                                Access Declined 🔴
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                       </div>
                     </div>
                   </div>
@@ -1116,6 +1249,7 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
   const [internalUnread, setInternalUnread] = useState(0);
 
   const [profileMode, setProfileMode] = useState<'identity' | 'insights'>('identity');
+  const [isRerunningOnboarding, setIsRerunningOnboarding] = useState(false);
 
   const refreshProfile = async () => {
     if (!user?.id) return;
@@ -1224,66 +1358,130 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
                   <h2 className="text-3xl font-black text-ug-navy tracking-tight uppercase">Researcher Portfolio</h2>
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mt-1 italic">Verified Hub Identity Management</p>
                 </div>
-                <div className="flex bg-gray-100 p-1 md:p-1.5 rounded-2xl md:rounded-3xl shadow-inner">
-                  <button 
-                    onClick={() => setProfileMode('identity')}
-                    className={`px-6 md:px-10 py-3 rounded-[1.25rem] md:rounded-[2rem] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${profileMode === 'identity' ? 'bg-ug-navy text-white shadow-xl' : 'text-gray-400 hover:text-ug-navy'}`}
-                  >
-                    Identity & Narrative
-                  </button>
-                  <button 
-                    onClick={() => setProfileMode('insights')}
-                    className={`px-6 md:px-10 py-3 rounded-[1.25rem] md:rounded-[2rem] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${profileMode === 'insights' ? 'bg-ug-navy text-white shadow-xl' : 'text-gray-400 hover:text-ug-navy'}`}
-                  >
-                    AI Research Analysis
-                  </button>
-                </div>
+                {!isRerunningOnboarding && (
+                  <div className="flex bg-gray-100 p-1 md:p-1.5 rounded-2xl md:rounded-3xl shadow-inner">
+                    <button 
+                      onClick={() => setProfileMode('identity')}
+                      className={`px-6 md:px-10 py-3 rounded-[1.25rem] md:rounded-[2rem] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${profileMode === 'identity' ? 'bg-ug-navy text-white shadow-xl' : 'text-gray-400 hover:text-ug-navy'}`}
+                    >
+                      Identity & Narrative
+                    </button>
+                    <button 
+                      onClick={() => setProfileMode('insights')}
+                      className={`px-6 md:px-10 py-3 rounded-[1.25rem] md:rounded-[2rem] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${profileMode === 'insights' ? 'bg-ug-navy text-white shadow-xl' : 'text-gray-400 hover:text-ug-navy'}`}
+                    >
+                      AI Research Analysis
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {profileMode === 'identity' ? (
-                <ProfileSettings user={localUser} onUpdate={refreshProfile} />
+              {isRerunningOnboarding ? (
+                <div className="animate-fade-in">
+                  <Onboarding 
+                    user={localUser} 
+                    isEmbedded={true}
+                    onComplete={() => {
+                      setIsRerunningOnboarding(false);
+                      if (localUser?.id) {
+                        localStorage.removeItem(`onboarding_skipped_${localUser.id}`);
+                      }
+                      refreshProfile();
+                    }}
+                    onSkip={() => setIsRerunningOnboarding(false)}
+                  />
+                </div>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-                  <div className="lg:col-span-8 flex flex-col gap-10">
-                    <ProfileInsight profile={localUser?.ai_profile} />
-                  </div>
-                  <div className="lg:col-span-4 shrink-0 space-y-8">
-                    <div className="bg-ug-navy text-white p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition duration-1000">
-                        <Target size={120} />
-                      </div>
-                      <div className="relative z-10 space-y-6">
-                        <div>
-                          <h4 className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-2">Ecosystem Compliance</h4>
-                          <h3 className="text-xl font-black tracking-tight uppercase leading-tight">Neural Sync Status</h3>
+                <>
+                  {!localUser?.ai_profile && (
+                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 p-6 md:p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-6 md:gap-12 shadow-sm">
+                      <div className="flex gap-4 items-start">
+                        <div className="w-12 h-12 bg-amber-500/10 text-amber-600 rounded-2xl flex items-center justify-center shrink-0">
+                          <AlertCircle size={24} />
                         </div>
-                        <p className="text-xs font-medium leading-loose opacity-70 italic">
-                          "AI insights are dynamically synthesized from your verified academic records. Significant changes to your biography may take up to 24 hours to re-index in the Neural Stream."
-                        </p>
-                        <div className="pt-6 border-t border-white/10 space-y-4">
-                           <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 bg-ug-teal rounded-2xl flex items-center justify-center shadow-lg"><Zap size={18} /></div>
-                              <div>
-                                <p className="text-[9px] font-black text-ug-teal uppercase tracking-widest">Matching Fidelity</p>
-                                <p className="text-sm font-black text-white">98.4% Accuracy</p>
+                        <div className="space-y-1 text-center md:text-left">
+                          <h4 className="text-sm font-black text-ug-navy uppercase tracking-wider">Complete Your AI Match Profile</h4>
+                          <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                            You currently do not have an active AI Match Profile. Industry delegates, researchers, and students rely on high-fidelity AI recommendations to discover you. Complete the interactive setup to get matched!
+                          </p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setIsRerunningOnboarding(true)}
+                        className="w-full md:w-auto bg-amber-600 hover:bg-amber-750 text-white px-8 py-3.5 rounded-2xl font-black text-[9px] uppercase tracking-widest transition shadow-md active:scale-95 duration-150 shrink-0 flex items-center justify-center gap-2"
+                      >
+                        <Sparkles size={14} /> Start Interactive Onboarding
+                      </button>
+                    </div>
+                  )}
+
+                  {profileMode === 'identity' ? (
+                    <div className="space-y-6">
+                      {localUser?.ai_profile && (
+                        <div className="flex justify-end">
+                          <button 
+                            type="button"
+                            onClick={() => setIsRerunningOnboarding(true)}
+                            className="bg-ug-teal/10 hover:bg-ug-teal hover:text-white text-ug-teal px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest transition-all shadow-sm active:scale-95 flex items-center gap-2 border border-ug-teal/20"
+                          >
+                            <Sparkles size={12} strokeWidth={2.5} /> Refine AI Matching (Retake Questionnaire / CV)
+                          </button>
+                        </div>
+                      )}
+                      <ProfileSettings user={localUser} onUpdate={refreshProfile} />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+                      <div className="lg:col-span-8 flex flex-col gap-10">
+                        <ProfileInsight profile={localUser?.ai_profile} />
+                      </div>
+                      <div className="lg:col-span-4 shrink-0 space-y-8">
+                        <div className="bg-ug-navy text-white p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group">
+                          <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition duration-1000">
+                            <Target size={120} />
+                          </div>
+                          <div className="relative z-10 space-y-6">
+                            <div>
+                              <h4 className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-2">Ecosystem Compliance</h4>
+                              <h3 className="text-xl font-black tracking-tight uppercase leading-tight">Neural Sync Status</h3>
+                            </div>
+                            <p className="text-xs font-medium leading-loose opacity-70 italic font-sans animate-pulse">
+                              "AI insights are dynamically synthesized from your verified academic records. Significant changes to your biography may take up to 24 hours to re-index in the Neural Stream."
+                            </p>
+                            <div className="pt-6 border-t border-white/10 space-y-4">
+                               <div className="flex items-center gap-4">
+                                  <div className="w-10 h-10 bg-ug-teal rounded-2xl flex items-center justify-center shadow-lg"><Zap size={18} /></div>
+                                  <div>
+                                    <p className="text-[9px] font-black text-ug-teal uppercase tracking-widest animate-pulse">Matching Fidelity</p>
+                                    <p className="text-sm font-black text-white">98.4% Accuracy</p>
+                                  </div>
+                               </div>
+                            </div>
+                            {localUser?.ai_profile && (
+                              <button
+                                onClick={() => setIsRerunningOnboarding(true)}
+                                className="w-full bg-ug-teal text-ug-navy hover:bg-white text-center cursor-pointer font-black hover:scale-105 transition duration-150 py-3 rounded-2xl text-[9px] uppercase tracking-widest"
+                              >
+                                Update Mapping Analysis
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4">
+                           <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Public Visibility</h4>
+                           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                              <span className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Portfolio Visible</span>
+                              <div className="w-8 h-4 bg-ug-teal rounded-full relative">
+                                 <div className="absolute right-1 top-1 w-2 h-2 bg-white rounded-full"></div>
                               </div>
                            </div>
+                           <p className="text-[9px] text-gray-400 font-medium italic">Your profile is currently discoverable to verified technical partners and industry delegates.</p>
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4">
-                       <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Public Visibility</h4>
-                       <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                          <span className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Portfolio Visible</span>
-                          <div className="w-8 h-4 bg-ug-teal rounded-full relative">
-                             <div className="absolute right-1 top-1 w-2 h-2 bg-white rounded-full"></div>
-                          </div>
-                       </div>
-                       <p className="text-[9px] text-gray-400 font-medium italic">Your profile is currently discoverable to verified technical partners and industry delegates.</p>
-                    </div>
-                  </div>
-                </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -1309,8 +1507,10 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
 
 const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { user: User | null; onUpdate: () => void; onOpenModal: (p: Project | null) => void; refreshTrigger: number }) => {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [eois, setEois] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const loadData = async () => {
     if (!user?.id) return;
@@ -1318,10 +1518,54 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
     try {
       const pList = await StorageService.getMyProjects(user.id);
       setProjects(pList);
+      const eoiList = await StorageService.getEOIsForPI(user.id);
+      setEois(eoiList);
     } catch (err) {} finally { setLoading(false); }
   };
 
   useEffect(() => { loadData(); }, [user?.id, refreshTrigger]);
+
+  const handleAcceptReveal = async (msg: any) => {
+    if (!user) return;
+    try {
+      const releaseToken = `released:${Date.now()}`;
+      await StorageService.updateEOIStatus(msg.id, releaseToken);
+      showToast("Access Granted Successfully! Secure 1-hour session is live.", "success");
+      
+      // Auto reply with Access Granted notification message
+      await StorageService.submitEOI(
+        msg.project_id,
+        user.name,
+        `🟢 Access Granted. You have been granted secure, 1-hour decrypted access to download the Technical Disclosure PDF.`,
+        msg.sender_id
+      );
+      
+      // Update local eois state
+      setEois(prev => prev.map(item => item.id === msg.id ? { ...item, status: releaseToken } : item));
+    } catch (e: any) {
+      showToast(e.message || "Failed to grant clearance", "error");
+    }
+  };
+
+  const handleDeclineReveal = async (msg: any) => {
+    if (!user) return;
+    try {
+      await StorageService.updateEOIStatus(msg.id, 'declined');
+      showToast("Access Request Declined.", "info");
+      
+      // Auto reply with Access Declined notification
+      await StorageService.submitEOI(
+        msg.project_id,
+        user.name,
+        `🔴 Access Declined. Your request for technical brief access has been declined.`,
+        msg.sender_id
+      );
+      
+      setEois(prev => prev.map(item => item.id === msg.id ? { ...item, status: 'declined' } : item));
+    } catch (e: any) {
+      showToast(e.message || "Failed to decline clearance", "error");
+    }
+  };
 
   const activeProject = projects[0]; // For visual demonstration of hero card
 
@@ -1379,6 +1623,119 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* INBOUND PORTAL - INTERACTION HUB */}
+        <section className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm mt-8">
+          <div className="flex justify-between items-center mb-6 md:mb-8">
+            <SectionTitle title="Interaction Hub" subtitle="Student Applications & Technical Disclosures" />
+          </div>
+          <div className="space-y-4 mt-6">
+            {eois.length === 0 ? (
+              <div className="py-12 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                <Inbox className="mx-auto text-gray-300 mb-3" size={32} />
+                <p className="text-gray-400 font-bold uppercase text-[9px] tracking-widest">No requests received yet.</p>
+              </div>
+            ) : eois.map(eoi => {
+              const isReveal = eoi.message.includes('[REVEAL_REQUEST]') || eoi.message.includes('🔐 Technical Disclosure Request');
+              const isAssistantship = eoi.message.includes('[ASSISTANTSHIP_APPLICATION]');
+              const isScholarship = eoi.message.includes('[SCHOLARSHIP_APPLICATION]');
+              const isLabAccess = eoi.message.includes('[LAB_WORKSPACE_ACCESS]');
+              
+              let typeLabel = "Inquiry";
+              let badgeColor = "bg-gray-100 text-gray-600 border border-gray-200";
+              let cleanMessage = eoi.message;
+
+              if (isReveal) {
+                typeLabel = "Key Document Reveal Requested";
+                badgeColor = "bg-pink-50 text-pink-700 border border-pink-200/50";
+                if (eoi.message.includes('🔐 Technical Disclosure Request')) {
+                  cleanMessage = eoi.message;
+                } else {
+                  cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
+                }
+              } else if (isAssistantship) {
+                typeLabel = "Graduate Assistantship Candidate";
+                badgeColor = "bg-blue-50 text-blue-700 border border-blue-200/50";
+                cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
+              } else if (isScholarship) {
+                typeLabel = "Scholarship Fellow Inquiry";
+                badgeColor = "bg-amber-50 text-amber-700 border border-amber-200/50";
+                cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
+              } else if (isLabAccess) {
+                typeLabel = "Lab Space Authorization";
+                badgeColor = "bg-purple-50 text-purple-700 border border-purple-200/50";
+                cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
+              }
+
+              return (
+                <div key={eoi.id} className="p-5 border border-gray-100 rounded-3xl bg-gray-50/20 hover:bg-white hover:shadow-lg transition space-y-4">
+                  <div className="flex justify-between items-start gap-3 flex-wrap sm:flex-nowrap">
+                    <div>
+                      <span className={`inline-block px-2.5 py-1 rounded-xl text-[8px] font-black uppercase tracking-wider mb-2 ${badgeColor}`}>
+                        {typeLabel}
+                      </span>
+                      <h4 className="font-black text-ug-navy text-xs mb-1">From: {eoi.user_name}</h4>
+                      <p className="text-[10px] text-gray-400">Associated Asset: {eoi.projects?.title || 'Direct/Hub'}</p>
+                    </div>
+                    {eoi.status && eoi.status.startsWith('released') ? (
+                      <span className="flex items-center gap-1.5 text-ug-success text-[9px] font-black uppercase tracking-wider bg-ug-success/10 px-3 py-1.5 rounded-xl border border-ug-success/20">
+                        <Check size={12} strokeWidth={3} /> Approved / Released
+                      </span>
+                    ) : eoi.status === 'declined' ? (
+                      <span className="flex items-center gap-1.5 text-red-700 text-[9px] font-black uppercase tracking-wider bg-red-50 px-3 py-1.5 rounded-xl border border-red-200">
+                        Declined / Restricted
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-[8px] font-black uppercase tracking-wider bg-gray-100 px-3 py-1.5 rounded-xl border border-gray-250 font-bold">
+                        Pending Assessment
+                      </span>
+                    )}
+                  </div>
+                  
+                  <p className="text-gray-600 text-[10px] leading-relaxed italic border-l-2 border-ug-teal/30 pl-4 py-1 whitespace-pre-wrap">
+                    "{cleanMessage}"
+                  </p>
+
+                  {(!eoi.status || eoi.status === 'pending') && (
+                    <div className="flex gap-3 pt-1">
+                      {isReveal ? (
+                        <>
+                          <button
+                            onClick={() => handleAcceptReveal(eoi)}
+                            className="bg-ug-teal text-white px-5 py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-emerald-600 transition flex items-center gap-1.5 shadow-sm active:scale-95"
+                          >
+                            <Award size={12} /> Approve Secure Reveal
+                          </button>
+                          <button
+                            onClick={() => handleDeclineReveal(eoi)}
+                            className="bg-red-600 text-white px-5 py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-red-700 transition flex items-center gap-1.5 shadow-sm active:scale-95"
+                          >
+                            Decline Request
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={async () => {
+                            try {
+                              await StorageService.updateEOIStatus(eoi.id, 'released');
+                              setEois(prev => prev.map(item => item.id === eoi.id ? { ...item, status: 'released' } : item));
+                              showToast("Clearance and Approval Disclosed Successfully!", "success");
+                            } catch (err: any) {
+                              showToast(err.message || "Failed to issue approval", "error");
+                            }
+                          }}
+                          className="bg-ug-navy text-white px-5 py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-ug-teal transition flex items-center gap-1.5 shadow-sm active:scale-95"
+                        >
+                          <Award size={12} /> Accredit Application
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
       </div>
@@ -1931,6 +2288,35 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
                               </div>
                            </div>
                            <button onClick={() => navigate(`/projects/${p.id}`)} className="bg-ug-navy text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition">Apply for Assistantship</button>
+                        </div>
+                     ))}
+                  </div>
+               </section>
+
+               <section className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm mt-8">
+                  <SectionTitle title="Scholarships & Research Fellowships" subtitle="Academically Funded Pathways to Support Innovation" />
+                  <div className="space-y-4 mt-6">
+                     {[
+                        { title: "University of Ghana Research Excellence Grant", provider: "Department of Biochemistry", amount: "GH₵ 25,000 / sem", openTo: "MPhil / MSc", icon: Award },
+                        { title: "West African Vaccines Research Fellowship", provider: "Noguchi Medical Research Institute", amount: "GH₵ 40,000 / yr", openTo: "PhD Candidates", icon: Zap },
+                        { title: "UG Innovate Technical Mentee Grant", provider: "Institute of Applied Science & Technology", amount: "GH₵ 12,000 / sem", openTo: "BSc Senior Students", icon: BookOpen }
+                     ].map((sch, index) => (
+                        <div key={index} className="flex flex-col md:flex-row md:items-center justify-between p-6 border border-gray-50 rounded-3xl bg-gray-50/10 hover:bg-white hover:shadow-lg transition gap-4 animate-fade-in-up">
+                           <div className="flex gap-4">
+                              <div className="w-12 h-12 bg-ug-teal/5 rounded-2xl flex items-center justify-center text-ug-teal shrink-0"><sch.icon size={20} /></div>
+                              <div>
+                                 <span className="text-[8px] font-black text-ug-teal uppercase tracking-widest mb-1 block">{sch.openTo}</span>
+                                 <h4 className="font-black text-ug-navy text-xs leading-snug">{sch.title}</h4>
+                                 <p className="text-[8px] font-black text-gray-400 mt-1 uppercase tracking-widest">{sch.provider}</p>
+                              </div>
+                           </div>
+                           <div className="flex items-center gap-4 justify-between md:justify-end">
+                              <div className="text-left md:text-right shrink-0">
+                                 <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block">Stipend Amount</span>
+                                 <span className="text-xs font-black text-ug-navy">{sch.amount}</span>
+                              </div>
+                              <button onClick={() => navigate('/projects')} className="bg-ug-navy text-white px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-ug-teal transition">Inquire</button>
+                           </div>
                         </div>
                      ))}
                   </div>

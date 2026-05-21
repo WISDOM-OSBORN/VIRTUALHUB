@@ -213,7 +213,8 @@ export const StorageService = {
         message,
         read: false,
         sender_id: sender_id,
-        recipient_id: target_recipient
+        recipient_id: target_recipient,
+        status: 'pending'
       }]);
     
     if (error) {
@@ -308,6 +309,63 @@ export const StorageService = {
   markEOIRead: async (id: string) => {
     const { error } = await supabase.from('eois').update({ read: true }).eq('id', id);
     if (error) throw error;
+  },
+
+  updateEOIStatus: async (id: string, status: string) => {
+    const { error } = await supabase.from('eois').update({ status }).eq('id', id);
+    if (error) throw error;
+  },
+
+  checkRevealApproved: async (userId: string, projectId: string): Promise<boolean> => {
+    if (!userId || !projectId) return false;
+    const { data, error } = await supabase
+      .from('eois')
+      .select('status')
+      .eq('sender_id', userId)
+      .eq('project_id', projectId);
+    
+    if (error || !data || data.length === 0) return false;
+    
+    return data.some(row => {
+      if (row.status === 'released') return true;
+      if (row.status && row.status.startsWith('released:')) {
+        const approvedAt = parseInt(row.status.split(':')[1], 10);
+        const oneHourMs = 60 * 60 * 1000;
+        return Date.now() - approvedAt < oneHourMs;
+      }
+      return false;
+    });
+  },
+
+  getRevealApprovalDetails: async (userId: string, projectId: string) => {
+    if (!userId || !projectId) return { approved: false, remainingMinutes: 0 };
+    const { data, error } = await supabase
+      .from('eois')
+      .select('status')
+      .eq('sender_id', userId)
+      .eq('project_id', projectId);
+    
+    if (error || !data || data.length === 0) return { approved: false, remainingMinutes: 0 };
+    
+    let approved = false;
+    let remainingMinutes = 0;
+    
+    data.forEach(row => {
+      if (row.status === 'released') {
+        approved = true;
+        remainingMinutes = 60; // legacy default
+      } else if (row.status && row.status.startsWith('released:')) {
+        const approvedAt = parseInt(row.status.split(':')[1], 10);
+        const oneHourMs = 60 * 60 * 1000;
+        const elapsed = Date.now() - approvedAt;
+        if (elapsed < oneHourMs) {
+          approved = true;
+          remainingMinutes = Math.ceil((oneHourMs - elapsed) / (60 * 1000));
+        }
+      }
+    });
+    
+    return { approved, remainingMinutes };
   },
 
   // Profiles
