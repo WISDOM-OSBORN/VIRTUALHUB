@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { UserRole, ProjectStatus, Visibility, Project, ResearchArea, User, AIProfile } from '../types';
 import { StorageService } from '../services/storageService';
 import { MatchingService } from '../services/matchingService';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
   TrendingUp, Users, Plus, FileText, 
   Settings, Bell, ShieldCheck, Download, 
@@ -1642,6 +1642,8 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
               const isAssistantship = eoi.message.includes('[ASSISTANTSHIP_APPLICATION]');
               const isScholarship = eoi.message.includes('[SCHOLARSHIP_APPLICATION]');
               const isLabAccess = eoi.message.includes('[LAB_WORKSPACE_ACCESS]');
+              const isCollabProposal = eoi.message.includes('[COLLABORATION_PROPOSAL]');
+              const isExpressionOfInterest = eoi.message.includes('[EXPRESSION_OF_INTEREST]');
               
               let typeLabel = "Inquiry";
               let badgeColor = "bg-gray-100 text-gray-600 border border-gray-200";
@@ -1667,6 +1669,14 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
                 typeLabel = "Lab Space Authorization";
                 badgeColor = "bg-purple-50 text-purple-700 border border-purple-200/50";
                 cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
+              } else if (isCollabProposal) {
+                typeLabel = "Academic Collaboration Proposal";
+                badgeColor = "bg-teal-50 text-teal-700 border border-teal-200/50";
+                cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
+              } else if (isExpressionOfInterest) {
+                typeLabel = "Expression of Research Interest";
+                badgeColor = "bg-indigo-50 text-indigo-700 border border-indigo-200/50";
+                cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
               }
 
               return (
@@ -1676,7 +1686,17 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
                       <span className={`inline-block px-2.5 py-1 rounded-xl text-[8px] font-black uppercase tracking-wider mb-2 ${badgeColor}`}>
                         {typeLabel}
                       </span>
-                      <h4 className="font-black text-ug-navy text-xs mb-1">From: {eoi.user_name}</h4>
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h4 className="font-black text-ug-navy text-xs">From: {eoi.user_name}</h4>
+                        {eoi.sender_id && (
+                          <Link 
+                            to={`/researcher/${eoi.sender_id}`}
+                            className="bg-ug-teal/5 text-ug-teal hover:bg-ug-teal hover:text-white transition duration-200 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1 border border-ug-teal/10 hover:border-ug-teal"
+                          >
+                            <UserIcon size={10} /> View Portfolio
+                          </Link>
+                        )}
+                      </div>
                       <p className="text-[10px] text-gray-400">Associated Asset: {eoi.projects?.title || 'Direct/Hub'}</p>
                     </div>
                     {eoi.status && eoi.status.startsWith('released') ? (
@@ -1990,12 +2010,163 @@ const ProfileInsight = ({ profile, onRefresh }: { profile: AIProfile | null, onR
 
 const MatchesView = ({ user }: { user: User | null }) => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
+
   const [profileMatches, setProfileMatches] = useState<any[]>([]);
   const [projectMatches, setProjectMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [showAllProfiles, setShowAllProfiles] = useState(false);
+
+  const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
+  const [proposalType, setProposalType] = useState<'collab' | 'interest'>('collab');
+  const [selectedMatch, setSelectedMatch] = useState<any>(null);
+  const [subject, setSubject] = useState('');
+  const [messageBody, setMessageBody] = useState('');
+  const [myProjects, setMyProjects] = useState<any[]>([]);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [customProjectTitle, setCustomProjectTitle] = useState('');
+  const [isSending, setIsSending] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) {
+      StorageService.getMyProjects(user.id).then(data => {
+        setMyProjects(data || []);
+        if (data && data.length > 0) {
+          setSelectedProject(data[0]);
+        }
+      });
+    }
+  }, [user?.id]);
+
+  const generateProposalTemplate = (
+    type: 'collab' | 'interest',
+    recipient: any,
+    sender: User | null,
+    proj: any
+  ) => {
+    const senderName = sender?.name || 'Researcher';
+    const senderDept = sender?.department || 'Biomedical & Engineering Science';
+    const recipientName = recipient?.name || recipient?.owner_name || 'Ecosystem Partner';
+    const projTitle = proj?.title || proj?.project_name || 'Collaborative Research Initiative';
+    const researchArea = proj?.research_area || recipient?.research_area || 'Diagnostics Tools & Systems';
+
+    if (type === 'collab') {
+      return {
+        subject: `🧪 Academic Collaboration Proposal: "${projTitle}"`,
+        body: `Dear ${recipientName},
+
+My name is ${senderName} from the ${senderDept} at the University of Ghana. I am reaching out to explore potential research synergy on your active project, "${projTitle}".
+
+Based on our AI Profile recommendations, our technical competencies in ${researchArea} strongly align with your project's roadmap.
+
+Potential Areas of Exchange:
+- Co-validation of laboratory datasets / pilot design
+- Sharing specialized equipment or analytical resources
+- Research assistantships or co-authorship pipelines
+
+Let's set up a quick 10-minute sync at the department or via video call to exchange ideas.`
+      };
+    } else {
+      return {
+        subject: `🚀 Expression of Interest: "${projTitle}"`,
+        body: `Dear ${recipientName},
+
+My name is ${senderName} from the ${senderDept} at the University of Ghana. I recently reviewed your project, "${projTitle}" on the University of Ghana Virtual Industry Hub, and wanted to express our strong interest in exploring potential collaboration.
+
+Based on our research activities, our expertise in ${researchArea} aligns highly with the goals of this project. We believe there is significant potential for tech transfer, funding support, or technical integration.
+
+I would appreciate the chance to discuss how we might work together on this initiative.
+
+Best regards,
+${senderName}`
+      };
+    }
+  };
+
+  const handleExpressInterestClick = (project: any) => {
+    setProposalType('interest');
+    setSelectedMatch(project);
+    const template = generateProposalTemplate('interest', project, user, project);
+    setSubject(template.subject);
+    setMessageBody(template.body);
+    setIsProposalModalOpen(true);
+  };
+
+  const handleInitiateCollaborationClick = (profile: any) => {
+    setProposalType('collab');
+    setSelectedMatch(profile);
+    const defaultProj = myProjects.length > 0 ? myProjects[0] : { title: 'Collaborative Research Initiative', research_area: profile.research_area || 'Diagnostics Tools & Systems' };
+    setSelectedProject(myProjects.length > 0 ? myProjects[0] : null);
+    const template = generateProposalTemplate('collab', profile, user, defaultProj);
+    setSubject(template.subject);
+    setMessageBody(template.body);
+    setIsProposalModalOpen(true);
+  };
+
+  const handleProjectChangeInModal = (projId: string) => {
+    if (projId === 'custom') {
+      setSelectedProject(null);
+      const customProj = { title: customProjectTitle || 'Collaborative Research Initiative', research_area: selectedMatch?.research_area || 'Diagnostics Tools & Systems' };
+      const template = generateProposalTemplate(proposalType, selectedMatch, user, customProj);
+      setSubject(template.subject);
+      setMessageBody(template.body);
+    } else {
+      const proj = myProjects.find(p => p.id === projId);
+      setSelectedProject(proj);
+      const template = generateProposalTemplate(proposalType, selectedMatch, user, proj);
+      setSubject(template.subject);
+      setMessageBody(template.body);
+    }
+  };
+
+  const handleCustomTitleChange = (title: string) => {
+    setCustomProjectTitle(title);
+    const customProj = { title: title || 'Collaborative Research Initiative', research_area: selectedMatch?.research_area || 'Diagnostics Tools & Systems' };
+    const template = generateProposalTemplate(proposalType, selectedMatch, user, customProj);
+    setSubject(template.subject);
+    setMessageBody(template.body);
+  };
+
+  const handleSendProposal = async () => {
+    if (!user) {
+      showToast("Authentication Required: Please sign in to transmit messages.", "error");
+      return;
+    }
+    setIsSending(true);
+    try {
+      const tag = proposalType === 'collab' ? '[COLLABORATION_PROPOSAL]' : '[EXPRESSION_OF_INTEREST]';
+      const fullText = `${tag}Subject: ${subject}\n\n${messageBody}`;
+      
+      const projectId = proposalType === 'interest' 
+        ? selectedMatch?.id 
+        : (selectedProject?.id || null);
+        
+      const recipientId = proposalType === 'interest'
+        ? selectedMatch?.owner_id
+        : selectedMatch?.id;
+
+      if (!recipientId) {
+        throw new Error("Recipient Error: No target identification found.");
+      }
+
+      await StorageService.submitEOI(
+        projectId,
+        user.name,
+        fullText,
+        recipientId,
+        'requests'
+      );
+
+      showToast("Proposal sent successfully!", "success");
+      setIsProposalModalOpen(false);
+    } catch (err: any) {
+      showToast(err.message || "Failed to transmit proposal.", "error");
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const fetchMatches = async () => {
     if (!user?.id || !user?.embedding) {
@@ -2132,7 +2303,7 @@ const MatchesView = ({ user }: { user: User | null }) => {
                     <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{proj.research_area}</span>
                   </div>
                   <h4 className="font-black text-ug-navy text-sm group-hover:text-ug-teal transition truncate uppercase tracking-tight">{proj.title}</h4>
-                  <p className="text-[10px] font-medium text-gray-400 line-clamp-1 italic">"{proj.ai_reasoning || proj.description}"</p>
+                  <p className="text-xs md:text-sm text-gray-500 font-medium line-clamp-2 mt-1 italic">"{proj.ai_reasoning || proj.description}"</p>
                 </div>
               </div>
               <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-8 border-t sm:border-t-0 pt-4 sm:pt-0 border-gray-100">
@@ -2145,7 +2316,7 @@ const MatchesView = ({ user }: { user: User | null }) => {
                       }
                     </p>
                  </div>
-                 <button className="bg-ug-navy text-white px-5 md:px-6 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition shadow-lg shrink-0">Express Interest</button>
+                 <button onClick={() => handleExpressInterestClick(proj)} className="bg-ug-navy text-white px-5 md:px-6 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition shadow-lg shrink-0">Express Interest</button>
               </div>
             </div>
           ))}
@@ -2194,16 +2365,19 @@ const MatchesView = ({ user }: { user: User | null }) => {
                 </div>
                 <div>
                   <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl mx-auto mb-4 md:mb-6 shadow-xl border-4 border-white overflow-hidden bg-ug-navy relative group-hover:scale-105 transition-transform duration-500">
-                    {collab.image_url ? 
-                      <img src={collab.image_url} className="w-full h-full object-cover" alt="" /> :
+                    {collab.avatar_url || collab.image_url ? 
+                      <img src={collab.avatar_url || collab.image_url} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt="" /> :
                       <UserIcon className="w-full h-full p-6 text-white/20" />
                     }
                   </div>
                   <h4 className="font-black text-ug-navy text-sm mb-1">{collab.name || 'UG Science Partner'}</h4>
                   <p className="text-[10px] font-bold text-ug-teal uppercase tracking-widest mb-4">{collab.role}</p>
                   
-                  <div className="p-4 bg-white/50 rounded-2xl border border-gray-100 mb-6 text-left">
-                    <p className="text-[9px] text-gray-500 font-medium leading-relaxed italic line-clamp-3">
+                  <div className="p-4 bg-white/50 rounded-2xl border border-gray-100 mb-6 text-left shadow-sm">
+                    <p className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                      <Sparkles size={11} className="stroke-[2.5]" /> Reason for Match
+                    </p>
+                    <p className="text-xs md:text-sm text-gray-700 font-medium leading-relaxed italic">
                       "{collab.ai_reasoning || collab.semantic_summary || 'Semantic profile match detected.'}"
                     </p>
                   </div>
@@ -2227,7 +2401,7 @@ const MatchesView = ({ user }: { user: User | null }) => {
                     </div>
                   </div>
                 </div>
-                <button className="w-full border-2 border-ug-navy text-ug-navy py-4 rounded-[1.5rem] text-[9px] font-black uppercase tracking-widest hover:bg-ug-navy hover:text-white transition-all shadow-sm active:scale-95">Initiate Collaboration</button>
+                <button onClick={() => handleInitiateCollaborationClick(collab)} className="w-full border-2 border-ug-navy text-ug-navy py-4 rounded-[1.5rem] text-[9px] font-black uppercase tracking-widest hover:bg-ug-navy hover:text-white transition-all shadow-sm active:scale-95">Initiate Collaboration</button>
              </div>
            ))}
            
@@ -2256,6 +2430,147 @@ const MatchesView = ({ user }: { user: User | null }) => {
            )}
         </div>
       </div>
+
+      {/* --- INTERACTIVE PROPOSAL MODAL --- */}
+      <AnimatePresence>
+        {isProposalModalOpen && selectedMatch && (
+          <div className="fixed inset-0 bg-ug-navy/60 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="relative w-full max-w-2xl bg-white rounded-[2.5rem] border border-gray-100 shadow-2xl overflow-hidden flex flex-col p-6 md:p-10 space-y-6"
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-gray-100 pb-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-ug-navy/5 rounded-2xl flex items-center justify-center text-ug-navy">
+                    {proposalType === 'collab' ? <Handshake size={24} /> : <Sparkles size={24} className="text-ug-teal" />}
+                  </div>
+                  <div>
+                    <h3 className="font-black text-ug-navy text-sm md:text-base uppercase tracking-tight">
+                      {proposalType === 'collab' ? 'Academics Collaboration Proposal' : 'Express Research Interest'}
+                    </h3>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Configure Dynamic AI Referral Parameters</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsProposalModalOpen(false)}
+                  className="p-2.5 hover:bg-gray-100 rounded-full text-gray-400 hover:text-ug-navy transition"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Match Details Box */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-gray-55/40 bg-gray-50/50 border border-gray-100 rounded-2xl">
+                <div>
+                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Sender Profile</p>
+                  <p className="font-extrabold text-xs text-ug-navy">{user?.name || 'My Profile'}</p>
+                  <p className="text-[9px] text-gray-500 truncate font-semibold">{user?.department || 'UG Research Directorate'}</p>
+                </div>
+                <div className="border-l border-gray-200/60 pl-4">
+                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Recipient Destination</p>
+                  <p className="font-extrabold text-xs text-ug-navy truncate">{selectedMatch.name || selectedMatch.owner_name || 'Ecosystem Partner'}</p>
+                  <p className="text-[9px] text-ug-teal font-bold truncate uppercase tracking-wider">{selectedMatch.role || 'Principal Investigator'}</p>
+                </div>
+              </div>
+
+              {/* Project Association and Variables Controls */}
+              {proposalType === 'collab' && (
+                <div className="space-y-4">
+                  <div className="text-left">
+                    <label className="block text-[9px] font-black text-ug-navy uppercase tracking-widest mb-1.5">Select Your Active Research Asset / Focus topic</label>
+                    <select
+                      value={selectedProject?.id || 'custom'}
+                      onChange={(e) => handleProjectChangeInModal(e.target.value)}
+                      className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold text-ug-navy focus:outline-none focus:border-ug-teal focus:ring-1 focus:ring-ug-teal"
+                    >
+                      {myProjects.map((proj) => (
+                        <option key={proj.id} value={proj.id}>
+                          {proj.title} ({proj.research_area || 'Tech Innovation'})
+                        </option>
+                      ))}
+                      <option value="custom">General / Custom Collaboration Topic</option>
+                    </select>
+                  </div>
+
+                  {(!selectedProject) && (
+                    <div className="text-left">
+                      <label className="block text-[9px] font-black text-ug-navy uppercase tracking-widest mb-1.5">Specify Custom Collaboration Topic</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Biomedical Laboratory Device Co-validation"
+                        value={customProjectTitle}
+                        onChange={(e) => handleCustomTitleChange(e.target.value)}
+                        className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold text-ug-navy focus:outline-none focus:border-ug-teal focus:ring-1 focus:ring-ug-teal"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Subject Editor */}
+              <div className="text-left space-y-1.5">
+                <label className="block text-[9px] font-black text-ug-navy uppercase tracking-widest">Referral Vector Subject Line</label>
+                <input
+                  type="text"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold text-ug-navy focus:outline-none focus:border-ug-teal focus:ring-1 focus:ring-ug-teal"
+                />
+              </div>
+
+              {/* Message Body Editor */}
+              <div className="text-left space-y-1.5">
+                <label className="block text-[9px] font-black text-ug-navy uppercase tracking-widest">Enriched Message Body</label>
+                <textarea
+                  rows={8}
+                  value={messageBody}
+                  onChange={(e) => setMessageBody(e.target.value)}
+                  className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl p-4 text-xs font-medium text-gray-700 leading-relaxed font-sans focus:outline-none focus:border-ug-teal focus:ring-1 focus:ring-ug-teal resize-none"
+                />
+              </div>
+
+              {/* Security Guard tiny warning */}
+              <div className="flex items-center gap-2 p-3.5 bg-blue-50/30 rounded-xl border border-blue-100/50 text-left">
+                <Info size={14} className="text-blue-600 shrink-0" />
+                <p className="text-[9px] text-blue-800 font-medium leading-normal">
+                  <strong>Secure Channel Policy</strong>: To ensure institutional integrity, copyable links to your secure digital researcher portfolio will automatically be attached to your recipient's inbox portal.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-4 border-t border-gray-100 pt-5">
+                <button
+                  type="button"
+                  onClick={() => setIsProposalModalOpen(false)}
+                  className="px-6 py-3 bg-white border border-gray-200 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-red-500 hover:text-red-500 transition-all font-bold active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isSending}
+                  onClick={handleSendProposal}
+                  className="px-8 py-3 bg-ug-navy text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-ug-teal transition-all flex items-center gap-2 shadow-lg hover:shadow-ug-teal/15 disabled:bg-gray-100 disabled:text-gray-400 active:scale-95"
+                >
+                  {isSending ? (
+                    <>
+                      <Loader2 className="animate-spin" size={13} /> Transmitting Referral...
+                    </>
+                  ) : (
+                    <>
+                      <SendIcon size={12} /> Transmit Strategic Proposal
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

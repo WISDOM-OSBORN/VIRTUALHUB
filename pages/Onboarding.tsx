@@ -1,6 +1,8 @@
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+// @ts-expect-error - Vite ?url suffix resolves to a static string URL at build time
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { UserRole, AIProfile } from '../types';
 import { AIProfileService } from '../services/aiProfileService';
 import { StorageService } from '../services/storageService';
@@ -83,16 +85,33 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
             const arrayBuffer = e.target?.result as ArrayBuffer;
             // Robust dynamic import for pdfjs
             const pdfjsLib = await import('pdfjs-dist');
-            // We use a fixed version that matches the package.json
-            const pdfjsVersion = '5.7.284'; 
-            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.mjs`;
+            
+            // Configure worker location to use our local same-origin bundled asset
+            try {
+              pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+            } catch (err) {
+              console.warn("Could not bind local module worker path, using unpkg CDN fallback:", err);
+              pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@5.7.284/build/pdf.worker.min.mjs';
+            }
 
-            const loadingTask = pdfjsLib.getDocument({ 
+            let loadingTask = pdfjsLib.getDocument({ 
               data: arrayBuffer,
               useWorkerFetch: false,
             });
 
-            const pdf = await loadingTask.promise;
+            let pdf;
+            try {
+              pdf = await loadingTask.promise;
+            } catch (loadErr) {
+              console.warn("PDF parsing failed with current worker setup. Retrying instantly via native main-thread fallback:", loadErr);
+              // Resetting workerSrc forces PDF.js to fall back securely on its internal main-thread parser
+              pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+              const fallbackTask = pdfjsLib.getDocument({
+                data: arrayBuffer,
+                useWorkerFetch: false,
+              });
+              pdf = await fallbackTask.promise;
+            }
             let fullText = '';
             
             for (let i = 1; i <= pdf.numPages; i++) {

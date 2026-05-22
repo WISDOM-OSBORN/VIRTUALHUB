@@ -480,7 +480,7 @@ export const StorageService = {
         console.log("No vector-matched profiles found. Fetching other active researchers from DB directly for fallback.");
         const { data: fallbackProfiles } = await supabase
           .from('profiles')
-          .select('id, name, role, ai_profile, semantic_summary')
+          .select('id, name, role, ai_profile, semantic_summary, avatar_url')
           .neq('id', userId)
           .limit(10);
 
@@ -491,7 +491,8 @@ export const StorageService = {
             role: p.role || 'Researcher',
             ai_profile: p.ai_profile,
             semantic_summary: p.semantic_summary || 'Digital identity registered in University of Ghana Ecosystem.',
-            similarity: 0.82 // Warm baseline similarity for fallback matching
+            similarity: 0.82, // Warm baseline similarity for fallback matching
+            avatar_url: p.avatar_url
           }));
         }
       }
@@ -516,6 +517,27 @@ export const StorageService = {
         }
       }
 
+      // Enrich profiles with avatar_url
+      if (finalProfiles.length > 0) {
+        try {
+          const profileIds = finalProfiles.map((p: any) => p.id);
+          const { data: enrichedData, error: enrichError } = await supabase
+            .from('profiles')
+            .select('id, avatar_url')
+            .in('id', profileIds);
+          
+          if (!enrichError && enrichedData && enrichedData.length > 0) {
+            const avatarMap = new Map(enrichedData.map(row => [row.id, row.avatar_url]));
+            finalProfiles = finalProfiles.map((p: any) => ({
+              ...p,
+              avatar_url: avatarMap.get(p.id) || p.avatar_url || null
+            }));
+          }
+        } catch (e) {
+          console.warn("Could not enrich matched profiles with avatar_urls:", e);
+        }
+      }
+
       return {
         profiles: finalProfiles,
         projects: finalProjects
@@ -525,7 +547,7 @@ export const StorageService = {
       // Ultimate absolute fallback from catches
       try {
         const [{ data: fallbackProfiles }, { data: fallbackProjects }] = await Promise.all([
-          supabase.from('profiles').select('id, name, role, ai_profile, semantic_summary').neq('id', userId).limit(10),
+          supabase.from('profiles').select('id, name, role, ai_profile, semantic_summary, avatar_url').neq('id', userId).limit(10),
           supabase.from('projects').select('id, title, description, image_url, research_area').limit(10)
         ]);
 
@@ -536,7 +558,8 @@ export const StorageService = {
             role: p.role || 'Collaborator',
             ai_profile: p.ai_profile,
             semantic_summary: p.semantic_summary || 'Profile active in ecosystem.',
-            similarity: 0.75
+            similarity: 0.75,
+            avatar_url: p.avatar_url
           })),
           projects: (fallbackProjects || []).map(p => ({
             id: p.id,
