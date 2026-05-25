@@ -286,15 +286,20 @@ const ProjectDetail: React.FC = () => {
           {project.achievements && project.achievements.length > 0 && (
             <section className="bg-white p-12 rounded-[3rem] border border-gray-100 shadow-sm">
               <h2 className="text-2xl font-black text-ug-navy mb-8 flex items-center gap-4">
-                <CheckCircle2 className="text-ug-success" size={28} /> Key Milestones
+                <CheckCircle2 className="text-ug-success" size={28} /> Key Milestones & Achievements
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {project.achievements.map((item, i) => (
-                  <div key={i} className="flex items-start gap-5 p-6 bg-gray-50 rounded-3xl border border-gray-100">
-                    <div className="mt-1 text-ug-success"><Check size={18} /></div>
-                    <p className="text-gray-600 font-bold leading-relaxed">{item}</p>
-                  </div>
-                ))}
+                {project.achievements.map((item, i) => {
+                  const cleanedItem = item.replace(/^(\s*[•\-\*]|\s*\d+\.)\s*/, '');
+                  return (
+                    <div key={i} className="flex items-start gap-5 p-6 bg-gray-50 rounded-3xl border border-gray-100 group hover:border-ug-teal/20 hover:bg-white transition-all duration-300">
+                      <div className="w-8 h-8 rounded-full bg-ug-teal/10 text-ug-teal font-black text-xs flex items-center justify-center shrink-0 group-hover:bg-ug-teal group-hover:text-white transition-all duration-300">
+                        {i + 1}
+                      </div>
+                      <p className="text-gray-600 font-bold leading-relaxed">{cleanedItem}</p>
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}

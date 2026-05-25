@@ -227,6 +227,9 @@ const ProjectFormModal: React.FC<{
   const [evidenceImage, setEvidenceImage] = useState<File | null>(null);
   const [technicalBrief, setTechnicalBrief] = useState<File | null>(null);
 
+  // Temporary string state for achievements textarea to avoid line deletion and cursor jump behaviors when pressing enter
+  const [tmpAchievementsText, setTmpAchievementsText] = useState('');
+
   const [formData, setFormData] = useState<Partial<Project>>({
     title: '',
     description: '',
@@ -248,6 +251,7 @@ const ProjectFormModal: React.FC<{
   useEffect(() => {
     if (project) {
       setFormData(project);
+      setTmpAchievementsText(project.achievements?.join('\n') || '');
     } else {
       setFormData({
         title: '',
@@ -266,6 +270,7 @@ const ProjectFormModal: React.FC<{
         achievements: [],
         needs: []
       });
+      setTmpAchievementsText('');
     }
     setMainImage(null);
     setEvidenceImage(null);
@@ -442,7 +447,61 @@ const ProjectFormModal: React.FC<{
 
               <div className="space-y-2">
                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Key Achievements & Milestones</label>
-                <textarea rows={3} value={formData.achievements?.join('\n') || ''} onChange={e => setFormData({...formData, achievements: e.target.value.split('\n').filter(s => s.trim())})} className="w-full bg-white border border-gray-100 rounded-2xl p-4 font-medium text-gray-600 focus:ring-2 focus:ring-ug-teal/20 outline-none resize-none text-xs" placeholder="• Lab validation completed&#10;• Prototype developed&#10;• Clinical testing phase..." />
+                <textarea 
+                  rows={4} 
+                  value={tmpAchievementsText} 
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const textarea = e.currentTarget;
+                      const start = textarea.selectionStart;
+                      const textBefore = tmpAchievementsText.substring(0, start);
+                      const textAfter = tmpAchievementsText.substring(start);
+                      
+                      const linesBefore = textBefore.split('\n');
+                      const lastLine = linesBefore[linesBefore.length - 1];
+                      
+                      let prefix = '';
+                      if (lastLine.trim().startsWith('•')) {
+                        prefix = '• ';
+                      } else if (lastLine.trim().startsWith('-')) {
+                        prefix = '- ';
+                      } else if (/^\d+\./.test(lastLine.trim())) {
+                        const match = lastLine.trim().match(/^(\d+)\./);
+                        if (match) {
+                          const nextNum = parseInt(match[1], 10) + 1;
+                          prefix = `${nextNum}. `;
+                        }
+                      }
+                      
+                      if (prefix) {
+                        e.preventDefault();
+                        const newText = textBefore + '\n' + prefix + textAfter;
+                        setTmpAchievementsText(newText);
+                        
+                        const newLines = newText.split('\n').map(s => s.trim()).filter(Boolean);
+                        setFormData({
+                          ...formData,
+                          achievements: newLines
+                        });
+                        
+                        setTimeout(() => {
+                          textarea.selectionStart = textarea.selectionEnd = start + 1 + prefix.length;
+                        }, 0);
+                      }
+                    }
+                  }}
+                  onChange={e => {
+                    const txt = e.target.value;
+                    setTmpAchievementsText(txt);
+                    const parsedLines = txt.split('\n').map(s => s.trim()).filter(Boolean);
+                    setFormData({
+                      ...formData,
+                      achievements: parsedLines
+                    });
+                  }} 
+                  className="w-full bg-white border border-gray-100 rounded-2xl p-4 font-medium text-gray-700 focus:ring-2 focus:ring-ug-teal/20 outline-none resize-none text-xs leading-relaxed" 
+                  placeholder="• Lab validation completed&#10;• Prototype developed&#10;• Clinical testing phase..." 
+                />
               </div>
 
               <div className="space-y-2">
@@ -1222,9 +1281,10 @@ interface DashboardsProps extends DashboardProps {
   initialThreadId?: string | null;
   onThreadHandled?: () => void;
   onLogout?: () => void;
+  onProfileUpdate?: () => void;
 }
 
-const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, onThreadHandled, onLogout }) => {
+const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, onThreadHandled, onLogout, onProfileUpdate }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'matches' | 'messages' | 'profile'>('overview');
   const [localUser, setLocalUser] = useState<User | null>(user);
@@ -1252,9 +1312,13 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
   const [isRerunningOnboarding, setIsRerunningOnboarding] = useState(false);
 
   const refreshProfile = async () => {
-    if (!user?.id) return;
-    const freshProfile = await StorageService.getProfile(user.id);
+    const userId = localUser?.id || user?.id;
+    if (!userId) return;
+    const freshProfile = await StorageService.getProfile(userId);
     setLocalUser(freshProfile);
+    if (onProfileUpdate) {
+      onProfileUpdate();
+    }
   };
 
   const handleLogout = () => {

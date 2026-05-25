@@ -430,7 +430,9 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
       <div className="mb-10">
         <span className="text-xs font-black text-ug-teal uppercase tracking-[0.2em] mb-2 block">Step 3 of 4</span>
         <h2 className="text-3xl font-black text-ug-navy tracking-tight">Experience Import</h2>
-        <p className="text-gray-400 text-sm font-medium mt-2 italic">Upload your CV or paste your bio for AI matching.</p>
+        <p className="text-gray-400 text-sm font-medium mt-2 italic">
+          Upload your CV to the <strong className="text-ug-teal font-black">AI Parser</strong> in PDF or TXT format for instant extraction, or paste your text/bio in the field below.
+        </p>
       </div>
 
       <div className="space-y-8">
@@ -440,7 +442,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
             id="cv-upload"
             className="hidden"
             onChange={handleFileUpload}
-            accept=".pdf,.doc,.docx,.txt"
+            accept=".pdf,.txt"
           />
           <label 
             htmlFor="cv-upload"
@@ -455,7 +457,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
               <p className="text-sm font-black text-ug-navy uppercase tracking-widest">
                 {isUploading ? 'Extracting Data...' : (cvText ? 'Payload Registered' : 'Drop CV / Resume')}
               </p>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">PDF, DOCX, or Text</p>
+              <p className="text-[10px] text-ug-teal font-bold uppercase tracking-widest mt-1">Direct Extraction: PDF & TXT</p>
             </div>
           </label>
         </div>
