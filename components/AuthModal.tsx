@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Mail, Lock, User, ArrowRight, AlertCircle, Info, Eye, EyeOff } from 'lucide-react';
+import { X, Mail, Lock, User, ArrowRight, AlertCircle, Info, Eye, EyeOff, Target } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { UserRole } from '../types';
 import { supabase } from '../lib/supabase';
@@ -19,6 +19,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [role, setRole] = useState<UserRole>(UserRole.Researcher);
+  const [userType, setUserType] = useState<'individual' | 'entity'>('individual');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ message: string; type: 'general' | 'rate-limit' | 'signup-disabled' } | null>(null);
   const navigate = useNavigate();
@@ -56,7 +57,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             id: authData.user.id,
             email,
             name: name || 'Anonymous User',
-            role: role
+            role: role,
+            user_type: (role === UserRole.Investor || role === UserRole.IndustryPartner) ? userType : 'individual'
           });
         }
       }
@@ -165,12 +167,34 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     </div>
                     <select 
                       value={role} 
-                      onChange={(e) => setRole(e.target.value as UserRole)}
+                      onChange={(e) => {
+                        const nextRole = e.target.value as UserRole;
+                        setRole(nextRole);
+                        if (nextRole !== UserRole.Investor && nextRole !== UserRole.IndustryPartner) {
+                          setUserType('individual');
+                        }
+                      }}
                       className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ug-teal/20 focus:border-ug-teal text-sm font-bold bg-gray-50 appearance-none"
                     >
                       {Object.values(UserRole).map(r => (
                         <option key={r} value={r}>{r}</option>
                       ))}
+                    </select>
+                  </div>
+                )}
+
+                {!isLogin && (role === UserRole.Investor || role === UserRole.IndustryPartner) && (
+                  <div className="relative animate-fade-in-up">
+                    <div className="absolute left-3 top-3 text-gray-400">
+                      <Target size={18} />
+                    </div>
+                    <select 
+                      value={userType} 
+                      onChange={(e) => setUserType(e.target.value as 'individual' | 'entity')}
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ug-teal/20 focus:border-ug-teal text-sm font-bold bg-gray-50 appearance-none"
+                    >
+                      <option value="individual">Individual Setup</option>
+                      <option value="entity">Firm / NGO / Entity Setup</option>
                     </select>
                   </div>
                 )}

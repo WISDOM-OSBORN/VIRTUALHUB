@@ -32,6 +32,7 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  user_type?: 'individual' | 'entity';
   department?: string;
   company?: string;
   avatar_url?: string;
@@ -41,6 +42,7 @@ export interface User {
   website_url_3?: string;
   website_url_4?: string;
   ai_profile?: any;
+  answers?: any;
   embedding?: number[];
   semantic_summary?: string;
 }

@@ -23,22 +23,56 @@ interface OnboardingProps {
   isEmbedded?: boolean;
 }
 
-type OnboardingStep = 'role' | 'questionnaire' | 'resume' | 'processing' | 'summary';
+type OnboardingStep = 'role' | 'questionnaire' | 'resume' | 'processing' | 'summary' | 'entity_identity' | 'entity_focus' | 'entity_model' | 'entity_competencies' | 'entity_ai_questions';
 
 export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip, isEmbedded = false }) => {
   const [step, setStep] = useState<OnboardingStep>(isEmbedded ? 'questionnaire' : 'role');
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(user?.role || null);
+  const [userType, setUserType] = useState<'individual' | 'entity'>(user?.user_type || 'individual');
   const [cvText, setCvText] = useState('');
-  const [answers, setAnswers] = useState<any>({});
+  
+  const [answers, setAnswers] = useState<any>({
+    orgName: user?.company || '',
+    orgType: '',
+    location: '',
+    website: user?.website_url || '',
+    contactEmail: user?.email || '',
+    contactPhone: '',
+    orgOverview: '',
+    sectorVector: ['pharmaceutical', 'drugs', 'diagnostics'],
+    offerVector: [],
+    needVector: [],
+    collaborationVector: [],
+    readinessVector: [],
+    capabilityVector: [],
+    fundingStage: [],
+    investmentRange: '',
+    problemStatement: '',
+    idealCandidate: '',
+    ecosystemStrength: ''
+  });
+
+  const [customSector, setCustomSector] = useState('');
+  const [customOffer, setCustomOffer] = useState('');
+  const [customNeed, setCustomNeed] = useState('');
+  const [customCapability, setCustomCapability] = useState('');
+
   const [isUploading, setIsUploading] = useState(false);
   const [extractedProfile, setExtractedProfile] = useState<AIProfile | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const { showToast } = useToast();
   const navigate = useNavigate();
 
+  const stepsList = userType === 'entity' 
+    ? ['role', 'entity_identity', 'entity_focus', 'entity_model', 'entity_competencies', 'entity_ai_questions', 'summary']
+    : ['role', 'questionnaire', 'resume', 'summary'];
+
   const handleRoleSelect = (role: UserRole) => {
     setSelectedRole(role);
-    setStep('questionnaire');
+    if (role === UserRole.Researcher || role === UserRole.Student) {
+      setUserType('individual');
+      setStep('questionnaire');
+    }
   };
 
   const handleLookingForToggle = (option: string) => {
@@ -160,11 +194,20 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
     setIsProcessing(true);
     setStep('processing');
     try {
-      const profile = await AIProfileService.processProfile(cvText, {
-        ...answers,
-        role: selectedRole,
-        user_name: user?.name
-      });
+      let profile: AIProfile;
+      if (userType === 'entity') {
+        profile = await AIProfileService.processEntityProfile({
+          ...answers,
+          role: selectedRole,
+          user_name: user?.name
+        });
+      } else {
+        profile = await AIProfileService.processProfile(cvText, {
+          ...answers,
+          role: selectedRole,
+          user_name: user?.name
+        });
+      }
       
       setExtractedProfile(profile);
       
@@ -182,18 +225,19 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
         await StorageService.updateProfile({
           id: user.id,
           role: selectedRole as any,
+          user_type: userType,
           ai_profile: profile,
           bio: profile.semantic_summary,
           embedding,
           semantic_summary: profile.semantic_summary,
-          answers: answers // Added answers here
+          answers: answers
         });
       }
       
       setStep('summary');
     } catch (error) {
       showToast("Simulation Error: AI Processing failed. Please try again.", "error");
-      setStep('resume');
+      setStep(userType === 'entity' ? 'entity_ai_questions' : 'resume');
     } finally {
       setIsProcessing(false);
     }
@@ -209,8 +253,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
         >
           <Zap size={40} className="fill-current" />
         </motion.div>
-        <h1 className="text-4xl font-black text-ug-navy mb-4 tracking-tighter">Who are you in this ecosystem?</h1>
-        <p className="text-gray-500 font-medium">Select your identity to personalize your intelligence hub.</p>
+        <h1 className="text-4xl font-black text-ug-navy mb-4 tracking-tighter col-span-2">Who are you in this ecosystem?</h1>
+        <p className="text-gray-500 font-medium col-span-2">Select your identity to personalize your intelligence hub.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -225,9 +269,13 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
             whileHover={{ y: -5, scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => handleRoleSelect(role.id)}
-            className="group bg-white p-8 rounded-[2rem] border-2 border-gray-100 hover:border-ug-teal text-left transition-all shadow-xl shadow-gray-100 hover:shadow-ug-teal/10"
+            className={`group bg-white p-8 rounded-[2rem] border-2 text-left transition-all shadow-xl ${
+              selectedRole === role.id ? 'border-ug-teal ring-4 ring-ug-teal/10' : 'border-gray-100 hover:border-ug-teal shadow-gray-100 hover:shadow-ug-teal/10'
+            }`}
           >
-            <div className="w-14 h-14 bg-gray-50 group-hover:bg-ug-teal text-gray-400 group-hover:text-white rounded-2xl flex items-center justify-center mb-6 transition-colors">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-colors ${
+              selectedRole === role.id ? 'bg-ug-teal text-white font-black' : 'bg-gray-50 group-hover:bg-ug-teal text-gray-400 group-hover:text-white'
+            }`}>
               <role.icon size={28} />
             </div>
             <h3 className="text-lg font-black text-ug-navy mb-2 uppercase tracking-wide group-hover:text-ug-teal transition-colors">
@@ -236,6 +284,707 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
             <p className="text-xs text-gray-400 font-bold leading-relaxed">{role.desc}</p>
           </motion.button>
         ))}
+      </div>
+
+      {selectedRole && (selectedRole === UserRole.Investor || selectedRole === UserRole.IndustryPartner) && (
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="mt-12 max-w-2xl mx-auto bg-gray-50 rounded-[2.5rem] p-8 border-2 border-gray-100 relative text-center"
+        >
+          <h3 className="text-lg font-black text-ug-navy uppercase tracking-wider mb-2">Portal Setup Type</h3>
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-6">Are you setting up as an individual advisor, or on behalf of an organization?</p>
+          
+          <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mb-8">
+            <button
+              onClick={() => setUserType('individual')}
+              className={`py-4 px-6 rounded-2xl border-2 text-xs font-black uppercase tracking-wider transition-all ${
+                userType === 'individual'
+                  ? 'bg-ug-navy text-white border-ug-navy shadow-lg'
+                  : 'bg-white border-gray-200 text-gray-400 hover:border-ug-teal'
+              }`}
+            >
+              Individual Advisor
+            </button>
+            <button
+              onClick={() => setUserType('entity')}
+              className={`py-4 px-6 rounded-2xl border-2 text-xs font-black uppercase tracking-wider transition-all ${
+                userType === 'entity'
+                  ? 'bg-ug-navy text-white border-ug-navy shadow-lg'
+                  : 'bg-white border-gray-200 text-gray-400 hover:border-ug-teal'
+              }`}
+            >
+              Firm / NGO / Entity
+            </button>
+          </div>
+
+          <button
+            onClick={() => {
+              if (userType === 'entity') {
+                setStep('entity_identity');
+              } else {
+                setStep('questionnaire');
+              }
+            }}
+            className="bg-ug-teal text-white px-8 py-3.5 rounded-xl font-black text-xs uppercase tracking-[0.2em] shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2 mx-auto"
+          >
+            Proceed Setup <ChevronRight size={16} />
+          </button>
+        </motion.div>
+      )}
+    </div>
+  );
+
+  const renderEntityIdentity = () => (
+    <div className="max-w-2xl mx-auto p-8">
+      <button onClick={() => setStep('role')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors font-sans focus:outline-none">
+        <ChevronLeft size={16} /> Back
+      </button>
+
+      <div className="mb-10">
+        <span className="text-xs font-black text-ug-teal tracking-[0.2em] mb-2 block">Step 1 of 5: Identity</span>
+        <h2 className="text-3xl font-black text-ug-navy tracking-tight">Organization Profile</h2>
+        <p className="text-gray-400 text-sm font-medium mt-2">Tell us about your organization or fund.</p>
+      </div>
+
+      <div className="space-y-6">
+        <div>
+          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Organization / Company Name *</label>
+          <input 
+            type="text" 
+            placeholder="e.g. Ghana Health NGO, Delta Fund..."
+            value={answers.orgName || ''}
+            onChange={(e) => setAnswers({...answers, orgName: e.target.value})}
+            className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+          />
+        </div>
+
+        <div>
+          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Organization Type *</label>
+          <select 
+            value={answers.orgType || ''}
+            onChange={(e) => setAnswers({...answers, orgType: e.target.value})}
+            className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold appearance-none"
+          >
+            <option value="">Select Type</option>
+            <option value="Private Company">Private Company / Enterprise</option>
+            <option value="NGO">NGO / Non-Governmental Organization</option>
+            <option value="Angel Investment Firm">Angel Investment Firm</option>
+            <option value="Venture Capitalist (VC)">Venture Capitalist (VC)</option>
+            <option value="Healthcare Provider">Healthcare / Clinical Provider</option>
+            <option value="Ecosystem Lab">Ecosystem Incubator / Lab</option>
+            <option value="Government Agency">Government / Public Agency</option>
+            <option value="Other NGO/Firm">Other NGO or Firm</option>
+          </select>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Primary Office Location *</label>
+            <input 
+              type="text" 
+              placeholder="e.g. Accra, Kumasi"
+              value={answers.location || ''}
+              onChange={(e) => setAnswers({...answers, location: e.target.value})}
+              className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Website URL</label>
+            <input 
+              type="url" 
+              placeholder="e.g. www.firm.com"
+              value={answers.website || ''}
+              onChange={(e) => setAnswers({...answers, website: e.target.value})}
+              className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Contact Person Email *</label>
+            <input 
+              type="email" 
+              placeholder="e.g. executive@firm.com"
+              value={answers.contactEmail || ''}
+              onChange={(e) => setAnswers({...answers, contactEmail: e.target.value})}
+              className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Contact Phone Number *</label>
+            <input 
+              type="tel" 
+              placeholder="e.g. +233 24 000 0000"
+              value={answers.contactPhone || ''}
+              onChange={(e) => setAnswers({...answers, contactPhone: e.target.value})}
+              className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Brief Organization Overview *</label>
+          <textarea 
+            placeholder="Describe what your organization represents, does, and offers..."
+            value={answers.orgOverview || ''}
+            onChange={(e) => setAnswers({...answers, orgOverview: e.target.value})}
+            className="w-full h-32 bg-gray-50 border-2 border-gray-100 rounded-[2rem] p-6 outline-none focus:bg-white focus:border-ug-teal transition-all text-xs font-medium leading-relaxed resize-none shadow-sm"
+          />
+        </div>
+
+        <button 
+          onClick={() => {
+            if (!answers.orgName || !answers.orgType || !answers.location || !answers.contactEmail || !answers.contactPhone || !answers.orgOverview) {
+              showToast("Please fill in all required (*) fields", "error");
+              return;
+            }
+            setStep('entity_focus');
+          }}
+          className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3"
+        >
+          Next: Focus & Intentions <ChevronRight size={18} />
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderEntityFocus = () => {
+    const defaultSectors = ['pharmaceutical', 'drugs', 'diagnostics'];
+    
+    const toggleSector = (sector: string) => {
+      const current = answers.sectorVector || [];
+      const next = current.includes(sector) ? current.filter((s: string) => s !== sector) : [...current, sector];
+      setAnswers({ ...answers, sectorVector: next });
+    };
+
+    const addCustomSector = () => {
+      if (!customSector.trim()) return;
+      const clean = customSector.trim().toLowerCase();
+      if (!answers.sectorVector?.includes(clean)) {
+        setAnswers({ ...answers, sectorVector: [...(answers.sectorVector || []), clean] });
+      }
+      setCustomSector('');
+    };
+
+    const offersOptions = [
+      'Funding & Grants',
+      'Mentorship & Advisory',
+      'Lab Equipment & Space',
+      'Regulatory Guidance',
+      'Clinical Trial Access',
+      'Student Internships',
+      'Technology Licensing'
+    ];
+
+    const toggleOffer = (offer: string) => {
+      const current = answers.offerVector || [];
+      const next = current.includes(offer) ? current.filter((o: string) => o !== offer) : [...current, offer];
+      setAnswers({ ...answers, offerVector: next });
+    };
+
+    const addCustomOffer = () => {
+      if (!customOffer.trim()) return;
+      const clean = customOffer.trim();
+      if (!answers.offerVector?.includes(clean)) {
+        setAnswers({ ...answers, offerVector: [...(answers.offerVector || []), clean] });
+      }
+      setCustomOffer('');
+    };
+
+    const needsOptions = [
+      'Diagnostic Devices/Prototypes',
+      'Novel Drug Leads',
+      'Vaccine Candidates',
+      'Ecosystem Partners',
+      'Academic Publications',
+      'Bioinformatics Databases',
+      'Biosensor Test Assets'
+    ];
+
+    const toggleNeed = (need: string) => {
+      const current = answers.needVector || [];
+      const next = current.includes(need) ? current.filter((n: string) => n !== need) : [...current, need];
+      setAnswers({ ...answers, needVector: next });
+    };
+
+    const addCustomNeed = () => {
+      if (!customNeed.trim()) return;
+      const clean = customNeed.trim();
+      if (!answers.needVector?.includes(clean)) {
+        setAnswers({ ...answers, needVector: [...(answers.needVector || []), clean] });
+      }
+      setCustomNeed('');
+    };
+
+    return (
+      <div className="max-w-2xl mx-auto p-8">
+        <button onClick={() => setStep('entity_identity')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors font-sans focus:outline-none">
+          <ChevronLeft size={16} /> Back
+        </button>
+
+        <div className="mb-10">
+          <span className="text-xs font-black text-ug-teal tracking-[0.2em] mb-2 block">Step 2 of 5: Intentions</span>
+          <h2 className="text-3xl font-black text-ug-navy tracking-tight">Focus & Core Capabilities</h2>
+          <p className="text-gray-400 text-sm font-medium mt-2">Define focus tracks and resource exchanges.</p>
+        </div>
+
+        <div className="space-y-8 max-h-[60vh] overflow-y-auto pr-4 scroll-smooth pb-6">
+          {/* SECTOR VECTOR TRACKS */}
+          <div>
+            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Focus Tracks *</label>
+            <div className="flex flex-wrap gap-2.5 mb-4">
+              {defaultSectors.map(sector => (
+                <button
+                  key={sector}
+                  onClick={() => toggleSector(sector)}
+                  className={`py-2 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all ${
+                    answers.sectorVector?.includes(sector) ? 'bg-ug-navy text-white border-ug-navy' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
+                  }`}
+                >
+                  {sector}
+                </button>
+              ))}
+              {answers.sectorVector?.filter((s: string) => !defaultSectors.includes(s)).map((custom: string) => (
+                <button
+                  key={custom}
+                  onClick={() => toggleSector(custom)}
+                  className="py-2 px-4 rounded-xl border-2 bg-ug-teal text-white border-ug-teal text-[10px] font-black uppercase tracking-wider transition-all"
+                >
+                  {custom}
+                </button>
+              ))}
+            </div>
+            
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                placeholder="Add other custom focus area..."
+                value={customSector}
+                onChange={(e) => setCustomSector(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addCustomSector()}
+                className="flex-1 bg-gray-50 border-2 border-gray-100 rounded-xl py-2 px-4 outline-none focus:bg-white focus:border-ug-teal text-xs font-bold"
+              />
+              <button onClick={addCustomSector} className="px-4 py-2 bg-ug-navy text-white rounded-xl text-xs font-black uppercase tracking-wider">Add</button>
+            </div>
+          </div>
+
+          {/* Core Value Offerings */}
+          <div>
+            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">What Can You Offer the Ecosystem? *</label>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {offersOptions.map(offer => (
+                <button
+                  key={offer}
+                  onClick={() => toggleOffer(offer)}
+                  className={`py-2.5 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all ${
+                    answers.offerVector?.includes(offer) ? 'bg-ug-navy text-white border-ug-navy' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
+                  }`}
+                >
+                  {offer}
+                </button>
+              ))}
+              {answers.offerVector?.filter((o: string) => !offersOptions.includes(o)).map((custom: string) => (
+                <button
+                  key={custom}
+                  onClick={() => toggleOffer(custom)}
+                  className="py-2.5 px-4 rounded-xl border-2 bg-ug-teal text-white border-ug-teal text-[10px] font-black uppercase tracking-wider transition-all"
+                >
+                  {custom}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                placeholder="Add other resource custom offer..."
+                value={customOffer}
+                onChange={(e) => setCustomOffer(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addCustomOffer()}
+                className="flex-1 bg-gray-50 border-2 border-gray-100 rounded-xl py-2 px-4 outline-none focus:bg-white focus:border-ug-teal text-xs font-bold"
+              />
+              <button onClick={addCustomOffer} className="px-4 py-2 bg-ug-navy text-white rounded-xl text-xs font-black uppercase tracking-wider font-sans">Add</button>
+            </div>
+          </div>
+
+          {/* Looking For (Needs) */}
+          <div>
+            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">What Are You Actively Looking For? *</label>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {needsOptions.map(need => (
+                <button
+                  key={need}
+                  onClick={() => toggleNeed(need)}
+                  className={`py-2.5 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all ${
+                    answers.needVector?.includes(need) ? 'bg-ug-navy text-white border-ug-navy' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
+                  }`}
+                >
+                  {need}
+                </button>
+              ))}
+              {answers.needVector?.filter((n: string) => !needsOptions.includes(n)).map((custom: string) => (
+                <button
+                  key={custom}
+                  onClick={() => toggleNeed(custom)}
+                  className="py-2.5 px-4 rounded-xl border-2 bg-ug-teal text-white border-ug-teal text-[10px] font-black uppercase tracking-wider transition-all"
+                >
+                  {custom}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                placeholder="Add other dynamic custom need..."
+                value={customNeed}
+                onChange={(e) => setCustomNeed(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addCustomNeed()}
+                className="flex-1 bg-gray-50 border-2 border-gray-100 rounded-xl py-2 px-4 outline-none focus:bg-white focus:border-ug-teal text-xs font-bold"
+              />
+              <button onClick={addCustomNeed} className="px-4 py-2 bg-ug-navy text-white rounded-xl text-xs font-black uppercase tracking-wider font-sans">Add</button>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => {
+              if (!answers.sectorVector?.length || !answers.offerVector?.length || !answers.needVector?.length) {
+                showToast("Please choose at least one item from focus, offer, and looking fields.", "error");
+                return;
+              }
+              setStep('entity_model');
+            }}
+            className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3"
+          >
+            Next: Operation Model <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderEntityModel = () => {
+    const collaborationOptions = [
+      'Sponsored Research Contracts',
+      'Joint Venture Scaling',
+      'Technology Licensing Agreement',
+      'Scientific Advisory Seats',
+      'Ecosystem Internship Cohort'
+    ];
+
+    const toggleCollab = (collab: string) => {
+      const current = answers.collaborationVector || [];
+      const next = current.includes(collab) ? current.filter((c: string) => c !== collab) : [...current, collab];
+      setAnswers({ ...answers, collaborationVector: next });
+    };
+
+    const readinessOptions = [
+      'TRL 1-3: Basic Research & Concepts',
+      'TRL 4-5: Lab-Scale Prototype Development',
+      'TRL 6-8: Validation & Clinical Pipeline',
+      'TRL 9: Commercial & Market Ready'
+    ];
+
+    const toggleReadiness = (readiness: string) => {
+      const current = answers.readinessVector || [];
+      const next = current.includes(readiness) ? current.filter((r: string) => r !== readiness) : [...current, readiness];
+      setAnswers({ ...answers, readinessVector: next });
+    };
+
+    const fundingRangeOptions = [
+      { id: 'seed_grant', val: '$10k - $50k (Seed Grant)' },
+      { id: 'pre_a', val: '$50k - $250k (Pre-Series A)' },
+      { id: 'growth_capital', val: '$250k - $1M (Growth Capital)' },
+      { id: 'series_a', val: '$1M+ (Institutional VC)' }
+    ];
+
+    const toggleFundingStage = (stage: string) => {
+      const current = answers.fundingStage || [];
+      const next = current.includes(stage) ? current.filter((s: string) => s !== stage) : [...current, stage];
+      setAnswers({ ...answers, fundingStage: next });
+    };
+
+    return (
+      <div className="max-w-2xl mx-auto p-8">
+        <button onClick={() => setStep('entity_focus')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors font-sans focus:outline-none">
+          <ChevronLeft size={16} /> Back
+        </button>
+
+        <div className="mb-10">
+          <span className="text-xs font-black text-ug-teal tracking-[0.2em] mb-2 block">Step 3 of 5: Model</span>
+          <h2 className="text-3xl font-black text-ug-navy tracking-tight">Collaboration Model</h2>
+          <p className="text-gray-400 text-sm font-medium mt-2">Specify engagement workflows and target readiness.</p>
+        </div>
+
+        <div className="space-y-8 max-h-[60vh] overflow-y-auto pr-4 scroll-smooth pb-6">
+          {/* Collaboration Models */}
+          <div>
+            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Preferred Collaboration Models *</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {collaborationOptions.map(collab => {
+                const isSelected = answers.collaborationVector?.includes(collab);
+                return (
+                  <button
+                    key={collab}
+                    onClick={() => toggleCollab(collab)}
+                    className={`py-3.5 px-6 rounded-xl border-2 text-[10px] font-black uppercase text-left tracking-wide transition-all ${
+                      isSelected ? 'bg-ug-navy text-white border-ug-navy shadow-md' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
+                    }`}
+                  >
+                    {collab}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Innovation Readiness Preferences */}
+          <div>
+            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Target Innovation Readiness Levels (TRL) *</label>
+            <div className="space-y-3">
+              {readinessOptions.map(readiness => {
+                const isSelected = answers.readinessVector?.includes(readiness);
+                return (
+                  <button
+                    key={readiness}
+                    onClick={() => toggleReadiness(readiness)}
+                    className={`w-full py-3.5 px-6 rounded-xl border-2 text-[10px] font-black uppercase text-left tracking-wide transition-all flex justify-between items-center ${
+                      isSelected ? 'bg-ug-navy text-white border-ug-navy' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
+                    }`}
+                  >
+                    <span>{readiness}</span>
+                    <span className={`w-4 h-4 rounded-full border-2 ${isSelected ? 'border-ug-teal bg-ug-teal' : 'border-gray-200 bg-transparent'}`} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* INVESTOR ADDITIONAL CRITERIA */}
+          {selectedRole === UserRole.Investor && (
+            <div className="pt-6 border-t border-gray-100 space-y-6">
+              <div>
+                <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Investment Ticket Range *</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {fundingRangeOptions.map(option => (
+                    <button
+                      key={option.id}
+                      onClick={() => setAnswers({...answers, investmentRange: option.val})}
+                      className={`py-3 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all ${
+                        answers.investmentRange === option.val ? 'bg-ug-navy text-white border-ug-navy' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
+                      }`}
+                    >
+                      {option.val}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Active Funding Stages *</label>
+                <div className="flex flex-wrap gap-2.5">
+                  {['Pre-Seed', 'Seed Stage', 'Venture Funding', 'Grant/Philanthropy Aid'].map(stage => {
+                    const isSelected = answers.fundingStage?.includes(stage);
+                    return (
+                      <button
+                        key={stage}
+                        onClick={() => toggleFundingStage(stage)}
+                        className={`py-2 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all ${
+                          isSelected ? 'bg-ug-navy text-white border-ug-navy' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
+                        }`}
+                      >
+                        {stage}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button 
+            onClick={() => {
+              if (!answers.collaborationVector?.length || !answers.readinessVector?.length) {
+                showToast("Please select collaboration models and innovation readiness preferences.", "error");
+                return;
+              }
+              if (selectedRole === UserRole.Investor && (!answers.investmentRange || !answers.fundingStage?.length)) {
+                showToast("Investor entities must configure investment ranges and staging.", "error");
+                return;
+              }
+              setStep('entity_competencies');
+            }}
+            className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3"
+          >
+            Next: Match Competencies <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderEntityCompetencies = () => {
+    const competenciesList = [
+      'PCR & Molecular Diagnostics',
+      'Rapid Diagnostic Test (RDT) Development',
+      'Biosensor Development',
+      'Drug Discovery Research',
+      'Drug Formulation & Development',
+      'Vaccine Research & Development',
+      'Machine Learning & Healthcare AI',
+      'Medical Device Engineering',
+      'Bio-engineering Prototype Fabrication'
+    ];
+
+    const toggleCapability = (cap: string) => {
+      const current = answers.capabilityVector || [];
+      const next = current.includes(cap) ? current.filter((c: string) => c !== cap) : [...current, cap];
+      setAnswers({ ...answers, capabilityVector: next });
+    };
+
+    const addCustomCapability = () => {
+      if (!customCapability.trim()) return;
+      const clean = customCapability.trim();
+      if (!answers.capabilityVector?.includes(clean)) {
+        setAnswers({ ...answers, capabilityVector: [...(answers.capabilityVector || []), clean] });
+      }
+      setCustomCapability('');
+    };
+
+    return (
+      <div className="max-w-2xl mx-auto p-8">
+        <button onClick={() => setStep('entity_model')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors font-sans focus:outline-none">
+          <ChevronLeft size={16} /> Back
+        </button>
+
+        <div className="mb-10">
+          <span className="text-xs font-black text-ug-teal tracking-[0.2em] mb-2 block">Step 4 of 5: Competencies</span>
+          <h2 className="text-3xl font-black text-ug-navy tracking-tight">Ecosystem Competencies</h2>
+          <p className="text-gray-400 text-sm font-medium mt-2">Select capabilities your organization values or validates.</p>
+        </div>
+
+        <div className="space-y-8 max-h-[60vh] overflow-y-auto pr-4 scroll-smooth pb-6">
+          <div>
+            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Specific Competencies We Support / Value *</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+              {competenciesList.map(comp => {
+                const isSelected = answers.capabilityVector?.includes(comp);
+                return (
+                  <button
+                    key={comp}
+                    onClick={() => toggleCapability(comp)}
+                    className={`py-3 px-4 rounded-xl border-2 text-[10px] text-left font-black uppercase tracking-wide transition-all ${
+                      isSelected ? 'bg-ug-navy text-white border-ug-navy shadow-inner' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
+                    }`}
+                  >
+                    {comp}
+                  </button>
+                );
+              })}
+              {answers.capabilityVector?.filter((c: string) => !competenciesList.includes(c)).map((custom: string) => (
+                <button
+                  key={custom}
+                  onClick={() => toggleCapability(custom)}
+                  className="py-3 px-4 rounded-xl border-2 bg-ug-teal text-white border-ug-teal text-[10px] text-left font-black uppercase tracking-wide transition-all"
+                >
+                  {custom}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                placeholder="Add other dynamic custom capability..."
+                value={customCapability}
+                onChange={(e) => setCustomCapability(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addCustomCapability()}
+                className="flex-1 bg-gray-50 border-2 border-gray-100 rounded-xl py-2 px-4 outline-none focus:bg-white focus:border-ug-teal text-xs font-bold"
+              />
+              <button onClick={addCustomCapability} className="px-4 py-2 bg-ug-navy text-white rounded-xl text-xs font-black uppercase tracking-wider font-sans">Add</button>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => {
+              if (!answers.capabilityVector?.length) {
+                showToast("Please choose or add at least one competency tag.", "error");
+                return;
+              }
+              setStep('entity_ai_questions');
+            }}
+            className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3"
+          >
+            Next: AI Setup Questions <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderEntityAIQuestions = () => (
+    <div className="max-w-2xl mx-auto p-8">
+      <button onClick={() => setStep('entity_competencies')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors font-sans focus:outline-none font-black text-xs uppercase tracking-widest">
+        <ChevronLeft size={16} /> Back
+      </button>
+
+      <div className="mb-10">
+        <span className="text-xs font-black text-ug-teal tracking-[0.2em] mb-2 block">Step 5 of 5: AI Core Matching</span>
+        <h2 className="text-3xl font-black text-ug-navy tracking-tight">Smart Match Synthesis</h2>
+        <p className="text-gray-400 text-sm font-medium mt-2">Fill out these open-ended statements to power high-fidelity semantic re-ranking.</p>
+      </div>
+
+      <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-4 scroll-smooth pb-6">
+        <div>
+          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">
+            What specific medical diagnostics, drugs, or healthcare problems does your organization actively seek to solve? *
+          </label>
+          <textarea 
+            placeholder="Describe the medical, diagnostics or pharmaceutical problems you want to work on..."
+            value={answers.problemStatement || ''}
+            onChange={(e) => setAnswers({...answers, problemStatement: e.target.value})}
+            className="w-full h-28 bg-gray-50 border-2 border-gray-100 rounded-2xl p-6 outline-none focus:bg-white focus:border-ug-teal transition-all text-xs font-medium leading-relaxed"
+          />
+        </div>
+
+        <div>
+          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">
+            Describe your ideal research/student matches. What qualities/technologies make them ideal? *
+          </label>
+          <textarea 
+            placeholder="For example: academic labs with molecular diagnostic device prototypes..."
+            value={answers.idealCandidate || ''}
+            onChange={(e) => setAnswers({...answers, idealCandidate: e.target.value})}
+            className="w-full h-28 bg-gray-50 border-2 border-gray-100 rounded-2xl p-6 outline-none focus:bg-white focus:border-ug-teal transition-all text-xs font-medium leading-relaxed"
+          />
+        </div>
+
+        <div>
+          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">
+            What makes your organization/firm a strong partner for University of Ghana research teams? *
+          </label>
+          <textarea 
+            placeholder="For example: robust NGO field network across Ghana cities, access to bio-safety labs, funding ticket scaling..."
+            value={answers.ecosystemStrength || ''}
+            onChange={(e) => setAnswers({...answers, ecosystemStrength: e.target.value})}
+            className="w-full h-28 bg-gray-50 border-2 border-gray-100 rounded-2xl p-6 outline-none focus:bg-white focus:border-ug-teal transition-all text-xs font-medium leading-relaxed"
+          />
+        </div>
+
+        <button 
+          onClick={() => {
+            if (!answers.problemStatement || !answers.idealCandidate || !answers.ecosystemStrength) {
+              showToast("Please answer all open-ended questions for deep matching alignment.", "error");
+              return;
+            }
+            processAIProfile();
+          }}
+          className="w-full bg-ug-navy text-white py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3"
+        >
+          Initialize AI Matching Twin <Sparkles size={18} />
+        </button>
       </div>
     </div>
   );
@@ -247,15 +996,15 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
       </button>
 
       <div className="mb-10">
-        <span className="text-xs font-black text-ug-teal uppercase tracking-[0.2em] mb-2 block italic">Step 2 of 4</span>
+        <span className="text-xs font-black text-ug-teal tracking-[0.2em] mb-2 block">Step 2 of 4</span>
         <h2 className="text-3xl font-black text-ug-navy tracking-tight">Your Intentions</h2>
-        <p className="text-gray-400 text-sm font-medium mt-2 italic">Tell us what you want to achieve today.</p>
+        <p className="text-gray-400 text-sm font-medium mt-2">Tell us what you want to achieve today.</p>
       </div>
 
       <div className="space-y-8 max-h-[60vh] overflow-y-auto pr-4 scroll-smooth">
         {/* COMMON QUESTIONS */}
         <div>
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Primary Focus</label>
+          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Primary Focus</label>
           <input 
             type="text" 
             placeholder="e.g. Molecular Biology, FinTech, Robotics..."
@@ -266,7 +1015,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
         </div>
 
         <div>
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">What are you currently looking for?</label>
+          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">What are you currently looking for?</label>
           <div className="grid grid-cols-2 gap-3">
             {(selectedRole === UserRole.Researcher 
               ? ['Funding', 'Industry Partner', 'Student Assistants', 'Commercialization'] 
@@ -299,7 +1048,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
         {selectedRole === UserRole.Student && (
           <div className="space-y-6 pt-4 border-t border-gray-50">
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Current Program</label>
+              <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Current Program</label>
               <input 
                 type="text" 
                 placeholder="e.g. BSc Computer Science"
@@ -309,7 +1058,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
               />
             </div>
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Availability</label>
+              <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Availability</label>
               <select 
                 value={answers.availability || ''}
                 onChange={(e) => setAnswers({...answers, availability: e.target.value})}
@@ -328,7 +1077,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
         {selectedRole === UserRole.Researcher && (
           <div className="space-y-6 pt-4 border-t border-gray-50">
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Research Stage</label>
+              <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Research Stage</label>
               <select 
                 value={answers.research_stage || ''}
                 onChange={(e) => setAnswers({...answers, research_stage: e.target.value})}
@@ -357,7 +1106,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
         {selectedRole === UserRole.Investor && (
           <div className="space-y-6 pt-4 border-t border-gray-50">
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Funding Range (USD)</label>
+              <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Funding Range (USD)</label>
               <select 
                 value={answers.funding_range || ''}
                 onChange={(e) => setAnswers({...answers, funding_range: e.target.value})}
@@ -370,7 +1119,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Investment Focus</label>
+              <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Investment Focus</label>
               <input 
                 type="text" 
                 placeholder="e.g. Biotech, AI, Agri-tech"
@@ -385,7 +1134,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
         {selectedRole === UserRole.IndustryPartner && (
           <div className="space-y-6 pt-4 border-t border-gray-50">
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Industry Sector</label>
+              <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Industry Sector</label>
               <input 
                 type="text" 
                 placeholder="e.g. Manufacturing, Logistics, Retail"
@@ -395,7 +1144,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
               />
             </div>
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block italic">Preferred Collaboration</label>
+              <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Preferred Collaboration</label>
               <select 
                 value={answers.collab_type || ''}
                 onChange={(e) => setAnswers({...answers, collab_type: e.target.value})}
@@ -428,9 +1177,9 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
       </button>
 
       <div className="mb-10">
-        <span className="text-xs font-black text-ug-teal uppercase tracking-[0.2em] mb-2 block">Step 3 of 4</span>
+        <span className="text-xs font-black text-ug-teal tracking-[0.2em] mb-2 block">Step 3 of 4</span>
         <h2 className="text-3xl font-black text-ug-navy tracking-tight">Experience Import</h2>
-        <p className="text-gray-400 text-sm font-medium mt-2 italic">
+        <p className="text-gray-400 text-sm font-medium mt-2">
           Upload your CV to the <strong className="text-ug-teal font-black">AI Parser</strong> in PDF or TXT format for instant extraction, or paste your text/bio in the field below.
         </p>
       </div>
@@ -498,7 +1247,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
         />
       </div>
       <h2 className="text-3xl font-black text-ug-navy tracking-tighter mb-4 animate-bounce">Generating Digital Twin...</h2>
-      <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.2em] max-w-sm mx-auto leading-loose italic">
+      <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.2em] max-w-sm mx-auto leading-loose">
         Normalizing research datasets, classifying technical competencies, and identifying optimal ecosystem nodes.
       </p>
     </div>
@@ -529,7 +1278,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
             <div>
               <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Technical Assets</h4>
               <div className="flex flex-wrap gap-2">
-                {[...(extractedProfile?.skills?.technical_skills || []), ...(extractedProfile?.skills?.tools_and_technologies || [])].slice(0, 10).map(s => (
+                {Array.from(new Set([
+                  ...(extractedProfile?.skills?.technical_skills || []), 
+                  ...(extractedProfile?.skills?.tools_and_technologies || [])
+                ])).slice(0, 10).map(s => (
                   <span key={s} className="px-3 py-1.5 bg-gray-50 rounded-lg text-[9px] font-bold text-gray-600 uppercase border border-gray-100">{s}</span>
                 ))}
               </div>
@@ -623,9 +1375,9 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
           </div>
           <div className="flex items-center gap-6 self-stretch sm:self-auto justify-between sm:justify-start">
             <div className="flex gap-1.5">
-              {['role', 'questionnaire', 'resume', 'summary'].map((s, i) => (
+              {stepsList.map((s, i) => (
                 <div key={s} className={`h-1.5 rounded-full transition-all duration-700 ${
-                  ['role', 'questionnaire', 'resume', 'summary'].indexOf(step) >= i ? 'w-8 bg-ug-teal' : 'w-3 bg-gray-100'
+                  stepsList.indexOf(step) >= i ? 'w-8 bg-ug-teal' : 'w-3 bg-gray-100'
                 }`} />
               ))}
             </div>
@@ -652,6 +1404,11 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
               {step === 'role' && renderRoleStep()}
               {step === 'questionnaire' && renderQuestionnaire()}
               {step === 'resume' && renderResumeStep()}
+              {step === 'entity_identity' && renderEntityIdentity()}
+              {step === 'entity_focus' && renderEntityFocus()}
+              {step === 'entity_model' && renderEntityModel()}
+              {step === 'entity_competencies' && renderEntityCompetencies()}
+              {step === 'entity_ai_questions' && renderEntityAIQuestions()}
               {step === 'processing' && renderProcessing()}
               {step === 'summary' && renderSummary()}
             </motion.div>
@@ -676,9 +1433,9 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
         </div>
         <div className="flex items-center gap-3 sm:gap-10">
             <div className="hidden md:flex gap-2">
-                {['role', 'questionnaire', 'resume', 'summary'].map((s, i) => (
+                {stepsList.map((s, i) => (
                     <div key={s} className={`h-1 rounded-full transition-all duration-700 ${
-                        ['role', 'questionnaire', 'resume', 'summary'].indexOf(step) >= i ? 'w-12 bg-ug-teal' : 'w-4 bg-gray-100'
+                        stepsList.indexOf(step) >= i ? 'w-12 bg-ug-teal' : 'w-4 bg-gray-100'
                     }`} />
                 ))}
             </div>
@@ -706,6 +1463,11 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
             {step === 'role' && renderRoleStep()}
             {step === 'questionnaire' && renderQuestionnaire()}
             {step === 'resume' && renderResumeStep()}
+            {step === 'entity_identity' && renderEntityIdentity()}
+            {step === 'entity_focus' && renderEntityFocus()}
+            {step === 'entity_model' && renderEntityModel()}
+            {step === 'entity_competencies' && renderEntityCompetencies()}
+            {step === 'entity_ai_questions' && renderEntityAIQuestions()}
             {step === 'processing' && renderProcessing()}
             {step === 'summary' && renderSummary()}
           </motion.div>

@@ -78,14 +78,32 @@ export const MatchingService = {
         dangerouslyAllowBrowser: true,
       });
 
-      const response = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          { role: "system", content: "You are a professional research matching AI. Respond strictly in JSON format matching the specified schema." },
-          { role: "user", content: prompt }
-        ],
-        response_format: { type: "json_object" }
-      });
+      let response;
+      try {
+        response = await groq.chat.completions.create({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: "You are a professional research matching AI. Respond strictly in JSON format matching the specified schema." },
+            { role: "user", content: prompt }
+          ],
+          response_format: { type: "json_object" }
+        });
+      } catch (firstErr: any) {
+        const errorMsg = firstErr?.message || "";
+        if (errorMsg.includes("429") || errorMsg.includes("rate") || errorMsg.includes("limit")) {
+          console.warn("Llama-3.3-70b-versatile rate limit hit. Falling back to llama-3.1-8b-instant...");
+          response = await groq.chat.completions.create({
+            model: "llama-3.1-8b-instant",
+            messages: [
+              { role: "system", content: "You are a professional research matching AI. Respond strictly in JSON format matching the specified schema." },
+              { role: "user", content: prompt }
+            ],
+            response_format: { type: "json_object" }
+          });
+        } else {
+          throw firstErr;
+        }
+      }
 
       const responseText = response.choices[0]?.message?.content || '{}';
       const result = JSON.parse(responseText);
@@ -116,7 +134,7 @@ export const MatchingService = {
       }).sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
 
     } catch (error) {
-      console.error("AI Ranking failed:", error);
+      console.error("AI Ranking failed completely:", error);
       return candidateMatches.map(c => {
         const simScore = typeof c.similarity === 'number' && !isNaN(c.similarity) ? Math.round(c.similarity * 100) : 75;
         return {
