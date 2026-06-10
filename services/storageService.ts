@@ -404,21 +404,54 @@ export const StorageService = {
       mainProfile.embedding = EmbeddingService.ensureDimension(mainProfile.embedding, 768);
     }
 
-    if (existing) {
-      result = await supabase
-        .from('profiles')
-        .update(mainProfile)
-        .eq('id', profile.id);
-    } else {
-      result = await supabase
-        .from('profiles')
-        .insert([mainProfile]);
-    }
+    try {
+      if (existing) {
+        result = await supabase
+          .from('profiles')
+          .update(mainProfile)
+          .eq('id', profile.id);
+      } else {
+        result = await supabase
+          .from('profiles')
+          .insert([mainProfile]);
+      }
 
-    if (result.error) {
-       // ... error handling remains same
-       console.error("Supabase Profile Update Error:", result.error);
-       throw result.error;
+      if (result.error) {
+        throw result.error;
+      }
+    } catch (err: any) {
+      // If it's a schema/cache column error, fall back to core columns only
+      const errorStr = (err?.message || "").toLowerCase();
+      const isColumnError = err?.code === 'PGRST204' || errorStr.includes('column') || errorStr.includes('cache');
+      
+      if (isColumnError) {
+        console.warn("Schema mismatch detected, falling back to core profiles columns:", err);
+        const coreProfile = {
+          id: profile.id,
+          name: profile.name,
+          email: profile.email,
+          role: profile.role
+        };
+        
+        if (existing) {
+          result = await supabase
+            .from('profiles')
+            .update(coreProfile)
+            .eq('id', profile.id);
+        } else {
+          result = await supabase
+            .from('profiles')
+            .insert([coreProfile]);
+        }
+        
+        if (result.error) {
+          console.error("Supabase Profile Fallback Update Error:", result.error);
+          throw result.error;
+        }
+      } else {
+        console.error("Supabase Profile Update Error:", err);
+        throw err;
+      }
     }
 
     // Sync to Role Specific Tables

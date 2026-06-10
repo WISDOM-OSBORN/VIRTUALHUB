@@ -75,7 +75,8 @@ export const AdminLogin: React.FC = () => {
         });
 
         showToast("Super Administrator Access Verified", "success");
-        navigate('/dashboard');
+        window.location.href = '#/dashboard';
+        window.location.reload();
       } else {
         throw new Error("Could not resolve authorization token.");
       }

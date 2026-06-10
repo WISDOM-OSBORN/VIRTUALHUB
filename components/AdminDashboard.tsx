@@ -198,9 +198,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
         <div>
           <div className="flex items-center gap-2 text-ug-teal mb-2">
             <Lock size={14} className="animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Platform Core Governance System</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">Platform Core Governance System</span>
           </div>
-          <h1 className="text-4xl font-black text-ug-navy tracking-tight">ADMINISTRATIVE HUB</h1>
+          <h1 className="text-3xl font-extrabold text-ug-navy tracking-tight">ADMINISTRATIVE HUB</h1>
           <p className="text-xs text-gray-400 font-medium tracking-wide mt-1">
             Integrate university registries, examine match metrics, curate institutional announcements, and moderate innovation projects.
           </p>
@@ -231,9 +231,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
               setActiveSubTab(tab.id as any);
               setSearchQuery('');
             }}
-            className={`flex items-center gap-3 px-6 py-4 border-b-2 text-[10px] font-black tracking-widest uppercase transition-all whitespace-nowrap ${
+            className={`flex items-center gap-3 px-6 py-4 border-b-2 text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${
               activeSubTab === tab.id 
-                ? 'border-ug-teal text-ug-navy font-black' 
+                ? 'border-ug-teal text-ug-navy font-bold' 
                 : 'border-transparent text-gray-400 hover:text-ug-navy'
             }`}
           >
@@ -246,7 +246,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24 space-y-4">
           <RefreshCw className="animate-spin text-ug-teal" size={48} />
-          <p className="text-[10px] font-black tracking-widest uppercase text-gray-400 animate-pulse">Syncing platform ledgers & secure metrics...</p>
+          <p className="text-[10px] font-bold tracking-widest uppercase text-gray-400 animate-pulse">Syncing platform ledgers & secure metrics...</p>
         </div>
       ) : (
         <AnimatePresence mode="wait">
@@ -268,12 +268,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
                   { label: "Interactions Formed", value: totalExpressionsOfInterests, sub: "Active collaborations", trend: "High Volume" }
                 ].map((stat, idx) => (
                   <div key={idx} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col justify-between h-36">
-                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{stat.label}</span>
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{stat.label}</span>
                     <div>
-                      <h3 className="text-4xl font-black text-ug-navy leading-none tracking-tight">{stat.value}</h3>
+                      <h3 className="text-3xl font-extrabold text-ug-navy leading-none tracking-tight">{stat.value}</h3>
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-[10px] text-gray-400 font-medium">{stat.sub}</span>
-                        <span className="text-[8px] font-black uppercase text-ug-teal bg-ug-teal/5 px-2 py-0.5 rounded-full">{stat.trend}</span>
+                        <span className="text-[8px] font-bold uppercase text-ug-teal bg-ug-teal/5 px-2 py-0.5 rounded-full">{stat.trend}</span>
                       </div>
                     </div>
                   </div>

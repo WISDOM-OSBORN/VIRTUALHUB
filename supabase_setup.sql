@@ -16,6 +16,9 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS website_url TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS website_url_2 TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS website_url_3 TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS website_url_4 TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS company TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS department TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS user_type TEXT;
 
 -- Projects table schema enhancements
 ALTER TABLE projects DROP COLUMN IF EXISTS embedding;
