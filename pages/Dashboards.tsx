@@ -68,12 +68,14 @@ const MobileNav: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; r
 
 // --- DESKTOP SIDEBAR ---
 const Sidebar: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; role: UserRole; user: User | null }> = ({ activeTab, setActiveTab, role, user }) => {
-  const tabs = [
-    { id: 'overview', icon: LayoutGrid, label: 'Overview' },
-    { id: 'matches', icon: Target, label: 'MY MATCHES', sparkles: true },
-    { id: 'messages', icon: MessageSquare, label: 'Messages' },
-    { id: 'profile', icon: UserIcon, label: 'Profile' },
-  ];
+  const tabs = role === UserRole.Admin 
+    ? [ { id: 'overview', icon: LayoutGrid, label: 'Overview' } ]
+    : [
+        { id: 'overview', icon: LayoutGrid, label: 'Overview' },
+        { id: 'matches', icon: Target, label: 'MY MATCHES', sparkles: true },
+        { id: 'messages', icon: MessageSquare, label: 'Messages' },
+        { id: 'profile', icon: UserIcon, label: 'Profile' },
+      ];
 
   const getPortalTitle = () => {
     switch(role) {
@@ -1345,7 +1347,7 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
       <div className="flex-1 flex flex-col min-w-0 relative h-full overflow-hidden">
         <header className="bg-ug-navy text-white flex items-center justify-between px-4 sm:px-8 py-5 shrink-0 shadow-2xl z-50">
           <nav className="flex items-center gap-6 lg:gap-10 ml-0 lg:ml-8">
-             {['Home', 'Projects', 'Products', 'News'].map(link => (
+             {role !== UserRole.Admin && ['Home', 'Projects', 'Products', 'News'].map(link => (
                <button 
                  key={link} 
                  onClick={() => navigate(link === 'Home' ? '/' : `/${link.toLowerCase()}`)}
@@ -1357,28 +1359,32 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-6">
-            <button 
-              onClick={() => setActiveTab('messages')}
-              className={`p-2 transition-all relative group rounded-xl hover:bg-white/10 ${activeTab === 'messages' ? 'text-ug-teal' : 'text-white/70 hover:text-white'}`}
-            >
-              <Bell size={20} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-ug-teal rounded-full border-2 border-ug-navy"></span>
-              <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1.5 bg-gray-900 text-[7px] font-black uppercase rounded shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
-                Messages
-              </span>
-            </button>
+            {role !== UserRole.Admin && (
+              <button 
+                onClick={() => setActiveTab('messages')}
+                className={`p-2 transition-all relative group rounded-xl hover:bg-white/10 ${activeTab === 'messages' ? 'text-ug-teal' : 'text-white/70 hover:text-white'}`}
+              >
+                <Bell size={20} />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-ug-teal rounded-full border-2 border-ug-navy"></span>
+                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1.5 bg-gray-900 text-[7px] font-black uppercase rounded shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
+                  Messages
+                </span>
+              </button>
+            )}
 
             <div className="flex items-center gap-2 sm:gap-4 pl-2 sm:pl-6 border-l border-white/10">
               {/* Home Icon - Only show on mobile header as a symbol */}
-              <button 
-                onClick={() => navigate('/')}
-                className="sm:hidden p-2 text-white/70 hover:text-white transition-all group relative rounded-xl hover:bg-white/10"
-              >
-                <HomeIcon size={20} />
-                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1.5 bg-gray-900 text-[7px] font-black uppercase rounded shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
-                  Home
-                </span>
-              </button>
+              {role !== UserRole.Admin && (
+                <button 
+                  onClick={() => navigate('/')}
+                  className="sm:hidden p-2 text-white/70 hover:text-white transition-all group relative rounded-xl hover:bg-white/10"
+                >
+                  <HomeIcon size={20} />
+                  <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1.5 bg-gray-900 text-[7px] font-black uppercase rounded shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
+                    Home
+                  </span>
+                </button>
+              )}
 
               <button 
                 onClick={handleLogout}
@@ -1554,7 +1560,9 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
         </div>
       </main>
 
-      <MobileNav role={role} activeTab={activeTab} setActiveTab={setActiveTab} unreadCount={internalUnread} />
+      {role !== UserRole.Admin && (
+        <MobileNav role={role} activeTab={activeTab} setActiveTab={setActiveTab} unreadCount={internalUnread} />
+      )}
     </div>
 
     {isProjectModalOpen && (
