@@ -19,6 +19,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import VerifyOTP from './pages/VerifyOTP';
 import ResetPassword from './pages/ResetPassword';
 import { UserRole, User } from './types';
+import { AdminLogin } from './pages/AdminLogin';
 import { AlertCircle, X, CheckCircle2, BellRing } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { StorageService } from './services/storageService';
@@ -200,11 +201,13 @@ const AppContent: React.FC = () => {
   };
 
   const isDashboard = location.pathname === '/dashboard';
+  const isAdminLogin = location.pathname === '/admin/login';
+  const hideLayout = isDashboard || isAdminLogin;
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       <div className="flex flex-col min-h-screen font-sans text-gray-900">
-        {!isDashboard && (
+        {!hideLayout && (
           <Navbar 
               isAuthenticated={isAuthenticated}
               user={userProfile}
@@ -245,6 +248,7 @@ const AppContent: React.FC = () => {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/verify-otp" element={<VerifyOTP />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
             
             <Route 
                 path="/dashboard" 
@@ -287,8 +291,8 @@ const AppContent: React.FC = () => {
             onClose={() => setIsAuthModalOpen(false)}
         />
 
-        {!isDashboard && <AIAssistant />}
-        {!isDashboard && <Footer />}
+        {!hideLayout && <AIAssistant />}
+        {!hideLayout && <Footer />}
       </div>
     </ToastContext.Provider>
   );

@@ -612,5 +612,106 @@ export const StorageService = {
     } catch (error) {
       console.error(`Error incrementing ${metric}:`, error);
     }
+  },
+
+  // --- ADMINISTRATIVE PORTAL OPERATIONS ---
+  adminGetAllProfiles: async (): Promise<User[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('name', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching admin profiles:', err);
+      return [];
+    }
+  },
+
+  adminGetAllEOIs: async (): Promise<any[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('eois')
+        .select(`
+          *,
+          projects (
+            title
+          )
+        `)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching admin EOIs:', err);
+      return [];
+    }
+  },
+
+  adminUpdateProfileRole: async (userId: string, role: UserRole) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ role })
+        .eq('id', userId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.error('Error updating profile role:', err);
+      throw err;
+    }
+  },
+
+  adminSaveNewsItem: async (newsItem: Partial<NewsItem>) => {
+    try {
+      const payload = {
+        title: newsItem.title,
+        category: newsItem.category,
+        summary: newsItem.summary,
+        image_url: newsItem.image_url || 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=600&auto=format&fit=crop',
+        published_at: newsItem.published_at || new Date().toISOString(),
+        external_url: newsItem.external_url || '',
+        is_ai_generated: newsItem.is_ai_generated || false,
+        source_name: newsItem.source_name || 'UG ORID Directorates'
+      };
+
+      if (newsItem.id) {
+        const { data, error } = await supabase
+          .from('news')
+          .update(payload)
+          .eq('id', newsItem.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      } else {
+        const { data, error } = await supabase
+          .from('news')
+          .insert([payload])
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+    } catch (err) {
+      console.error('Error saving news item:', err);
+      throw err;
+    }
+  },
+
+  adminDeleteNewsItem: async (newsId: string) => {
+    try {
+      const { error } = await supabase
+        .from('news')
+        .delete()
+        .eq('id', newsId);
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.error('Error deleting news item:', err);
+      throw err;
+    }
   }
 };

@@ -3,7 +3,8 @@ export enum UserRole {
   Student = 'Student',
   Researcher = 'Researcher',
   Investor = 'Investor',
-  IndustryPartner = 'Industry/Partner'
+  IndustryPartner = 'Industry/Partner',
+  Admin = 'Admin'
 }
 
 export enum ProjectStatus {

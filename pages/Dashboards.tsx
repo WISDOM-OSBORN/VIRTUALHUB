@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../App';
 import { Onboarding } from './Onboarding';
+import { AdminDashboard } from '../components/AdminDashboard';
 import { supabase } from '../lib/supabase';
 
 interface DashboardProps {
@@ -79,6 +80,7 @@ const Sidebar: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; rol
       case UserRole.Student: return 'STUDENT';
       case UserRole.Investor: return 'INVESTOR';
       case UserRole.IndustryPartner: return 'INDUSTRY';
+      case UserRole.Admin: return 'ADMIN';
       default: return 'RESEARCHER';
     }
   };
@@ -1408,6 +1410,12 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
               )}
               {role === UserRole.Student && <StudentDashboard user={localUser} />}
               {(role === UserRole.Investor || role === UserRole.IndustryPartner) && <InvestorDashboard user={localUser} />}
+              {role === UserRole.Admin && (
+                <AdminDashboard 
+                  user={localUser} 
+                  onRefresh={refreshProfile} 
+                />
+              )}
             </div>
           )}
 
@@ -3249,7 +3257,7 @@ const ProfileSettings: React.FC<{
           </div>
 
           <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm space-y-6">
-            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Administrative</h4>
+            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Account Management</h4>
             <div className="space-y-2">
               <button 
                 type="button" 
