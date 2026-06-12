@@ -5,10 +5,10 @@ import {
   ArrowLeft, Calendar, DollarSign, Microscope, ShieldCheck, TrendingUp, 
   Users, Bookmark, FileText, CheckCircle2, AlertCircle, Send, Check, Image as ImageIcon,
   Handshake, Lock, Download, Loader2, User as UserIcon, Mail, Building2, ExternalLink, Share2, MessageSquare, X,
-  Briefcase, Heart, Lightbulb, FileCode, GraduationCap, Key, BookOpen, Clock
+  Briefcase, Heart, Lightbulb, FileCode, GraduationCap, Key, BookOpen, Clock, Edit, Trash2
 } from 'lucide-react';
 import { StorageService } from '../services/storageService';
-import { Project, ProjectStatus, User } from '../types';
+import { Project, ProjectStatus, User, Visibility, ResearchArea, UserRole } from '../types';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../App';
 
@@ -80,6 +80,156 @@ const ContactPIModal: React.FC<{
   );
 };
 
+// --- EDIT PROJECT MODAL ---
+const EditProjectModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  project: Project;
+  onSave: (updated: Project) => void;
+}> = ({ isOpen, onClose, project, onSave }) => {
+  const { showToast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState<Partial<Project>>({...project});
+
+  useEffect(() => {
+    setFormData({...project});
+  }, [project, isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const updated = await StorageService.saveProject(formData);
+      showToast("Project record updated successfully.", "success");
+      onSave(updated as Project);
+      onClose();
+    } catch (err: any) {
+      showToast(err.message || "Failed to update project", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-ug-navy/80 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-white rounded-[2.5rem] w-full max-w-2xl p-6 md:p-10 shadow-2xl animate-fade-in-up relative my-8 max-h-[90vh] overflow-y-auto custom-scrollbar text-gray-900">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h2 className="text-2xl font-black text-ug-navy">Manage Disclosure</h2>
+            <p className="text-[9px] font-mono text-gray-400 uppercase tracking-widest mt-0.5 font-black">Academic Record Administration</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-105 rounded-full transition"><X size={20} /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6 text-left">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 tracking-widest block uppercase font-mono">Project Title</label>
+            <input 
+              required 
+              type="text" 
+              value={formData.title || ''} 
+              onChange={e => setFormData({...formData, title: e.target.value})} 
+              className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-bold text-ug-navy focus:outline-none focus:ring-2 focus:ring-ug-teal/20" 
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 tracking-widest block uppercase font-mono">Research Area</label>
+              <select 
+                value={formData.research_area || ''} 
+                onChange={e => setFormData({...formData, research_area: e.target.value as ResearchArea})} 
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-bold text-ug-navy focus:outline-none cursor-pointer"
+              >
+                {Object.values(ResearchArea).map(area => <option key={area} value={area}>{area}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 tracking-widest block uppercase font-mono">Department</label>
+              <input 
+                required 
+                type="text" 
+                value={formData.department || ''} 
+                onChange={e => setFormData({...formData, department: e.target.value})} 
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-bold text-ug-navy focus:outline-none" 
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 tracking-widest block uppercase font-mono">Executive Abstract</label>
+            <textarea 
+              required 
+              rows={4} 
+              value={formData.description || ''} 
+              onChange={e => setFormData({...formData, description: e.target.value})} 
+              className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-medium text-gray-600 focus:outline-none resize-none leading-relaxed" 
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 tracking-widest block uppercase font-mono font-black">Development Stage</label>
+              <select 
+                value={formData.status || ''} 
+                onChange={e => {
+                  const status = e.target.value as ProjectStatus;
+                  const trl = Object.values(ProjectStatus).indexOf(status) + 1;
+                  setFormData({...formData, status, trl});
+                }} 
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-bold text-ug-navy focus:outline-none cursor-pointer"
+              >
+                {Object.values(ProjectStatus).map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 tracking-widest block uppercase font-mono">Visibility Mode</label>
+              <select 
+                value={formData.visibility || ''} 
+                onChange={e => setFormData({...formData, visibility: e.target.value as Visibility})} 
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-bold text-ug-navy focus:outline-none cursor-pointer"
+              >
+                {Object.values(Visibility).map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 tracking-widest block uppercase font-mono">Estimated Budget</label>
+              <input 
+                type="text" 
+                value={formData.budget || ''} 
+                onChange={e => setFormData({...formData, budget: e.target.value})} 
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-bold text-ug-navy focus:outline-none" 
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 tracking-widest block uppercase font-mono">Collaboration Status</label>
+              <div className="flex h-14 items-center pl-4 bg-gray-50 border border-gray-200 rounded-2xl">
+                <input 
+                  type="checkbox" 
+                  id="collab-check"
+                  checked={formData.open_to_collaboration || false} 
+                  onChange={e => setFormData({...formData, open_to_collaboration: e.target.checked})} 
+                  className="rounded text-ug-teal focus:ring-ug-teal/20 h-4 w-4 cursor-pointer" 
+                />
+                <label htmlFor="collab-check" className="ml-3 font-bold text-xs text-ug-navy cursor-pointer">Open to External Proposals</label>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" disabled={loading} className="w-full bg-[#0092B0] text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-ug-navy transition-all">
+            {loading ? <Loader2 className="animate-spin" size={20} /> : "Save Changes"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -89,10 +239,12 @@ const ProjectDetail: React.FC = () => {
   const [revealCleared, setRevealCleared] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [submittingEOI, setSubmittingEOI] = useState<string | null>(null);
   const [shareFeedback, setShareFeedback] = useState(false);
   
   // Dynamic Disclosure lock states
+  const [pageLoading, setPageLoading] = useState(true);
   const [isRevealModalOpen, setIsRevealModalOpen] = useState(false);
   const [revealReason, setRevealReason] = useState('Interested in collaboration and potential funding discussion.');
   const [remainingMinutes, setRemainingMinutes] = useState<number | null>(null);
@@ -102,6 +254,7 @@ const ProjectDetail: React.FC = () => {
 
   useEffect(() => {
     if (id) {
+      setPageLoading(true);
       StorageService.getProjects().then(data => {
         const found = data.find(p => p.id === id);
         if (found) {
@@ -113,7 +266,12 @@ const ProjectDetail: React.FC = () => {
           // Increment views
           StorageService.incrementProjectMetric(id, 'views');
         }
+      }).catch(err => {
+        console.error("Failed to load project details:", err);
+      }).finally(() => {
+        setPageLoading(false);
       });
+
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
           StorageService.isBookmarked(session.user.id, id).then(setIsBookmarked);
@@ -142,6 +300,19 @@ const ProjectDetail: React.FC = () => {
     
     return () => clearInterval(interval);
   }, [revealCleared, id, currentUserProfile?.id]);
+
+  const handleDeleteProject = async () => {
+    if (!window.confirm("Are you sure you want to permanently withdraw this research project from the platform? This cannot be undone.")) return;
+    try {
+      if (project?.id) {
+        await StorageService.deleteProject(project.id);
+        showToast("Project successfully withdrawn and removed from catalog.", "success");
+        navigate('/projects');
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to delete project", "error");
+    }
+  };
 
   const handleShare = async () => {
     try {
@@ -236,33 +407,77 @@ const ProjectDetail: React.FC = () => {
     }, 1200);
   };
 
-  if (!project) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin text-ug-teal" size={40} /></div>;
+  if (pageLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="animate-spin text-ug-teal" size={40} />
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6">
+        <div className="max-w-md w-full bg-white border border-gray-100 rounded-3xl p-8 shadow-xl text-center space-y-6">
+          <div className="mx-auto w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" />
+            </svg>
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-xl font-black text-ug-navy uppercase tracking-tight">Node Access Secure</h1>
+            <p className="text-gray-500 text-sm leading-relaxed">
+              This academic blueprint is restricted, internal-only, draft status, or does not exist. Authorized researchers must login to retrieve internal research.
+            </p>
+          </div>
+          <button 
+            onClick={() => navigate('/projects')} 
+            className="w-full bg-[#0092B0] hover:bg-ug-navy text-white font-black uppercase text-xs tracking-widest py-3.5 rounded-2xl transition shadow-md"
+          >
+            Return to Hub
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const images = project.image_url.split('|');
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="relative h-[480px] w-full overflow-hidden">
-        <img src={images[0]} alt={project.title} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-ug-navy via-ug-navy/40 to-transparent"></div>
-        <div className="absolute bottom-0 left-0 w-full p-8 md:p-16">
+      <div className="relative min-h-[480px] md:h-[480px] w-full overflow-hidden flex items-end pb-8 md:pb-16 pt-24">
+        <img src={images[0]} alt={project.title} className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-ug-navy via-ug-navy/60 to-transparent"></div>
+        <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-8">
-            <div>
+            <div className="max-w-3xl">
               <button onClick={() => navigate('/projects')} className="text-white/60 hover:text-white flex items-center gap-2 mb-6 text-xs font-black uppercase tracking-[0.2em]"><ArrowLeft size={16} /> Return to Hub</button>
-              <div className="flex gap-3 mb-4">
+              <div className="flex flex-wrap gap-3 mb-4">
                 <span className="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-ug-navy text-white shadow-xl">Stage {project.trl}</span>
                 <span className="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/10 text-white backdrop-blur-md border border-white/20">{project.status}</span>
               </div>
-              <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter drop-shadow-2xl">{project.title}</h1>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter drop-shadow-2xl leading-tight">{project.title}</h1>
             </div>
-            <div className="flex items-center gap-4 animate-fade-in-up">
-              <button onClick={handleShare} className="relative h-[64px] w-[64px] rounded-[18px] bg-white/10 border border-white/20 shadow-lg hover:bg-white/20 transition-all flex items-center justify-center text-white group">
+            <div className="flex flex-wrap items-center gap-3 md:gap-4 animate-fade-in-up mt-4 md:mt-0">
+              <button onClick={handleShare} className="relative h-[56px] w-[56px] md:h-[64px] md:w-[64px] rounded-[18px] bg-white/10 border border-white/20 shadow-lg hover:bg-white/20 transition-all flex items-center justify-center text-white group" title="Share Project">
                 <Share2 size={24} className="group-hover:scale-110 transition" />
               </button>
-              <button onClick={() => setIsContactModalOpen(true)} className="px-10 h-[64px] bg-[#0092B0] hover:bg-[#007C96] rounded-[22px] shadow-xl flex items-center justify-center gap-4 transition-all active:scale-95 group relative overflow-hidden border border-white/10">
+              <button onClick={() => setIsContactModalOpen(true)} className="px-6 md:px-10 h-[56px] md:h-[64px] bg-[#0092B0] hover:bg-[#007C96] rounded-[22px] shadow-xl flex items-center justify-center gap-3 md:gap-4 transition-all active:scale-95 group relative overflow-hidden border border-white/10">
                 <MessageSquare size={20} className="text-white" />
-                <span className="text-white font-black text-sm uppercase tracking-widest leading-tight">Connect <br /> with PI</span>
+                <span className="text-white font-black text-xs md:text-sm uppercase tracking-widest leading-tight text-left">Connect <br /> with PI</span>
               </button>
+              {(currentUserProfile?.id === project.owner_id || currentUserProfile?.role === UserRole.Admin) && (
+                <>
+                  <button onClick={() => setIsEditModalOpen(true)} className="px-6 md:px-8 h-[56px] md:h-[64px] bg-white text-ug-navy hover:bg-gray-100 rounded-[22px] shadow-xl flex items-center justify-center gap-2.5 transition-all active:scale-95 border border-gray-200">
+                    <Edit size={18} className="text-[#0092B0]" />
+                    <span className="font-black text-[10px] md:text-[11px] uppercase tracking-wider text-ug-navy text-left leading-tight">Manage <br /> Disclosure</span>
+                  </button>
+                  <button onClick={handleDeleteProject} className="px-6 md:px-8 h-[56px] md:h-[64px] bg-red-600 hover:bg-red-700 text-white rounded-[22px] shadow-xl flex items-center justify-center gap-2.5 transition-all active:scale-95 border border-red-500">
+                    <Trash2 size={18} className="text-white" />
+                    <span className="font-black text-[10px] md:text-[11px] uppercase tracking-wider text-left leading-tight text-white">Withdraw <br /> Record</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -420,11 +635,11 @@ const ProjectDetail: React.FC = () => {
                     <div className="p-2 rounded-xl bg-white/10 text-ug-teal group-hover:text-white transition-colors flex-shrink-0">
                       {submittingEOI === action.label ? <Loader2 className="animate-spin" size={16} /> : <action.icon size={18} />}
                     </div>
-                    <span className="text-[9px] font-black uppercase tracking-widest">{action.label}</span>
+                    <span className="text-[10px] md:text-xs font-black uppercase tracking-widest">{action.label}</span>
                   </button>
                 ))}
               </div>
-              <p className="mt-6 text-[7px] text-gray-500 font-bold uppercase tracking-widest text-center">Instant portal notification triggered on click.</p>
+              <p className="mt-6 text-[10px] text-gray-500 font-bold uppercase tracking-widest text-center">Instant portal notification triggered on click.</p>
             </div>
           </section>
 
@@ -484,28 +699,28 @@ const ProjectDetail: React.FC = () => {
 
                     {/* Breakdown of real numbers */}
                     <div className="space-y-3.5 pt-2">
-                       <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Traction Breakdown</span>
+                       <span className="text-xs font-black text-gray-400 uppercase tracking-widest block">Traction Breakdown</span>
                        
                        <div className="flex justify-between items-center p-3.5 bg-gray-50 rounded-2xl border border-gray-100/50 hover:bg-gray-100/30 transition-colors">
                           <div className="flex flex-col">
-                             <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Hub Views</span>
-                             <span className="text-[7px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">+1 Pt per view</span>
+                             <span className="text-xs font-black text-gray-900 uppercase tracking-widest">Hub Views</span>
+                             <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">+1 Pt per view</span>
                           </div>
                           <span className="text-base font-black text-ug-navy">{viewsCount}</span>
                        </div>
                        
                        <div className="flex justify-between items-center p-3.5 bg-gray-50 rounded-2xl border border-gray-100/50 hover:bg-gray-100/30 transition-colors">
                           <div className="flex flex-col">
-                             <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Expressions of Interest</span>
-                             <span className="text-[7px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">+8 Pts per partnership EOI</span>
+                             <span className="text-xs font-black text-gray-900 uppercase tracking-widest">Expressions of Interest</span>
+                             <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">+8 Pts per partnership EOI</span>
                           </div>
                           <span className="text-base font-black text-ug-navy">{eoiCount}</span>
                        </div>
                        
                        <div className="flex justify-between items-center p-3.5 bg-gray-50 rounded-2xl border border-gray-100/50 hover:bg-gray-100/30 transition-colors">
                           <div className="flex flex-col">
-                             <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Formal Requests</span>
-                             <span className="text-[7px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">+15 Pts per disclose / applications</span>
+                             <span className="text-xs font-black text-gray-900 uppercase tracking-widest">Formal Requests</span>
+                             <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">+15 Pts per disclose / applications</span>
                           </div>
                           <span className="text-base font-black text-ug-navy">{requestsCount}</span>
                        </div>
@@ -579,6 +794,14 @@ const ProjectDetail: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+      {isEditModalOpen && project && (
+        <EditProjectModal 
+          isOpen={isEditModalOpen} 
+          onClose={() => setIsEditModalOpen(false)} 
+          project={project} 
+          onSave={(updated) => setProject(updated)} 
+        />
       )}
     </div>
   );

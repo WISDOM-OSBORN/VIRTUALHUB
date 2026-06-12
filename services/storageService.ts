@@ -38,13 +38,40 @@ export const StorageService = {
   // Projects CRUD
   getProjects: async (): Promise<Project[]> => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+
       const { data, error } = await supabase
         .from('projects')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (error) return [];
-      return data || [];
+      if (!data) return [];
+
+      let isAdmin = false;
+      if (userId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
+        if (profile?.role === 'Admin') {
+          isAdmin = true;
+        }
+      }
+
+      return data.filter((p: Project) => {
+        // Admin has absolute view coverage
+        if (isAdmin) return true;
+        // User owns this project
+        if (userId && p.owner_id === userId) return true;
+        // Public projects are viewable by everyone
+        if (p.visibility === 'Public') return true;
+        // Internal projects are viewable only by authenticated users
+        if (userId && p.visibility === 'Internal') return true;
+        return false;
+      });
     } catch (e) {
       return [];
     }
@@ -66,10 +93,10 @@ export const StorageService = {
 
   getTrendingProjects: async (): Promise<Project[]> => {
     try {
-      const { data: projects } = await supabase.from('projects').select('*');
+      const projects = await StorageService.getProjects();
       const { data: eois } = await supabase.from('eois').select('project_id');
       
-      if (!projects) return [];
+      if (!projects || projects.length === 0) return [];
 
       return projects.map(p => {
         const inquiryCount = eois?.filter(e => e.project_id === p.id).length || 0;
@@ -120,6 +147,31 @@ export const StorageService = {
     }
 
     if (project.id) {
+      // Security Check: Get existing project owner_id
+      const { data: existingProject } = await supabase
+        .from('projects')
+        .select('owner_id')
+        .eq('id', project.id)
+        .maybeSingle();
+        
+      if (!existingProject) throw new Error("Project not found.");
+      
+      let isAdmin = false;
+      if (currentUserId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', currentUserId)
+          .maybeSingle();
+        if (profile?.role === 'Admin') {
+          isAdmin = true;
+        }
+      }
+
+      if (existingProject.owner_id !== currentUserId && !isAdmin) {
+        throw new Error("Unauthorized. You do not have permission to modify this project.");
+      }
+
       const { data, error } = await supabase
         .from('projects')
         .update(payload)
@@ -140,6 +192,33 @@ export const StorageService = {
   },
 
   deleteProject: async (projectId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentUserId = session?.user?.id;
+    if (!currentUserId) throw new Error("Authentication required.");
+
+    // Security Check: Verify owner or Admin role
+    const { data: existingProject } = await supabase
+      .from('projects')
+      .select('owner_id')
+      .eq('id', projectId)
+      .maybeSingle();
+      
+    if (!existingProject) throw new Error("Project not found.");
+
+    let isAdmin = false;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', currentUserId)
+      .maybeSingle();
+    if (profile?.role === 'Admin') {
+      isAdmin = true;
+    }
+
+    if (existingProject.owner_id !== currentUserId && !isAdmin) {
+      throw new Error("Unauthorized. You do not have permission to withdraw this project.");
+    }
+
     const { error } = await supabase.from('projects').delete().eq('id', projectId);
     if (error) throw error;
     return true;
@@ -389,12 +468,31 @@ export const StorageService = {
   updateProfile: async (profile: Partial<User & { embedding?: number[], semantic_summary?: string, answers?: any }>) => {
     if (!profile.id) throw new Error("Profile ID is required for update.");
     
-    // First, check if the profile exists to decide between insert and update
+    // Security check: Ensure current user possesses ownership over this record, or holds an Administrative role
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentUserId = session?.user?.id;
+    if (!currentUserId) throw new Error("Authentication required.");
+
+    // Retrieve active profile structure
     const { data: existing } = await supabase
       .from('profiles')
       .select('id')
       .eq('id', profile.id)
       .maybeSingle();
+
+    let isAdmin = false;
+    const { data: currentUserProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', currentUserId)
+      .maybeSingle();
+    if (currentUserProfile?.role === 'Admin') {
+      isAdmin = true;
+    }
+
+    if (profile.id !== currentUserId && !isAdmin) {
+      throw new Error("Unauthorized: Profile mutation request is invalid.");
+    }
 
     let result;
     const { answers, ...mainProfile } = profile as any;
@@ -571,6 +669,42 @@ export const StorageService = {
         }
       }
 
+      // Secure Project Filter: Ensure matched/fallback projects match user's visibility permissions
+      if (finalProjects.length > 0) {
+        try {
+          const projectIds = finalProjects.map((p: any) => p.id);
+          const { data: visData } = await supabase
+            .from('projects')
+            .select('id, visibility, owner_id')
+            .in('id', projectIds);
+          
+          if (visData) {
+            const visMap = new Map(visData.map(row => [row.id, row]));
+            
+            let isAdmin = false;
+            if (userId) {
+              const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).maybeSingle();
+              if (profile?.role === 'Admin') {
+                isAdmin = true;
+              }
+            }
+
+            finalProjects = finalProjects.filter((p: any) => {
+              const row = visMap.get(p.id);
+              if (!row) return false;
+              if (isAdmin) return true;
+              if (userId && row.owner_id === userId) return true;
+              if (row.visibility === 'Public') return true;
+              if (userId && row.visibility === 'Internal') return true;
+              return false;
+            });
+          }
+        } catch (visErr) {
+          console.warn("Could not secure match_projects results:", visErr);
+          finalProjects = []; // Safely default to empty if visibility checks fail
+        }
+      }
+
       return {
         profiles: finalProfiles,
         projects: finalProjects
@@ -581,8 +715,24 @@ export const StorageService = {
       try {
         const [{ data: fallbackProfiles }, { data: fallbackProjects }] = await Promise.all([
           supabase.from('profiles').select('id, name, role, ai_profile, semantic_summary, avatar_url').neq('id', userId).limit(10),
-          supabase.from('projects').select('id, title, description, image_url, research_area').limit(10)
+          supabase.from('projects').select('id, title, description, image_url, research_area, visibility, owner_id').limit(20)
         ]);
+
+        let isAdmin = false;
+        if (userId) {
+          const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).maybeSingle();
+          if (profile?.role === 'Admin') {
+            isAdmin = true;
+          }
+        }
+
+        const secureFallbackProjects = (fallbackProjects || []).filter((p: any) => {
+          if (isAdmin) return true;
+          if (userId && p.owner_id === userId) return true;
+          if (p.visibility === 'Public') return true;
+          if (userId && p.visibility === 'Internal') return true;
+          return false;
+        }).slice(0, 10);
 
         return {
           profiles: (fallbackProfiles || []).map(p => ({
@@ -594,7 +744,7 @@ export const StorageService = {
             similarity: 0.75,
             avatar_url: p.avatar_url
           })),
-          projects: (fallbackProjects || []).map(p => ({
+          projects: secureFallbackProjects.map(p => ({
             id: p.id,
             title: p.title,
             description: p.description,
@@ -648,8 +798,26 @@ export const StorageService = {
   },
 
   // --- ADMINISTRATIVE PORTAL OPERATIONS ---
+  verifyAdmin: async (): Promise<boolean> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) return false;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      return profile?.role === 'Admin';
+    } catch (e) {
+      return false;
+    }
+  },
+
   adminGetAllProfiles: async (): Promise<User[]> => {
     try {
+      const isAdmin = await StorageService.verifyAdmin();
+      if (!isAdmin) throw new Error("Unauthorized access. Admin privileges required.");
+
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -658,12 +826,15 @@ export const StorageService = {
       return data || [];
     } catch (err) {
       console.error('Error fetching admin profiles:', err);
-      return [];
+      throw err;
     }
   },
 
   adminGetAllEOIs: async (): Promise<any[]> => {
     try {
+      const isAdmin = await StorageService.verifyAdmin();
+      if (!isAdmin) throw new Error("Unauthorized access. Admin privileges required.");
+
       const { data, error } = await supabase
         .from('eois')
         .select(`
@@ -677,12 +848,15 @@ export const StorageService = {
       return data || [];
     } catch (err) {
       console.error('Error fetching admin EOIs:', err);
-      return [];
+      throw err;
     }
   },
 
   adminUpdateProfileRole: async (userId: string, role: UserRole) => {
     try {
+      const isAdmin = await StorageService.verifyAdmin();
+      if (!isAdmin) throw new Error("Unauthorized access. Admin privileges required.");
+
       const { data, error } = await supabase
         .from('profiles')
         .update({ role })
@@ -699,6 +873,9 @@ export const StorageService = {
 
   adminSaveNewsItem: async (newsItem: Partial<NewsItem>) => {
     try {
+      const isAdmin = await StorageService.verifyAdmin();
+      if (!isAdmin) throw new Error("Unauthorized access. Admin privileges required.");
+
       const payload = {
         title: newsItem.title,
         category: newsItem.category,
@@ -736,6 +913,9 @@ export const StorageService = {
 
   adminDeleteNewsItem: async (newsId: string) => {
     try {
+      const isAdmin = await StorageService.verifyAdmin();
+      if (!isAdmin) throw new Error("Unauthorized access. Admin privileges required.");
+
       const { error } = await supabase
         .from('news')
         .delete()

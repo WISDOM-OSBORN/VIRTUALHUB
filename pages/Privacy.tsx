@@ -26,7 +26,7 @@ const Privacy: React.FC = () => {
               <ul className="list-disc pl-6 space-y-2">
                 <li><strong>Researcher Profiles:</strong> Academic credentials, departmental affiliations, and project history.</li>
                 <li><strong>Corporate Profiles:</strong> Tax identifiers, industry focus areas, and partnership objectives.</li>
-                <li><strong>Project Disclosures:</strong> Technical abstracts, TRL documentation, and funding requirements.</li>
+                <li><strong>Project Disclosures:</strong> Technical abstracts, maturity stage documentation, and funding requirements.</li>
               </ul>
             </section>
 

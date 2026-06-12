@@ -84,14 +84,17 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
              )}
           </div>
 
-          {/* Mobile menu button */}
-          <div className="-mr-2 flex md:hidden">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none"
-            >
-              {isOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+          {/* Mobile menu progress & action elements */}
+          <div className="-mr-2 flex md:hidden items-center gap-2">
+             {isAuthenticated && (
+               <NotificationCenter user={user} onSelectMessage={onSelectMessage} />
+             )}
+             <button
+               onClick={() => setIsOpen(!isOpen)}
+               className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-white/10 focus:outline-none transition-colors"
+             >
+               {isOpen ? <X size={24} /> : <Menu size={24} />}
+             </button>
           </div>
         </div>
       </div>

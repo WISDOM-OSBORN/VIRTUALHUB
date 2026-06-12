@@ -117,7 +117,7 @@ const ResearcherPortfolio: React.FC = () => {
              </div>
              <div className="flex-1 text-center md:text-left pb-4">
                 <div className="flex flex-col md:flex-row md:items-center gap-5 mb-6">
-                  <h1 className="text-5xl md:text-7xl font-black tracking-tighter drop-shadow-lg">{profile.name}</h1>
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black tracking-tighter drop-shadow-lg leading-tight">{profile.name}</h1>
                   <div className="flex items-center gap-3 px-6 py-2.5 bg-ug-teal/20 backdrop-blur-xl rounded-2xl border border-ug-teal/40 w-fit mx-auto md:mx-0 shadow-xl">
                     <CheckCircle2 size={18} className="text-ug-teal" /><span className="text-[10px] font-black uppercase tracking-[0.2em] text-ug-teal">Certified PI</span>
                   </div>

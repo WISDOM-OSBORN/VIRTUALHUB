@@ -99,7 +99,7 @@ const Home: React.FC = () => {
             >
               <Microscope size={40} className="text-ug-teal mb-6 group-hover:text-white" />
               <h3 className="text-2xl font-black mb-4">Diagnostics</h3>
-              <p className="text-gray-500 group-hover:text-gray-300 font-medium">TRL 7+ systems for high-throughput screening.</p>
+              <p className="text-gray-500 group-hover:text-gray-300 font-medium">Stage 4+ systems for high-throughput screening.</p>
               <div className="mt-6 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-ug-teal group-hover:text-white transition-colors">
                 View Pipeline <ArrowRight size={14} />
               </div>

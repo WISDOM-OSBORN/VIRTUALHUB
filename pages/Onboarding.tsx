@@ -681,10 +681,12 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
     };
 
     const readinessOptions = [
-      'TRL 1-3: Basic Research & Concepts',
-      'TRL 4-5: Lab-Scale Prototype Development',
-      'TRL 6-8: Validation & Clinical Pipeline',
-      'TRL 9: Commercial & Market Ready'
+      'Stage 1: Concept & Formulation',
+      'Stage 2: Proof of Concept',
+      'Stage 3: Prototype Development',
+      'Stage 4: Validation Stage',
+      'Stage 5: Commercialization-Ready',
+      'Stage 6: Market-Ready'
     ];
 
     const toggleReadiness = (readiness: string) => {
@@ -742,7 +744,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
 
           {/* Innovation Readiness Preferences */}
           <div>
-            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Target Innovation Readiness Levels (TRL) *</label>
+            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Target Maturity Stages *</label>
             <div className="space-y-3">
               {readinessOptions.map(readiness => {
                 const isSelected = answers.readinessVector?.includes(readiness);

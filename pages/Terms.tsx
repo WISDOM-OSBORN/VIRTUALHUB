@@ -23,7 +23,7 @@ const Terms: React.FC = () => {
 
             <section>
               <h2 className="text-2xl font-black text-ug-navy mb-4 flex items-center gap-2"><FileText size={20} className="text-ug-teal" /> Non-Disclosure Agreement (NDA)</h2>
-              <p>Access to technical disclosures at TRL 4 and above requires the execution of a digital NDA. Users agree not to disclose technical details obtained through this platform to external parties without express written consent from the University's Legal Counsel.</p>
+              <p>Access to technical disclosures at Stage 4 and above requires the execution of a digital NDA. Users agree not to disclose technical details obtained through this platform to external parties without express written consent from the University's Legal Counsel.</p>
             </section>
 
             <section>

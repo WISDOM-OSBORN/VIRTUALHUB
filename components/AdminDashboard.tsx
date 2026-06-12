@@ -82,14 +82,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
       const proj = projects.find(p => p.id === projectId);
       if (!proj) return;
       
-      const updatedProject = {
+      let updatedProject = {
         ...proj,
         [field]: value
       };
       
+      if (field === 'status') {
+        const index = Object.values(ProjectStatus).indexOf(value as ProjectStatus);
+        updatedProject.trl = index >= 0 ? index + 1 : 1;
+      } else if (field === 'trl') {
+        const statusValues = Object.values(ProjectStatus);
+        const index = value - 1;
+        if (index >= 0 && index < statusValues.length) {
+          updatedProject.status = statusValues[index];
+        }
+      }
+      
       await StorageService.saveProject(updatedProject);
       showToast(`Project ${field} updated successfully`, "success");
-      setProjects(prev => prev.map(p => p.id === projectId ? { ...p, [field]: value } : p));
+      
+      setProjects(prev => prev.map(p => p.id === projectId ? { 
+        ...p, 
+        ...(field === 'status' ? { status: value, trl: updatedProject.trl } : 
+            field === 'trl' ? { trl: value, status: updatedProject.status } : 
+            { [field]: value })
+      } : p));
     } catch (err) {
       showToast("Failed to modify project constraints", "error");
     }
@@ -192,9 +209,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
   const totalExpressionsOfInterests = eois.length;
 
   return (
-    <div className="space-y-10 animate-fade-in text-gray-900">
+    <div className="space-y-6 animate-fade-in text-gray-900">
       {/* Title Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-gray-100 pb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-4">
         <div>
           <div className="flex items-center gap-2 text-ug-teal mb-2">
             <Lock size={14} className="animate-pulse" />
@@ -231,7 +248,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
               setActiveSubTab(tab.id as any);
               setSearchQuery('');
             }}
-            className={`flex items-center gap-3 px-6 py-4 border-b-2 text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${
               activeSubTab === tab.id 
                 ? 'border-ug-teal text-ug-navy font-bold' 
                 : 'border-transparent text-gray-400 hover:text-ug-navy'
@@ -257,21 +274,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="space-y-12"
+              className="space-y-6"
             >
               {/* Core Analytics Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                   { label: "Total Registrants", value: profiles.length, sub: "Verified profiles", trend: "+12%" },
                   { label: "Innovation Index", value: projects.length, sub: "Academic projects", trend: "+8%" },
-                  { label: "Mean TRL Level", value: averageTRL, sub: "Scale 1 to 9", trend: "Optimized" },
+                  { label: "Avg Project Stage", value: averageTRL, sub: "Scale 1 to 6", trend: "Optimized" },
                   { label: "Interactions Formed", value: totalExpressionsOfInterests, sub: "Active collaborations", trend: "High Volume" }
                 ].map((stat, idx) => (
-                  <div key={idx} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col justify-between h-36">
+                  <div key={idx} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between h-28">
                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{stat.label}</span>
                     <div>
-                      <h3 className="text-3xl font-extrabold text-ug-navy leading-none tracking-tight">{stat.value}</h3>
-                      <div className="flex items-center justify-between mt-2">
+                      <h3 className="text-2xl font-extrabold text-ug-navy leading-none tracking-tight">{stat.value}</h3>
+                      <div className="flex items-center justify-between mt-1">
                         <span className="text-[10px] text-gray-400 font-medium">{stat.sub}</span>
                         <span className="text-[8px] font-bold uppercase text-ug-teal bg-ug-teal/5 px-2 py-0.5 rounded-full">{stat.trend}</span>
                       </div>
@@ -281,14 +298,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
               </div>
 
               {/* Stakeholders Persona Split */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="col-span-1 lg:col-span-2 bg-white rounded-[2.5rem] border border-gray-100 p-8 flex flex-col justify-between">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                <div className="col-span-1 lg:col-span-2 bg-white rounded-xl border border-gray-100 p-5 flex flex-col justify-between">
                   <div>
-                    <h3 className="text-lg font-black text-ug-navy">Sector Hub Activity</h3>
+                    <h3 className="text-base font-black text-ug-navy">Sector Hub Activity</h3>
                     <p className="text-[10px] font-black text-ug-teal uppercase tracking-[0.2em] mt-1">Academic Specialty Areas</p>
                   </div>
                   
-                  <div className="space-y-5 mt-8">
+                  <div className="space-y-4 mt-6">
                     {[
                       { domain: "Diagnostics Tools & Systems", color: "bg-ug-teal", count: projects.filter(p => p.research_area === ResearchArea.Diagnostics).length },
                       { domain: "Pharmaceutical & Biosimilars", color: "bg-ug-navy", count: projects.filter(p => p.research_area === ResearchArea.Pharmaceutical).length },
@@ -302,7 +319,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
                             <span className="font-bold text-ug-navy">{sec.domain}</span>
                             <span className="font-mono font-black text-gray-400">{sec.count} Projects ({percentage}%)</span>
                           </div>
-                          <div className="w-full h-3 bg-gray-50 rounded-full overflow-hidden border border-gray-100">
+                          <div className="w-full h-2.5 bg-gray-50 rounded-full overflow-hidden border border-gray-100">
                             <div className={`h-full ${sec.color} rounded-full transition-all duration-1000`} style={{ width: `${percentage}%` }}></div>
                           </div>
                         </div>
@@ -312,9 +329,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
                 </div>
 
                 {/* Persona Breakdown Wheel */}
-                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 space-y-6">
+                <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
                   <div>
-                    <h3 className="text-lg font-black text-ug-navy">Persona Mix</h3>
+                    <h3 className="text-base font-black text-ug-navy">Persona Mix</h3>
                     <p className="text-[10px] font-black text-ug-teal uppercase tracking-[0.2em] mt-1">Ecosystem Participants</p>
                   </div>
 
@@ -350,28 +367,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
-              <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-6 rounded-3xl border border-gray-100">
+              <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-xl border border-gray-100">
                 {/* Search Box */}
                 <div className="relative w-full md:max-w-md">
-                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input 
                     type="text" 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search registry indices by name, email, or metadata..."
-                    className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl py-3 pl-12 pr-4 text-xs font-bold text-ug-navy outline-none transition"
+                    className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-xl py-2 pl-10 pr-3 text-xs font-bold text-ug-navy outline-none transition"
                   />
                 </div>
 
                 {/* Filters */}
-                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
                   <Filter size={14} className="text-gray-400" />
-                  <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 mr-2">Filter Registry</span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mr-2">Filter Registry</span>
                   {['all', 'Researcher', 'Student', 'Investor', 'Industry/Partner', 'Admin'].map((role) => (
                     <button
                       key={role}
                       onClick={() => setRoleFilter(role)}
-                      className={`px-4 py-2 text-[9px] font-black rounded-xl border transition ${
+                      className={`px-3 py-1.5 text-[9px] font-bold rounded-lg border transition ${
                         roleFilter === role
                           ? 'bg-ug-navy text-white border-ug-navy'
                           : 'bg-white text-gray-400 border-gray-200 hover:text-ug-navy hover:bg-gray-50'
@@ -524,16 +541,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
 
                       {/* Right: Moderation Controls */}
                       <div className="w-full lg:w-auto p-6 bg-gray-50/50 rounded-2xl border border-gray-100 grid grid-cols-1 sm:grid-cols-3 lg:flex gap-4 shrink-0">
-                        {/* TRL Slider/Audit */}
+                        {/* Maturity Stage Selection */}
                         <div className="space-y-1.5">
-                          <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest block font-mono">TRL Audit</label>
+                          <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest block font-mono">Maturity Stage</label>
                           <select 
                             value={p.trl || 1}
                             onChange={(e) => handleProjectStatusChange(p.id, 'trl', parseInt(e.target.value))}
                             className="bg-white border border-gray-200 hover:border-gray-300 rounded-xl px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-ug-navy transition outline-none cursor-pointer w-full"
                           >
-                            {[1,2,3,4,5,6,7,8,9].map(num => (
-                              <option key={num} value={num}>TRL {num}</option>
+                            {[1,2,3,4,5,6].map(num => (
+                              <option key={num} value={num}>Stage {num}</option>
                             ))}
                           </select>
                         </div>
