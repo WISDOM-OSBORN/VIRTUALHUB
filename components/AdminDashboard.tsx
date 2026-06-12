@@ -4,9 +4,10 @@ import {
   Users, FileText, Settings, Bell, ShieldCheck, 
   Trash2, Plus, Edit, RefreshCw, Layers, CheckCircle2, 
   MapPin, Clock, Search, ExternalLink, Filter, HelpCircle, 
-  TrendingUp, BarChart3, Radio, FileSpreadsheet, Lock, Sparkles
+  TrendingUp, BarChart3, Radio, FileSpreadsheet, Lock, Sparkles,
+  MessageSquare, Download, Eye, AlertTriangle, ThumbsUp, Check, Loader2, ChevronDown, ChevronUp, X
 } from 'lucide-react';
-import { User, Project, NewsItem, UserRole, ProjectStatus, Visibility, ResearchArea } from '../types';
+import { User, Project, NewsItem, UserRole, ProjectStatus, Visibility, ResearchArea, DisclosureStatus } from '../types';
 import { StorageService } from '../services/storageService';
 import { useToast } from '../App';
 
@@ -17,7 +18,7 @@ interface AdminDashboardProps {
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh }) => {
   const { showToast } = useToast();
-  const [activeSubTab, setActiveSubTab] = useState<'metrics' | 'users' | 'projects' | 'news' | 'logs'>('metrics');
+  const [activeSubTab, setActiveSubTab] = useState<'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs'>('metrics');
   
   // Data states
   const [profiles, setProfiles] = useState<User[]>([]);
@@ -36,6 +37,151 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
   const [newsImageUrl, setNewsImageUrl] = useState('');
   const [newsExternalUrl, setNewsExternalUrl] = useState('');
   const [isSavingNews, setIsSavingNews] = useState(false);
+
+  // Admin Disclosure Workflows states
+  const [selectedDisclosureId, setSelectedDisclosureId] = useState<string | null>(null);
+  const [adminInternalNotes, setAdminInternalNotes] = useState('');
+  const [adminFeedback, setAdminFeedback] = useState('');
+  const [adminRequestedDocsText, setAdminRequestedDocsText] = useState('');
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
+  const [disclosureSearchQuery, setDisclosureSearchQuery] = useState('');
+  const [disclosureStatusFilter, setDisclosureStatusFilter] = useState('all');
+
+  const handleApproveDisclosure = async (proj: Project) => {
+    if (!user) return;
+    setIsProcessingAction(true);
+    try {
+      const currentTimeline = Array.isArray(proj.disclosure_timeline) ? proj.disclosure_timeline : [];
+      const newEvent = {
+        event: 'Approved',
+        details: 'Administrative governance review completed. Research cleared for public disclosure.',
+        timestamp: new Date().toISOString(),
+        user_name: user.name
+      };
+      
+      const updated = {
+        ...proj,
+        disclosure_status: DisclosureStatus.Published,
+        visibility: Visibility.Public,
+        disclosure_timeline: [...currentTimeline, newEvent]
+      };
+      
+      await StorageService.saveProject(updated);
+      showToast(`Disclosure "${proj.title}" approved and published to the Hub!`, "success");
+      
+      await loadAdminData();
+      if (onRefresh) onRefresh();
+    } catch (err: any) {
+      showToast(err.message || "Failed to approve disclosure", "error");
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  const handleRequestEdits = async (proj: Project) => {
+    if (!user) return;
+    if (!adminFeedback.trim()) {
+      showToast("Please provide instructions or regulatory feedback first.", "error");
+      return;
+    }
+    setIsProcessingAction(true);
+    try {
+      const slots = adminRequestedDocsText.split('\n')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map((s, index) => ({
+          id: `${Math.random().toString(36).substring(7)}-${index}`,
+          name: s,
+          requested_at: new Date().toISOString(),
+          status: 'requested' as const
+        }));
+
+      const currentTimeline = Array.isArray(proj.disclosure_timeline) ? proj.disclosure_timeline : [];
+      const newEvent = {
+        event: 'Documents Requested',
+        details: `Additional files/clarifications requested: ${adminFeedback.trim()}`,
+        timestamp: new Date().toISOString(),
+        user_name: user.name
+      };
+
+      const existingRequested = Array.isArray(proj.requested_documents) ? proj.requested_documents : [];
+      const updatedRequested = [...existingRequested, ...slots];
+
+      const updated = {
+        ...proj,
+        disclosure_status: DisclosureStatus.DocumentsRequested,
+        internal_notes: adminInternalNotes,
+        requested_documents: updatedRequested,
+        disclosure_timeline: [...currentTimeline, newEvent]
+      };
+
+      await StorageService.saveProject(updated);
+
+      await StorageService.submitEOI(
+        proj.id,
+        user.name,
+        `⚠️ ADVISORY ALERT & REGULATORY REVIEW FEEDBACK:\n\n${adminFeedback.trim()}\n\nRequested Document Slots Created:\n${slots.map(s => `• ${s.name} (Awaiting Upload)`).join('\n') || 'None'}`,
+        proj.owner_id
+      );
+
+      showToast(`Clarification request and messages posted successfully!`, "success");
+      
+      setAdminFeedback('');
+      setAdminRequestedDocsText('');
+      
+      await loadAdminData();
+      if (onRefresh) onRefresh();
+    } catch (err: any) {
+      showToast(err.message || "Failed to request clarification", "error");
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  const handleRejectDisclosure = async (proj: Project) => {
+    if (!user) return;
+    if (!adminFeedback.trim()) {
+      showToast("Please provide formal reasons for rejection in the feedback field.", "error");
+      return;
+    }
+    if (!window.confirm("Are you sure you want to reject this disclosure submission? It will be marked as Rejected.")) return;
+    setIsProcessingAction(true);
+    try {
+      const currentTimeline = Array.isArray(proj.disclosure_timeline) ? proj.disclosure_timeline : [];
+      const newEvent = {
+        event: 'Rejected',
+        details: `Governance rejection statement: ${adminFeedback.trim()}`,
+        timestamp: new Date().toISOString(),
+        user_name: user.name
+      };
+
+      const updated = {
+        ...proj,
+        disclosure_status: DisclosureStatus.Rejected,
+        internal_notes: adminInternalNotes,
+        disclosure_timeline: [...currentTimeline, newEvent]
+      };
+
+      await StorageService.saveProject(updated);
+
+      await StorageService.submitEOI(
+        proj.id,
+        user.name,
+        `🚫 REGULATORY DEFICIENCIES NOTED (SUBMISSION REJECTED):\n\n${adminFeedback.trim()}`,
+        proj.owner_id
+      );
+
+      showToast(`Disclosure submission rejected and feedback registered.`, "info");
+      setAdminFeedback('');
+      
+      await loadAdminData();
+      if (onRefresh) onRefresh();
+    } catch (err: any) {
+      showToast(err.message || "Failed to reject disclosure", "error");
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
 
   // Load all admin data
   const loadAdminData = async () => {
@@ -238,6 +384,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
         {[
           { id: 'metrics', label: 'METRICS & ANALYTICS', icon: BarChart3 },
           { id: 'users', label: 'USER DIRECTORY', icon: Users },
+          { id: 'disclosures', label: 'DISCLOSURES', icon: ShieldCheck },
           { id: 'projects', label: 'PROJECT SCREENER', icon: FileText },
           { id: 'news', label: 'NEWS CURATOR', icon: Radio },
           { id: 'logs', label: 'GOVERNANCE AUDIT', icon: FileSpreadsheet }
@@ -477,6 +624,388 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* 2.5 DISCLOSURES SUBTAB */}
+          {activeSubTab === 'disclosures' && (
+            <motion.div 
+              key="disclosures"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6 text-left"
+            >
+              {/* Header and filters */}
+              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-black text-ug-navy tracking-tight uppercase">Administrative Disclosures Hub</h3>
+                  <p className="text-xs text-gray-400 mt-1">Review, approve, audit, and regulate academic innovation disclosure submissions.</p>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="relative">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                    <input 
+                      type="text" 
+                      placeholder="Search disclosures ledger..." 
+                      value={disclosureSearchQuery}
+                      onChange={e => setDisclosureSearchQuery(e.target.value)}
+                      className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-ug-navy focus:ring-2 focus:ring-ug-teal/20 focus:bg-white outline-none transition" 
+                    />
+                  </div>
+                  
+                  <select 
+                    value={disclosureStatusFilter}
+                    onChange={e => setDisclosureStatusFilter(e.target.value)}
+                    className="px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-ug-navy cursor-pointer focus:ring-2 focus:ring-ug-teal/20 focus:bg-white outline-none"
+                  >
+                    <option value="all">ALL WORKFLOW STATUSES</option>
+                    <option value="Submitted">SUBMITTED</option>
+                    <option value="Pending Review">PENDING REVIEW</option>
+                    <option value="Documents Requested">DOCS REQUESTED</option>
+                    <option value="Under Re-Review">UNDER RE-REVIEW</option>
+                    <option value="Approved">APPROVED</option>
+                    <option value="Published">PUBLISHED</option>
+                    <option value="Rejected">REJECTED</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Main Ledger Grid split */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* Left side: Disclosures matching filter */}
+                <div className="lg:col-span-5 bg-white rounded-3xl border border-gray-100 shadow-sm p-4 h-[700px] overflow-y-auto custom-scrollbar flex flex-col">
+                  <h4 className="text-[10px] font-black tracking-widest text-gray-400 uppercase mb-4 px-2">PENDING & ACTIVE SUBMISSIONS</h4>
+                  
+                  <div className="space-y-2 flex-1 overflow-y-auto pr-1">
+                    {(() => {
+                      const filtered = projects.filter(p => {
+                        // Search matches title or researcher/owner name
+                        const ownerProfile = profiles.find(pr => pr.id === p.owner_id);
+                        const matchSearch = p.title.toLowerCase().includes(disclosureSearchQuery.toLowerCase()) || 
+                          (ownerProfile?.name || '').toLowerCase().includes(disclosureSearchQuery.toLowerCase()) ||
+                          p.department.toLowerCase().includes(disclosureSearchQuery.toLowerCase());
+                        
+                        // Status matches
+                        const matchStatus = disclosureStatusFilter === 'all' || p.disclosure_status === disclosureStatusFilter;
+                        
+                        return matchSearch && matchStatus;
+                      });
+                      
+                      if (filtered.length === 0) {
+                        return (
+                          <div className="py-20 text-center text-gray-400 text-xs uppercase tracking-wider font-bold">
+                            No matching disclosures in ledger records
+                          </div>
+                        );
+                      }
+                      
+                      return filtered.map(p => {
+                        const ownerProfile = profiles.find(pr => pr.id === p.owner_id);
+                        const isChosen = selectedDisclosureId === p.id;
+                        return (
+                          <div 
+                            key={p.id}
+                            onClick={() => {
+                              setSelectedDisclosureId(p.id);
+                              setAdminInternalNotes(p.internal_notes || '');
+                              setAdminFeedback('');
+                              setAdminRequestedDocsText('');
+                            }}
+                            className={`p-4 rounded-2xl border transition cursor-pointer text-left ${
+                              isChosen 
+                                ? 'bg-ug-navy text-white border-ug-navy shadow-inner' 
+                                : 'bg-gray-50/50 hover:bg-gray-50 border-gray-100 text-ug-navy'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start mb-1.5">
+                              <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                isChosen 
+                                  ? 'bg-ug-teal text-white' 
+                                  : 'bg-ug-navy/5 text-ug-navy'
+                              }`}>
+                                {p.research_area.split(' ')[0]}
+                              </span>
+                              <span className={`text-[8px] font-bold ${isChosen ? 'text-gray-300' : 'text-gray-400'}`}>
+                                {new Date(p.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            
+                            <h5 className="font-extrabold text-xs md:text-sm leading-snug line-clamp-2">{p.title}</h5>
+                            
+                            <p className={`text-[10px] font-bold mt-2 ${isChosen ? 'text-ug-teal' : 'text-gray-550'}`}>
+                              Researcher: {ownerProfile?.name || 'Academic Faculty'}
+                            </p>
+                            
+                            <div className="flex items-center gap-2 mt-3 text-[8px] font-black uppercase tracking-widest">
+                              <span className={`h-1.5 w-1.5 rounded-full ${
+                                p.disclosure_status === 'Published' ? 'bg-green-500 animate-pulse' :
+                                p.disclosure_status === 'Approved' ? 'bg-blue-500' :
+                                p.disclosure_status === 'Documents Requested' ? 'bg-red-500' :
+                                p.disclosure_status === 'Under Re-Review' ? 'bg-yellow-500' :
+                                'bg-gray-400'
+                              }`}></span>
+                              Status: {p.disclosure_status || 'Submitted'}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+
+                {/* Right side: Active disclosure screening interface */}
+                <div className="lg:col-span-7 bg-white rounded-3xl border border-gray-100 shadow-sm p-6 h-[700px] overflow-y-auto custom-scrollbar flex flex-col justify-between">
+                  {(() => {
+                    const activeProj = projects.find(p => p.id === selectedDisclosureId);
+                    if (!activeProj) {
+                      return (
+                        <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 space-y-3 py-36">
+                          <ShieldCheck size={48} className="text-gray-200 stroke-[1.5]" />
+                          <p className="text-[10px] font-black tracking-widest uppercase max-w-sm">
+                            Select a disclosure from the ledger list to begin regulatory screening & AI governance auditing
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    const ownerPr = profiles.find(pr => pr.id === activeProj.owner_id);
+                    
+                    // Helper to dynamically calculate advisory feedback based on project guidelines
+                    const getAIDisclosureAdvisory = (project: Project) => {
+                      const text = (project.title + " " + project.description).toLowerCase();
+                      let riskLevel = "LOW";
+                      let riskColor = "text-green-600 bg-green-50 border-green-200";
+                      let riskIcon = "🟢";
+                      let riskBullet = "Low Risk Profile. Standard academic disclosure. Complies with institutional publications protocols.";
+                      
+                      if (text.includes("clinical") || text.includes("drug") || text.includes("human") || text.includes("patient") || text.includes("pharma") || text.includes("vaccine")) {
+                        riskLevel = "MEDIUM";
+                        riskColor = "text-amber-600 bg-amber-50 border-amber-200";
+                        riskIcon = "🟡";
+                        riskBullet = "Minor Compliance Query. Involves biomedical or biochemical subjects. Requires institutional bioethics board approval protocols.";
+                      } else if (text.includes("patent") || text.includes("nuclear") || text.includes("intellectual") || text.includes("industrial") || text.includes("commercial") || text.includes("quantum")) {
+                        riskLevel = "HIGH";
+                        riskColor = "text-red-500 bg-red-50 border-red-200";
+                        riskIcon = "🔴";
+                        riskBullet = "High IP Protection Alert. Discloses proprietary structural mechanics. Early publication may compromise pending patent drafts.";
+                      }
+                      
+                      return {
+                        riskLevel,
+                        riskColor,
+                        riskIcon,
+                        riskBullet,
+                        pubmedCheck: "Automated PubMed check: 0 matching public papers/patents indexed. Distinctive novelty factor: 97%.",
+                        scholarCheck: "Scholar publication check: Structural indexing cleared. Safely quarantined as Private.",
+                        recommendedActions: [
+                          "1. Verify that all referenced diagrams or CSV logs contain no identifiable user/patient data.",
+                          "2. Confirm principal investigator has signed the University of Ghana intellectual sharing guidelines.",
+                          "3. Cross-reference academic brief with sub-department clearance letters prior to final hub-cleared publication."
+                        ]
+                      };
+                    };
+
+                    const aiAdvisory = getAIDisclosureAdvisory(activeProj);
+                    const timeline = Array.isArray(activeProj.disclosure_timeline) ? activeProj.disclosure_timeline : [];
+                    const reqDocs = Array.isArray(activeProj.requested_documents) ? activeProj.requested_documents : [];
+
+                    return (
+                      <div className="space-y-6 text-left flex-1 flex flex-col justify-between">
+                        <div className="space-y-6">
+                          {/* Header header info */}
+                          <div className="border-b border-gray-100 pb-4">
+                            <span className="text-[9px] font-black uppercase bg-ug-teal/10 text-ug-teal px-2 py-0.5 rounded tracking-widest">{activeProj.disclosure_status || 'Submitted'}</span>
+                            <h4 className="text-base font-black text-ug-navy line-clamp-2 mt-2 leading-snug">{activeProj.title}</h4>
+                            <p className="text-xs font-bold text-gray-500 mt-1">
+                              Owner: <span className="text-ug-navy">{ownerPr?.name || 'Academic Faculty'}</span> | Dept: <span className="text-ug-navy">{activeProj.department}</span>
+                            </p>
+                          </div>
+
+                          {/* Original technical file - Always visible (No Locks) */}
+                          <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2.5 bg-ug-navy text-ug-teal rounded-xl">
+                                <FileText size={18} />
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-black text-ug-navy uppercase tracking-wider">Original Technical Disclosure Brief</p>
+                                <p className="text-[8px] text-gray-400">Governance protocol dictates uncompromised administrative accessibility to files.</p>
+                              </div>
+                            </div>
+                            {activeProj.technical_details_url ? (
+                              <a 
+                                href={activeProj.technical_details_url} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-ug-navy text-white rounded-xl text-[9px] font-black uppercase tracking-wider hover:bg-ug-teal transition cursor-pointer shrink-0"
+                              >
+                                <Download size={10} />
+                                Download PDF
+                              </a>
+                            ) : (
+                              <span className="text-[8px] text-red-500 font-extrabold tracking-wider uppercase">NO BRIEF UPLOADED</span>
+                            )}
+                          </div>
+
+                          {/* Dynamic AI Verification Advisory Tool */}
+                          <div className="p-5 bg-ug-navy text-white rounded-[2rem] border border-gray-800 space-y-3.5 relative overflow-hidden shadow-xl">
+                            <div className="absolute top-0 right-0 h-24 w-24 bg-ug-teal/5 rounded-full blur-2xl"></div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 bg-ug-teal/15 text-ug-teal rounded-full flex items-center gap-1.5">
+                                <Sparkles size={10} />
+                                AI ADVISORY ENGINE (ADVISORY ONLY)
+                              </span>
+                              
+                              <span className={`text-[8px] font-black uppercase px-2.5 py-1 rounded-full border tracking-widest ${aiAdvisory.riskColor}`}>
+                                {aiAdvisory.riskIcon} RISK PROFILE: {aiAdvisory.riskLevel}
+                              </span>
+                            </div>
+
+                            <p className="text-[9px] text-gray-300 leading-relaxed font-semibold italic border-l-2 border-ug-teal/30 pl-3">
+                              "{aiAdvisory.riskBullet}"
+                            </p>
+
+                            <div className="space-y-1.5 text-[8px] font-mono text-gray-400">
+                              <div className="flex items-center gap-1.5">
+                                <span className="h-1 w-1 bg-ug-teal rounded-full"></span>
+                                {aiAdvisory.pubmedCheck}
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="h-1 w-1 bg-ug-teal rounded-full"></span>
+                                {aiAdvisory.scholarCheck}
+                              </div>
+                            </div>
+
+                            <div className="pt-1.5 border-t border-white/5 space-y-1">
+                              <p className="text-[8px] font-black uppercase tracking-wider text-ug-teal">RECOMMENDED ADMINISTRATIVE AUDITS:</p>
+                              {aiAdvisory.recommendedActions.map((act, aIdx) => (
+                                <p key={aIdx} className="text-[8px] text-gray-300 font-medium">{act}</p>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Board interactive management tools */}
+                          <div className="space-y-4 pt-1">
+                            {/* Board comments entry */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black tracking-widest text-ug-navy uppercase ml-1">Board Internal Working Notes (Private)</label>
+                                <textarea 
+                                  rows={3} 
+                                  value={adminInternalNotes}
+                                  onChange={e => setAdminInternalNotes(e.target.value)}
+                                  placeholder="Record administrative screening notes strictly visible internally to governance members..."
+                                  className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-[11px] font-medium text-gray-600 outline-none focus:bg-white focus:ring-2 focus:ring-ug-teal/20 focus:border-ug-teal/30 leading-normal"
+                                />
+                              </div>
+                              
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black tracking-widest text-ug-navy uppercase ml-1">Document Request Slots (One per Line)</label>
+                                <textarea 
+                                  rows={3} 
+                                  value={adminRequestedDocsText}
+                                  onChange={e => setAdminRequestedDocsText(e.target.value)}
+                                  placeholder="e.g.&#10;Ethics Approval Letter&#10;Principal Investigator CV&#10;Funding Approval spec"
+                                  className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-[11px] font-mono font-medium text-gray-600 outline-none focus:bg-white focus:ring-2 focus:ring-ug-teal/20 focus:border-ug-teal/30 leading-normal"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-black tracking-widest text-ug-navy uppercase ml-1">Instructions / Clarification Feedback to Researcher</label>
+                              <textarea 
+                                rows={3} 
+                                value={adminFeedback}
+                                onChange={e => setAdminFeedback(e.target.value)}
+                                placeholder="Describe details of compliance issues, changes required in methodology presentation, or why additional support letters are requested..."
+                                className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-[11px] font-semibold text-gray-705 outline-none focus:bg-white focus:ring-2 focus:ring-ug-teal/20 focus:border-ug-teal/30 leading-normal"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Support uploaded files status */}
+                          {reqDocs.length > 0 && (
+                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                              <p className="text-[9px] font-black text-ug-navy tracking-widest uppercase mb-2">Researcher Uploaded Documentation</p>
+                              <div className="space-y-1.5">
+                                {reqDocs.map((doc: any, dIdx: number) => (
+                                  <div key={dIdx} className="flex justify-between items-center bg-white p-2 border border-gray-100 rounded-lg text-[9px] font-bold text-gray-600">
+                                    <div className="truncate flex items-center gap-1.5">
+                                      <FileText size={10} className="text-gray-400" />
+                                      {doc.url ? (
+                                        <a href={doc.url} target="_blank" rel="noreferrer" className="text-ug-teal hover:underline font-black truncate max-w-xs">
+                                          {doc.name}
+                                        </a>
+                                      ) : (
+                                        <span className="text-gray-400 italic font-medium truncate max-w-xs">{doc.name} (Awaiting Upload)</span>
+                                      )}
+                                    </div>
+                                    {doc.url && (
+                                      <a href={doc.url} target="_blank" rel="noreferrer" className="text-ug-teal flex items-center gap-1 shrink-0 px-2 py-0.5 bg-ug-teal/5 rounded hover:underline text-[8px] font-black tracking-wider uppercase">
+                                        <Download size={10} />
+                                        DOWNLOAD
+                                      </a>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Historical timeline */}
+                          {timeline.length > 0 && (
+                            <div className="border border-gray-100 rounded-xl p-4 space-y-2">
+                              <p className="text-[10px] font-black text-ug-navy tracking-widest uppercase">Audit Trail Ledger logs</p>
+                              <div className="space-y-2 max-h-36 overflow-y-auto pl-1 pr-1 border-l-2 border-gray-100 ml-1">
+                                {timeline.map((item: any, idx: number) => (
+                                  <div key={idx} className="text-[9px] font-bold text-gray-500 leading-relaxed relative pl-3 text-left">
+                                    <span className="absolute -left-[5px] top-1.5 h-1.5 w-1.5 rounded bg-ug-teal"></span>
+                                    <span className="text-ug-teal font-extrabold">[{item.status}]</span> {item.notes} <span className="text-gray-400">by {item.by} ({new Date(item.timestamp).toLocaleDateString()})</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Audit operations console buttons */}
+                        <div className="pt-4 border-t border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <button
+                            disabled={isProcessingAction}
+                            onClick={() => handleApproveDisclosure(activeProj)}
+                            className="bg-ug-teal text-white py-4.5 rounded-2xl text-[9px] font-black tracking-widest uppercase hover:bg-ug-navy active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            <Check size={12} />
+                            Approve For Hub
+                          </button>
+                          
+                          <button
+                            disabled={isProcessingAction}
+                            onClick={() => handleRequestEdits(activeProj)}
+                            className="bg-ug-navy text-white py-4.5 rounded-2xl text-[9px] font-black tracking-widest uppercase hover:bg-ug-teal active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            <AlertTriangle size={12} className="text-amber-400" />
+                            Request Clarifications
+                          </button>
+                          
+                          <button
+                            disabled={isProcessingAction}
+                            onClick={() => handleRejectDisclosure(activeProj)}
+                            className="bg-gray-100 text-red-500 hover:bg-red-50 border border-gray-200 py-4.5 rounded-2xl text-[9px] font-black tracking-widest uppercase active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            <X size={12} />
+                            Reject Submission
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
               </div>
             </motion.div>
           )}

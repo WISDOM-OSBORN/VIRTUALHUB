@@ -19,7 +19,20 @@ export enum ProjectStatus {
 export enum Visibility {
   Draft = 'Draft',
   Internal = 'Internal',
-  Public = 'Public'
+  Public = 'Public',
+  Private = 'Private'
+}
+
+export enum DisclosureStatus {
+  Draft = 'Draft',
+  Submitted = 'Submitted',
+  PendingReview = 'Pending Review',
+  DocumentsRequested = 'Documents Requested',
+  EditsRequested = 'Edits Requested',
+  UnderReReview = 'Under Re-Review',
+  Approved = 'Approved',
+  Rejected = 'Rejected',
+  Published = 'Published'
 }
 
 export enum ResearchArea {
@@ -71,6 +84,20 @@ export interface Project {
   expressions_of_interest?: number;
   requests?: number;
   embedding?: number[];
+  
+  // New Disclosure management fields
+  disclosure_status?: DisclosureStatus;
+  internal_notes?: string;
+  requested_documents?: { id: string; name: string; requested_at: string; status: 'requested' | 'uploaded'; url?: string; uploaded_at?: string; by?: string }[];
+  disclosure_timeline?: { event: string; user_name: string; timestamp: string; details?: string }[];
+  ai_verification?: {
+    summary?: string;
+    risk_score?: number;
+    recommended_action?: string;
+    verified_at?: string;
+    evidence?: string[];
+    missing_evidence?: string[];
+  };
 }
 
 export interface AIProfile {

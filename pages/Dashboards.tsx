@@ -1,18 +1,18 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { UserRole, ProjectStatus, Visibility, Project, ResearchArea, User, AIProfile } from '../types';
+import { UserRole, ProjectStatus, Visibility, Project, ResearchArea, User, AIProfile, DisclosureStatus } from '../types';
 import { StorageService } from '../services/storageService';
 import { MatchingService } from '../services/matchingService';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   TrendingUp, Users, Plus, FileText, 
   Settings, Bell, ShieldCheck, Download, 
-  ChevronRight, Globe, Lock, X, Check, Award, GraduationCap, Eye, Search, Loader2, Star, Trash, Inbox, Archive, MoreVertical, CornerUpLeft, Paperclip, Maximize2, Minimize2, ChevronLeft,
+  ChevronRight, ChevronDown, ChevronUp, Globe, Lock, X, Check, Award, GraduationCap, Eye, Search, Loader2, Star, Trash, Inbox, Archive, MoreVertical, CornerUpLeft, Paperclip, Maximize2, Minimize2, ChevronLeft,
   Briefcase, BookOpen, Handshake, Image as ImageIcon, Upload, DollarSign, FileCode,
   Home as HomeIcon,
   ShoppingBag, Bookmark, ArrowRight, User as UserIcon, Link as LinkIcon, Camera, AlertCircle, Info,
-  Pencil, Trash2, FileUp, MessageSquare, MailOpen, Clock, Zap, Send as SendIcon, Calendar, File, LayoutGrid, Target, Sparkles, LogOut, Rocket
+  Pencil, Trash2, FileUp, MessageSquare, MailOpen, Clock, Zap, Send as SendIcon, Calendar, File, LayoutGrid, Target, Sparkles, LogOut, Rocket, Activity
 } from 'lucide-react';
 import { useToast } from '../App';
 import { Onboarding } from './Onboarding';
@@ -282,7 +282,7 @@ const ProjectFormModal: React.FC<{
     setTechnicalBrief(null);
   }, [project, isOpen]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, statusOverride?: DisclosureStatus) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -305,14 +305,20 @@ const ProjectFormModal: React.FC<{
         finalBriefUrl = url;
       }
 
+      // Determine disclosure status and visibility
+      const finalStatus = statusOverride || formData.disclosure_status || (project ? undefined : DisclosureStatus.Submitted);
+      const finalVisibility = statusOverride === DisclosureStatus.Draft ? Visibility.Private : (project ? formData.visibility : Visibility.Private);
+
       const updatedPayload = {
         ...formData,
         image_url: finalImageUrl,
-        technical_details_url: finalBriefUrl
+        technical_details_url: finalBriefUrl,
+        disclosure_status: finalStatus,
+        visibility: finalVisibility
       };
 
       await StorageService.saveProject(updatedPayload);
-      showToast(project ? "Disclosure Updated" : "Project Successfully Disclosed", "success");
+      showToast(project ? "Disclosure Updated" : (finalStatus === DisclosureStatus.Draft ? "Saved as Draft" : "Project Submitted for Review"), "success");
       onSave();
       onClose();
     } catch (err: any) {
@@ -542,12 +548,39 @@ const ProjectFormModal: React.FC<{
               </div>
 
               <div className="pt-6 space-y-4">
-                <button type="submit" disabled={loading} className="w-full bg-ug-navy text-white py-5 rounded-[1.5rem] font-black uppercase text-[10px] tracking-[0.25em] shadow-xl hover:bg-ug-teal active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50">
-                  {loading ? <Loader2 className="animate-spin" size={18} /> : (project ? <ShieldCheck size={18} /> : <Check size={18} />)}
-                  {project ? 'Apply Disclosure Changes' : 'Finalize Disclosure'}
-                </button>
+                {project ? (
+                  <button 
+                    type="submit" 
+                    onClick={(e) => handleSubmit(e)}
+                    disabled={loading} 
+                    className="w-full bg-ug-navy text-white py-5 rounded-[1.5rem] font-black uppercase text-[10px] tracking-[0.25em] shadow-xl hover:bg-ug-teal active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    {loading ? <Loader2 className="animate-spin" size={18} /> : <ShieldCheck size={18} />}
+                    Apply Disclosure Changes
+                  </button>
+                ) : (
+                  <>
+                    <button 
+                      type="button" 
+                      onClick={(e) => handleSubmit(e, DisclosureStatus.Submitted)}
+                      disabled={loading} 
+                      className="w-full bg-ug-teal text-white py-5 rounded-[1.5rem] font-black uppercase text-[10px] tracking-[0.25em] shadow-xl hover:bg-ug-navy active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 cursor-pointer"
+                    >
+                      {loading ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
+                      Submit for Academic Review
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={(e) => handleSubmit(e, DisclosureStatus.Draft)}
+                      disabled={loading} 
+                      className="w-full bg-gray-100 text-ug-navy hover:bg-gray-200 py-4 rounded-[1.5rem] font-black uppercase text-[10px] tracking-[0.2em] transition-all flex items-center justify-center gap-3 cursor-pointer"
+                    >
+                      Save as Draft
+                    </button>
+                  </>
+                )}
                 <button type="button" onClick={onClose} className="w-full py-4 text-gray-400 font-black uppercase text-[9px] tracking-widest hover:text-red-500 transition-colors">
-                  Discard Draft
+                  Discard & Close
                 </button>
               </div>
             </div>
@@ -1583,8 +1616,89 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
   const [projects, setProjects] = useState<Project[]>([]);
   const [eois, setEois] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
+  const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
+  const [uploadingRevisedId, setUploadingRevisedId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { showToast } = useToast();
+
+  const handleUploadRequestedDoc = async (file: File, project: Project) => {
+    if (!user) return;
+    setUploadingDocId(project.id);
+    try {
+      const url = await StorageService.uploadFile(file, 'projects');
+      const docObj = {
+        id: crypto.randomUUID?.() || Math.random().toString(36).substring(7),
+        name: file.name,
+        requested_at: new Date().toISOString(),
+        status: 'uploaded' as const,
+        url: url,
+        uploaded_at: new Date().toISOString(),
+        by: user.name
+      };
+      
+      const currentRequested = Array.isArray(project.requested_documents) ? project.requested_documents : [];
+      let updatedRequested = [...currentRequested];
+      
+      updatedRequested.push(docObj);
+      
+      const currentTimeline = Array.isArray(project.disclosure_timeline) ? project.disclosure_timeline : [];
+      const timelineEvent = {
+        event: 'Documents Uploaded',
+        details: `PI uploaded document: ${file.name}`,
+        timestamp: new Date().toISOString(),
+        user_name: user.name
+      };
+      
+      const updatedProject = {
+        ...project,
+        requested_documents: updatedRequested,
+        disclosure_timeline: [...currentTimeline, timelineEvent],
+        disclosure_status: DisclosureStatus.UnderReReview
+      };
+      
+      await StorageService.saveProject(updatedProject);
+      showToast(`Document "${file.name}" uploaded successfully! Status updated to Under Re-Review.`, "success");
+      await loadData();
+      onUpdate();
+    } catch (err: any) {
+      showToast(err.message || "Failed to upload document", "error");
+    } finally {
+      setUploadingDocId(null);
+    }
+  };
+
+  const handleUploadRevisedBrief = async (file: File, project: Project) => {
+    if (!user) return;
+    setUploadingRevisedId(project.id);
+    try {
+      const url = await StorageService.uploadFile(file, 'projects');
+      
+      const currentTimeline = Array.isArray(project.disclosure_timeline) ? project.disclosure_timeline : [];
+      const timelineEvent = {
+        event: 'Revised Brief Submitted',
+        details: `PI uploaded revised technical brief: ${file.name}`,
+        timestamp: new Date().toISOString(),
+        user_name: user.name
+      };
+      
+      const updatedProject = {
+        ...project,
+        technical_details_url: url,
+        disclosure_timeline: [...currentTimeline, timelineEvent],
+        disclosure_status: DisclosureStatus.UnderReReview
+      };
+      
+      await StorageService.saveProject(updatedProject);
+      showToast(`Revised brief "${file.name}" uploaded successfully! Status updated to Under Re-Review.`, "success");
+      await loadData();
+      onUpdate();
+    } catch (err: any) {
+      showToast(err.message || "Failed to upload revised brief", "error");
+    } finally {
+      setUploadingRevisedId(null);
+    }
+  };
 
   const loadData = async () => {
     if (!user?.id) return;
@@ -1665,57 +1779,289 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
 
         <section className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm">
           <div className="flex justify-between items-center mb-6 md:mb-8">
-            <SectionTitle title="Core Assets" subtitle="Secure Research Record Management" />
+            <SectionTitle title="My Disclosures" subtitle="Secure Research Record Management" />
           </div>
           <div className="space-y-4">
             {projects.length === 0 ? (
               <div className="py-10 md:py-12 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
                 <p className="text-gray-400 font-bold uppercase text-[9px] md:text-[10px] tracking-widest px-4">No assets disclosed yet.</p>
               </div>
-            ) : projects.slice(0, 3).map(p => (
-              <div key={p.id} onClick={() => navigate(`/projects/${p.id}`)} className="group flex items-center justify-between p-4 md:p-5 border border-gray-50 rounded-2xl bg-gray-50/30 hover:bg-white hover:border-ug-teal/30 hover:shadow-lg transition cursor-pointer">
-                <div className="flex items-center gap-4 md:gap-6">
-                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden shadow-sm bg-gray-100">
-                    <img src={p.image_url.split('|')[0]} className="w-full h-full object-cover" alt="" />
+            ) : projects.map(p => {
+              const isExpanded = expandedProjectId === p.id;
+              const msgCount = eois.filter(e => e.project_id === p.id).length;
+              const currentStageIdx = (() => {
+                const s = p.disclosure_status || 'Submitted';
+                if (s === 'Draft') return -1;
+                if (s === 'Submitted') return 0;
+                if (s === 'Pending Review') return 1;
+                if (s === 'Documents Requested' || s === 'Edits Requested') return 2;
+                if (s === 'Under Re-Review') return 3;
+                if (s === 'Approved') return 4;
+                if (s === 'Published') return 5;
+                return 0;
+              })();
+              
+              const timeline = Array.isArray(p.disclosure_timeline) ? p.disclosure_timeline : [];
+              const lastAction = timeline.length > 0 ? timeline[timeline.length - 1] : null;
+              const reqDocsCount = Array.isArray(p.requested_documents) ? p.requested_documents.length : 0;
+
+              return (
+                <div key={p.id} className="border border-gray-100 rounded-3xl bg-gray-50/20 hover:shadow-md transition duration-300 overflow-hidden">
+                  {/* Summary row */}
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between p-5 md:p-6 gap-4">
+                    <div className="flex items-start gap-4 cursor-pointer flex-1 min-w-0" onClick={() => navigate(`/projects/${p.id}`)}>
+                      <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden shadow-sm bg-gray-100 shrink-0">
+                        <img src={p.image_url.split('|')[0]} className="w-full h-full object-cover" alt="" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                          <span className="text-[10px] md:text-xs font-bold text-ug-teal uppercase tracking-wider">{p.research_area}</span>
+                          <span className="text-[10px] text-gray-400">•</span>
+                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Submitted: {new Date(p.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <h4 className="font-black text-ug-navy text-sm md:text-base group-hover:text-ug-teal transition truncate">{p.title}</h4>
+                        
+                        {/* Highlights & Metadata list */}
+                        <div className="flex flex-wrap items-center gap-4 mt-2.5 text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                          <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full ${
+                             p.disclosure_status === 'Published' ? 'bg-green-50 text-green-600' :
+                             p.disclosure_status === 'Approved' ? 'bg-blue-50 text-blue-600' :
+                             p.disclosure_status === 'Documents Requested' || p.disclosure_status === 'Edits Requested' ? 'bg-red-50 text-red-500' :
+                             p.disclosure_status === 'Under Re-Review' ? 'bg-yellow-50 text-yellow-600' :
+                             'bg-gray-100 text-gray-500'
+                          }`}>
+                            <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse"></span>
+                            Status: {p.disclosure_status || 'Submitted'}
+                          </div>
+                          
+                          {lastAction && (
+                            <div className="text-gray-400 max-w-xs truncate" title={lastAction.notes}>
+                              Last Action: <span className="text-ug-navy">{lastAction.notes}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 justify-end shrink-0">
+                      {/* Badge stats */}
+                      <div className="flex items-center gap-2">
+                        {msgCount > 0 && (
+                          <div className="flex items-center gap-1 bg-blue-50 text-blue-500 text-[9px] font-black px-2.5 py-1 rounded-full tracking-wider" title="Conversation thread activity">
+                            <MessageSquare size={10} />
+                            {msgCount} MSG
+                          </div>
+                        )}
+                        {reqDocsCount > 0 && (
+                          <div className="flex items-center gap-1 bg-amber-50 text-amber-600 text-[9px] font-black px-2.5 py-1 rounded-full tracking-wider" title="Requested support documents">
+                            <File size={10} />
+                            {reqDocsCount} DOCS
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <button 
+                        onClick={() => setExpandedProjectId(isExpanded ? null : p.id)}
+                        className={`p-2 rounded-xl transition ${isExpanded ? 'bg-ug-teal/15 text-ug-teal' : 'bg-gray-50 text-gray-400 hover:text-ug-navy'}`}
+                        title="View workflow status tracker"
+                      >
+                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </button>
+
+                      <button 
+                       onClick={() => onOpenModal(p)}
+                       className="p-2 text-gray-400 hover:text-ug-teal hover:bg-gray-50 rounded-xl transition"
+                       title="Edit project details"
+                      >
+                        <Pencil size={14} />
+                      </button>
+
+                      <button 
+                       onClick={async () => {
+                         if (!window.confirm("Are you sure you want to permanently withdraw this research project from the platform? This cannot be undone.")) return;
+                         try {
+                           await StorageService.deleteProject(p.id);
+                           showToast("Project successfully withdrawn.", "success");
+                           loadData();
+                           onUpdate();
+                         } catch (err: any) {
+                           showToast(err.message || "Failed to withdraw project", "error");
+                         }
+                       }}
+                       className="p-2 text-gray-400 hover:text-red-500 hover:bg-gray-50 rounded-xl transition"
+                       title="Withdraw Project"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-black text-ug-navy text-sm md:text-base group-hover:text-ug-teal transition line-clamp-1">{p.title}</h4>
-                    <span className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider">{p.research_area}</span>
-                  </div>
+
+                  {/* Expanded Tracker & Actions Panel */}
+                  {isExpanded && (
+                    <div className="border-t border-gray-100 bg-white p-6 md:p-8 space-y-8 animate-fadeIn">
+                      <div>
+                        <h5 className="text-[10px] font-black text-ug-navy tracking-widest uppercase mb-4 flex items-center gap-2">
+                          <Clock size={12} className="text-ug-teal" />
+                          DISCLOSURE WORKFLOW PROGRESS TRACKER
+                        </h5>
+                        
+                        {/* Stepper tracker */}
+                        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 md:gap-2 relative pt-2">
+                          {[
+                            { label: 'Submitted', desc: 'Awaiting admin intake screening' },
+                            { label: 'Pending Review', desc: 'Panel evaluation in progress' },
+                            { label: 'Documents Requested', desc: 'Researcher feedback/docs required' },
+                            { label: 'Under Re-Review', desc: 'Revised assets under re-evaluation' },
+                            { label: 'Approved', desc: 'Governance clearance completed' },
+                            { label: 'Published', desc: 'Disclosed to public Hub marketplace' },
+                          ].map((stage, idx) => {
+                            const isCompleted = idx < currentStageIdx;
+                            const isActive = idx === currentStageIdx;
+                            return (
+                              <div key={idx} className="flex flex-col items-start gap-2 relative">
+                                <div className="flex items-center gap-2 w-full">
+                                  <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                    isActive ? 'bg-ug-teal text-white ring-4 ring-ug-teal/15' :
+                                    isCompleted ? 'bg-ug-teal/10 text-ug-teal border border-ug-teal/30' :
+                                    'bg-gray-100 text-gray-400'
+                                  }`}>
+                                    {isCompleted ? <Check size={10} /> : idx + 1}
+                                  </div>
+                                  {idx < 5 && (
+                                    <div className={`hidden md:block flex-1 h-0.5 ${isCompleted ? 'bg-ug-teal/50' : 'bg-gray-100'}`}></div>
+                                  )}
+                                </div>
+                                <div>
+                                  <p className={`text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-ug-teal' : isCompleted ? 'text-ug-navy' : 'text-gray-400'}`}>
+                                    {stage.label}
+                                  </p>
+                                  <p className="text-[8px] text-gray-400 leading-normal mt-0.5">{stage.desc}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Document Request Actions Upload Zone */}
+                      <div className="bg-gray-50/50 rounded-2xl p-5 md:p-6 border border-gray-100 space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                          <div>
+                            <h6 className="text-[10px] font-extrabold text-ug-navy tracking-widest uppercase flex items-center gap-2">
+                              <FileUp size={14} className="text-amber-500" />
+                              ADMINISTRATIVE COOPERATIVE FILE INTERACTION
+                            </h6>
+                            <p className="text-[9px] md:text-xs font-semibold text-gray-500 mt-1 max-w-xl">
+                              Support documents, proof of certifications, or technical specifications requested during administrative reviews can be directly uploaded here.
+                            </p>
+                          </div>
+                          
+                          {/* Message partner link */}
+                          <button
+                            onClick={() => navigate('/dashboard?tab=messages')}
+                            className="text-[9px] font-extrabold text-ug-teal tracking-wider uppercase hover:underline shrink-0 text-left"
+                          >
+                            Open Message Thread →
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                          {/* Option 1: File Request Upload */}
+                          <div className="bg-white p-4 rounded-xl border border-gray-100 flex flex-col justify-between hover:border-ug-teal/30 transition shadow-sm">
+                            <div>
+                              <p className="text-[10px] font-black text-ug-navy uppercase tracking-wider mb-1">Upload Requested Document</p>
+                              <p className="text-[8px] text-gray-400 mb-3">Supporting tables, letters, approvals, certificates, etc.</p>
+                            </div>
+                            <label className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-ug-navy/5 text-ug-navy rounded-xl cursor-pointer hover:bg-ug-navy/10 active:scale-95 transition text-[9px] font-black tracking-wider uppercase">
+                              <Upload size={12} />
+                              {uploadingDocId === p.id ? 'Uploading Security Document...' : 'Select & Upload Document'}
+                              <input 
+                                type="file" 
+                                className="hidden" 
+                                disabled={uploadingDocId === p.id}
+                                onChange={e => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleUploadRequestedDoc(file, p);
+                                }} 
+                              />
+                            </label>
+                          </div>
+
+                          {/* Option 2: Upload Revised technical detail brief */}
+                          <div className="bg-white p-4 rounded-xl border border-gray-100 flex flex-col justify-between hover:border-ug-teal/30 transition shadow-sm">
+                            <div>
+                              <p className="text-[10px] font-black text-ug-navy uppercase tracking-wider mb-1">Submit Updated Technical Brief</p>
+                              <p className="text-[8px] text-gray-400 mb-3">Replaces the active PDF draft brief with a revised version.</p>
+                            </div>
+                            <label className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-ug-teal/5 text-ug-teal rounded-xl cursor-pointer hover:bg-ug-teal/10 active:scale-95 transition text-[9px] font-black tracking-wider uppercase">
+                              <FileUp size={12} />
+                              {uploadingRevisedId === p.id ? 'Replacing Active Brief...' : 'Upload Revised Brief'}
+                              <input 
+                                type="file" 
+                                className="hidden" 
+                                disabled={uploadingRevisedId === p.id}
+                                onChange={e => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleUploadRevisedBrief(file, p);
+                                }} 
+                              />
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Uploaded Documents List */}
+                        {reqDocsCount > 0 && (
+                          <div className="bg-white p-4 rounded-xl border border-gray-100">
+                            <p className="text-[10px] font-black text-ug-navy uppercase tracking-wider mb-3">ACTIVE SUBMITTED SUPPORT DOCUMENTS</p>
+                            <div className="space-y-2">
+                              {p.requested_documents.map((doc: any, dIdx: number) => (
+                                <div key={dIdx} className="flex justify-between items-center p-2.5 bg-gray-50 rounded-lg text-[9px] font-bold text-gray-600">
+                                  <div className="flex items-center gap-2 truncate">
+                                    <File size={10} className="text-gray-400 shrink-0" />
+                                    <span className="truncate">{doc.name}</span>
+                                    <span className="text-[7px] text-gray-400">Uploaded {new Date(doc.uploaded_at).toLocaleString()}</span>
+                                  </div>
+                                  <a href={doc.url} target="_blank" rel="noreferrer" className="text-ug-teal hover:underline flex items-center gap-1 shrink-0 ml-1">
+                                    <Download size={10} />
+                                    DOWNLOAD
+                                  </a>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Audit Log / Timeline section */}
+                      <div className="bg-gray-50/30 p-5 rounded-2xl border border-gray-100">
+                        <h6 className="text-[10px] font-extrabold text-ug-navy tracking-widest uppercase mb-3 flex items-center gap-2">
+                          <Activity size={12} className="text-gray-400" />
+                          PERMANENT DISCLOSURE GOVERNANCE LEDGER & AUDIT TRAIL
+                        </h6>
+                        {timeline.length === 0 ? (
+                          <p className="text-[9px] font-medium text-gray-400 leading-normal">No entries recorded in this disclosure ledgers yet. System lifecycle transitions are registered here dynamically.</p>
+                        ) : (
+                          <div className="space-y-3.5 border-l-2 border-gray-100 pl-4 ml-2.5 mt-2.5">
+                            {timeline.map((event: any, evIdx: number) => (
+                              <div key={evIdx} className="relative">
+                                <div className="absolute -left-[23px] top-1.5 h-2.5 w-2.5 rounded-full bg-ug-teal/30 border border-white"></div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-[9px] font-black uppercase text-ug-teal px-1.5 py-0.5 bg-ug-teal/5 rounded tracking-wider">{event.status}</span>
+                                  <span className="text-[8px] text-gray-400">{new Date(event.timestamp).toLocaleString()}</span>
+                                  <span className="text-[8px] text-gray-400">by {event.by || 'Board Administrator'}</span>
+                                </div>
+                                <p className="text-[9px] font-medium text-gray-600 mt-1">{event.notes}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2 md:gap-3 shrink-0 ml-2">
-                   <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenModal(p);
-                    }}
-                    className="p-1 md:p-2 text-gray-400 hover:text-ug-teal transition"
-                    title="Edit Disclosure"
-                   >
-                     <Pencil size={12} className="md:w-3.5 md:h-3.5" />
-                   </button>
-                   <button 
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (!window.confirm("Are you sure you want to permanently withdraw this research project from the platform? This cannot be undone.")) return;
-                      try {
-                        await StorageService.deleteProject(p.id);
-                        showToast("Project successfully withdrawn.", "success");
-                        loadData();
-                        onUpdate();
-                      } catch (err: any) {
-                        showToast(err.message || "Failed to withdraw project", "error");
-                      }
-                    }}
-                    className="p-1 md:p-2 text-gray-400 hover:text-red-500 transition"
-                    title="Withdraw Project"
-                   >
-                     <Trash2 size={12} className="md:w-3.5 md:h-3.5" />
-                   </button>
-                   <ChevronRight size={14} className="text-gray-300 md:w-4 md:h-4" />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 

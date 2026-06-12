@@ -118,7 +118,7 @@ export const StorageService = {
       description: project.description,
       department: project.department,
       status: project.status,
-      visibility: project.visibility,
+      visibility: project.visibility || (project.id ? undefined : 'Private'),
       trl: project.trl,
       research_area: project.research_area,
       image_url: project.image_url,
@@ -133,7 +133,16 @@ export const StorageService = {
       views: project.views || 0,
       expressions_of_interest: project.expressions_of_interest || 0,
       requests: project.requests || 0,
-      embedding: project.embedding
+      embedding: project.embedding,
+      
+      // Disclosure Workflow Columns
+      disclosure_status: project.disclosure_status || (project.id ? undefined : 'Submitted'),
+      internal_notes: project.internal_notes,
+      requested_documents: project.requested_documents || (project.id ? undefined : []),
+      disclosure_timeline: project.disclosure_timeline || (project.id ? undefined : [
+        { event: 'Submission', user_name: 'Author', timestamp: new Date().toISOString(), details: 'Initial research disclosure submitted.' }
+      ]),
+      ai_verification: project.ai_verification || (project.id ? undefined : {})
     };
 
     // Auto-generate embedding if not present and we have enough data
