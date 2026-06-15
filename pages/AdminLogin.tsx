@@ -18,68 +18,38 @@ export const AdminLogin: React.FC = () => {
     e.preventDefault();
     setLoading(true);
 
-    const superEmail = 'abuyahwisdom@gmail.com';
-    const superPassword = 'Qr3frrL4AQhqHhCE';
-    const superName = 'WISDOM OSBORN ABUYAH';
-
-    // Verify inputs correspond to requested Super Admin identity
-    if (email.trim().toLowerCase() !== superEmail.toLowerCase() || password !== superPassword) {
-      showToast("Access Denied: Invalid Administrative Credentials", "error");
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Step 1: Attempt to sign up the Super Admin to guarantee they exist in Supabase auth
-      let authUserId = '';
-      try {
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: superEmail,
-          password: superPassword,
-        });
-
-        if (signUpError) {
-          // If already registered, sign-up might fail (e.g. Email already exists), which is fine.
-          // We will proceed to sign-in.
-          if (!signUpError.message.includes("already registered") && !signUpError.message.includes("Use different email")) {
-            throw signUpError;
-          }
-        }
-        
-        if (signUpData?.user) {
-          authUserId = signUpData.user.id;
-        }
-      } catch (signUpErr) {
-        console.log("Super Admin registration skipped (already exists or restricted):", signUpErr);
-      }
-
-      // Step 2: Sign in with the super administrator credentials
+      // Sign in standardly with password
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: superEmail,
-        password: superPassword,
+        email: email.trim(),
+        password: password,
       });
 
       if (signInError) throw signInError;
-      if (signInData?.user) {
-        authUserId = signInData.user.id;
+      
+      const authUserId = signInData?.user?.id;
+      if (!authUserId) throw new Error("Could not resolve authorization token.");
+
+      // Check user role in profiles
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUserId)
+        .maybeSingle();
+
+      if (profileError || !profile) {
+        throw new Error("Could not retrieve administrative profile.");
       }
 
-      if (authUserId) {
-        // Step 3: Explicitly write/update the profile state in the database as Admin/SuperAdmin
-        await StorageService.updateProfile({
-          id: authUserId,
-          email: superEmail,
-          name: superName,
-          role: UserRole.Admin,
-          company: 'UG ORID Directorates System Root'
-        });
-
-        showToast("Super Administrator Access Verified", "success");
-        window.location.href = '#/dashboard';
-        window.location.reload();
-      } else {
-        throw new Error("Could not resolve authorization token.");
+      if (profile.role !== UserRole.Admin) {
+        // Log out immediately to prevent illegal session
+        await supabase.auth.signOut();
+        throw new Error("Access Denied: Your profile does not possess Administrative clearance.");
       }
+
+      showToast("Administrator Access Granted", "success");
+      window.location.href = '#/dashboard';
+      window.location.reload();
     } catch (err: any) {
       console.error("Admin Login Error:", err);
       showToast(err.message || "Failed to establish administrative privileges.", "error");

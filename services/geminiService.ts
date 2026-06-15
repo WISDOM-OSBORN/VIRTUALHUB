@@ -1,40 +1,26 @@
-
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-
-// Standardizing SDK usage: fresh client initialization and direct process.env access
+// Standardizing SDK usage: routing through secure server-side API proxy to hide keys completely
 export const getGeminiResponse = async (
   message: string, 
   history: { role: 'user' | 'model'; parts: { text: string }[] }[]
 ): Promise<string> => {
-  
   try {
-    // Initializing with the named parameter apiKey as per requirements.
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    // Using gemini-3-flash-preview for reliable, low-latency assistance in the research hub.
-    const model = 'gemini-3-flash-preview';
-    const systemInstruction = `You are the Virtual Assistant for the University of Ghana (UG) Industry Hub. 
-    Your goal is to help researchers, students, and industry partners connect.
-    You know about:
-    - Research Projects (Diagnostics, Pharmaceutical, Vaccines)
-    - TRL (Technology Readiness Levels)
-    - Partnerships
-    
-    Be professional, academic yet accessible, and helpful. Keep answers concise (under 150 words) unless asked for detail.`;
-
-    const chat = ai.chats.create({
-      model: model,
-      config: {
-        systemInstruction: systemInstruction,
+    const response = await fetch('/api/gemini/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      history: history
+      body: JSON.stringify({ message, history })
     });
 
-    // sendMessage handles the user turn; response text is accessed via the .text property.
-    const result: GenerateContentResponse = await chat.sendMessage({ message: message });
-    return result.text || "I'm sorry, I couldn't generate a response.";
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `HTTP ${response.status}`);
+    }
 
+    const data = await response.json();
+    return data.text || "I'm sorry, I couldn't generate a response.";
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    return "I am currently experiencing high traffic or a connection issue. Please try again later.";
+    console.error("Gemini API Proxy Error:", error);
+    return "I am currently experiencing connection issues. Please try again later.";
   }
 };

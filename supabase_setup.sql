@@ -183,3 +183,39 @@ CREATE TABLE IF NOT EXISTS interaction_logs (
   interaction_type text, -- 'click', 'accept', 'ignore', 'message'
   created_at timestamp with time zone DEFAULT now()
 );
+
+-- 6. ADMIN SECURITY policies to unblock disclosure submission & administrative review workflows
+-- Allow Admin users to view, insert, update, or deletes all projects
+DROP POLICY IF EXISTS "Admins can manage all projects" ON public.projects;
+CREATE POLICY "Admins can manage all projects" ON public.projects
+FOR ALL TO authenticated USING (
+  EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE public.profiles.id = auth.uid() 
+    AND public.profiles.role = 'Admin'
+  )
+) WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE public.profiles.id = auth.uid() 
+    AND public.profiles.role = 'Admin'
+  )
+);
+
+-- Allow Admin users to view and update other profiles (such as role elevations)
+DROP POLICY IF EXISTS "Admins can manage all profiles" ON public.profiles;
+CREATE POLICY "Admins can manage all profiles" ON public.profiles
+FOR ALL TO authenticated USING (
+  EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE public.profiles.id = auth.uid() 
+    AND public.profiles.role = 'Admin'
+  )
+) WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE public.profiles.id = auth.uid() 
+    AND public.profiles.role = 'Admin'
+  )
+);
+
