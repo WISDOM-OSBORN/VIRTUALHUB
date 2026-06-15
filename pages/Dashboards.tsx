@@ -2129,11 +2129,11 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
                               <div key={evIdx} className="relative">
                                 <div className="absolute -left-[23px] top-1.5 h-2.5 w-2.5 rounded-full bg-ug-teal/30 border border-white"></div>
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <span className="text-[9px] font-black uppercase text-ug-teal px-1.5 py-0.5 bg-ug-teal/5 rounded tracking-wider">{event.status}</span>
+                                  <span className="text-[9px] font-black uppercase text-ug-teal px-1.5 py-0.5 bg-ug-teal/5 rounded tracking-wider">{event.event || event.status}</span>
                                   <span className="text-[8px] text-gray-400">{new Date(event.timestamp).toLocaleString()}</span>
-                                  <span className="text-[8px] text-gray-400">by {event.by || 'Board Administrator'}</span>
+                                  <span className="text-[8px] text-gray-400">by {event.user_name || event.by || 'Board Administrator'}</span>
                                 </div>
-                                <p className="text-[9px] font-medium text-gray-600 mt-1">{event.notes}</p>
+                                <p className="text-[9px] font-medium text-gray-600 mt-1">{event.details || event.notes}</p>
                               </div>
                             ))}
                           </div>

@@ -814,23 +814,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     const aiAdvisory = getAIDisclosureAdvisory(activeProj);
                     const timeline = Array.isArray(activeProj.disclosure_timeline) ? activeProj.disclosure_timeline : [];
                     const reqDocs = Array.isArray(activeProj.requested_documents) ? activeProj.requested_documents : [];
+                    
+                    // Filter messages (EOIs) that correspond specifically to this disclosure
+                    const projectMessages = eois.filter((e: any) => e.project_id === activeProj.id)
+                      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
                     return (
-                      <div className="space-y-6 text-left flex-1 flex flex-col justify-between">
+                      <div className="space-y-6 text-left flex-1 flex flex-col justify-between font-serif">
                         <div className="space-y-6">
                           
                           {/* Top Detail Header Block containing metrics, title, & actions styled like the second design mockup */}
-                          <div className="bg-white p-5 rounded-xl border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div className="bg-white p-5 rounded-2xl border border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                             <div className="flex items-center gap-3.5">
-                              <div className="p-3 bg-gray-50 border border-gray-100 text-[#0a0b2c] rounded-xl shrink-0">
-                                <ShieldCheck size={22} className="stroke-[1.5]" />
+                              <div className="p-3.5 bg-gray-50 border border-gray-100 text-[#0a0b2c] rounded-xl shrink-0">
+                                <ShieldCheck size={26} className="stroke-[1.5]" />
                               </div>
                               <div>
-                                <h4 className="text-sm font-bold text-[#0a0b2c] leading-snug line-clamp-2">{activeProj.title}</h4>
-                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] font-semibold text-gray-400 mt-1">
-                                  <span>Researcher: <span className="text-[#0a0b2c] font-bold">{ownerPr?.name || 'Academic Faculty'}</span></span>
+                                <h4 className="text-base md:text-lg font-black text-[#0a0b2c] leading-snug">{activeProj.title}</h4>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-gray-400 mt-1">
+                                  <span>Researcher: <span className="text-[#0a0b2c] font-black">{ownerPr?.name || 'Academic Faculty'}</span></span>
                                   <span className="hidden md:inline text-gray-300">|</span>
-                                  <span>Division: <span className="text-gray-650 font-bold">{activeProj.department}</span></span>
+                                  <span>Division: <span className="text-gray-650 font-black">{activeProj.department}</span></span>
                                   <span className="hidden md:inline text-[#3dd1e0]">|</span>
                                   <span>Status: <span className="text-ug-teal font-extrabold uppercase">{activeProj.disclosure_status || 'Submitted'}</span></span>
                                 </div>
@@ -838,11 +842,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </div>
 
                             {/* Prime action triggers right under overview */}
-                            <div className="flex items-center gap-2 shrink-0 border-t md:border-t-0 pt-3 md:pt-0 border-gray-100">
+                            <div className="flex items-center gap-2.5 shrink-0 border-t lg:border-t-0 pt-3 lg:pt-0 border-gray-100">
                               <button
                                 disabled={isProcessingAction}
                                 onClick={() => handleApproveDisclosure(activeProj)}
-                                className="px-4 py-2 bg-ug-teal text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-[#0a0b2c] transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                className="px-5 py-3 bg-ug-teal text-white rounded-lg text-xs font-black uppercase tracking-wider hover:bg-[#0a0b2c] transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                               >
                                 <CheckCircle2 size={13} />
                                 APPROVE
@@ -851,7 +855,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               <button
                                 disabled={isProcessingAction}
                                 onClick={() => handleRequestEdits(activeProj)}
-                                className="px-4 py-2 bg-[#0a0b2c] text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-ug-teal transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                className="px-5 py-3 bg-[#0a0b2c] text-white rounded-lg text-xs font-black uppercase tracking-wider hover:bg-ug-teal transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                               >
                                 <AlertTriangle size={13} />
                                 NEED EDITS
@@ -861,7 +865,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                           {/* ATTACHED DISCLOSURE FILES & RECOVERY */}
                           <div className="bg-white p-5 rounded-xl border border-gray-100 space-y-3">
-                            <h5 className="text-[10px] font-bold tracking-wider text-[#0a0b2c] uppercase">ATTACHED DISCLOSURE FILES</h5>
+                            <h5 className="text-[11px] md:text-xs font-black tracking-widest text-[#0a0b2c] uppercase">ATTACHED DISCLOSURE FILES</h5>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {/* Primary Technical Brief file */}
@@ -871,8 +875,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     <FileText size={16} />
                                   </div>
                                   <div className="truncate">
-                                    <p className="text-xs font-bold text-gray-750 truncate">Research_Brief_Draft.pdf</p>
-                                    <p className="text-[10px] text-gray-400 font-semibold">Technical Brief</p>
+                                    <p className="text-xs md:text-sm font-bold text-gray-750 truncate">Research_Brief_Draft.pdf</p>
+                                    <p className="text-[10px] md:text-xs text-gray-400 font-semibold">Technical Brief</p>
                                   </div>
                                 </div>
                                 {activeProj.technical_details_url ? (
@@ -897,8 +901,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     <FileText size={16} />
                                   </div>
                                   <div className="truncate">
-                                    <p className="text-xs font-bold text-gray-750 truncate">Academic_CV_Record.pdf</p>
-                                    <p className="text-[10px] text-gray-400 font-semibold">Creds Verification</p>
+                                    <p className="text-xs md:text-sm font-bold text-gray-750 truncate">Academic_CV_Record.pdf</p>
+                                    <p className="text-[10px] md:text-xs text-gray-400 font-semibold">Creds Verification</p>
                                   </div>
                                 </div>
                                 <span className="p-1.5 bg-gray-105 text-gray-300 rounded-lg">
@@ -906,15 +910,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 </span>
                               </div>
                             </div>
-                          </div>                            {/* Two Columns layout matching the second image workflow block */}
+                          </div>
+
+                          {/* Two Columns layout matching the second image workflow block */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             
                             {/* Column 1: FROM: ADMINISTRATOR feedback terminal */}
-                            <div className="bg-white p-5 rounded-xl border border-gray-100 flex flex-col justify-between gap-4 font-sans max-w-full">
+                            <div className="bg-white p-5 rounded-xl border border-gray-100 flex flex-col justify-between gap-4 font-serif max-w-full">
                               <div className="space-y-3">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[10px] font-bold text-[#0a0b2c] tracking-wider uppercase">FROM: ADMINISTRATOR</span>
-                                  <span className="text-[9.5px] text-gray-400 font-semibold font-mono">MARKDOWN OK</span>
+                                  <span className="text-[11px] md:text-xs font-black text-[#0a0b2c] tracking-widest uppercase">FROM: ADMINISTRATOR</span>
+                                  <span className="text-[10px] text-gray-400 font-bold font-mono">MARKDOWN OK</span>
                                 </div>
                                 
                                 <textarea
@@ -922,28 +928,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   value={adminFeedback}
                                   onChange={e => setAdminFeedback(e.target.value)}
                                   placeholder="Provide instructions or feedback to the researcher..."
-                                  className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[11px] font-medium text-[#0a0b2c] outline-none focus:bg-white focus:ring-1 focus:ring-ug-teal/30 focus:border-ug-teal/40 leading-normal resize-none"
+                                  className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-xs md:text-sm font-medium text-[#0a0b2c] outline-none focus:bg-white focus:ring-1 focus:ring-ug-teal/30 focus:border-ug-teal/40 leading-normal resize-none"
                                 />
 
                                 <div className="space-y-1">
-                                  <label className="text-[9px] font-bold tracking-wider text-gray-400 uppercase">INTERNAL BOARD NOTES</label>
+                                  <label className="text-[10px] md:text-[11px] font-black tracking-widest text-[#0a0b2c]/65 uppercase">INTERNAL BOARD NOTES</label>
                                   <input 
                                     type="text"
                                     value={adminInternalNotes}
                                     onChange={e => setAdminInternalNotes(e.target.value)}
                                     placeholder="Private working notes..."
-                                    className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 text-[10.5px] font-medium text-gray-650 outline-none focus:bg-white"
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 text-xs md:text-sm font-medium text-gray-650 outline-none focus:bg-white"
                                   />
                                 </div>
 
-                                <div className="space-y-1 font-sans">
-                                  <label className="text-[9px] font-bold tracking-wider text-gray-400 uppercase">REQUEST DOCUMENT SLOT</label>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] md:text-[11px] font-black tracking-widest text-[#0a0b2c]/65 uppercase">REQUEST DOCUMENT SLOT</label>
                                   <input 
                                     type="text"
                                     value={adminRequestedDocsText}
                                     onChange={e => setAdminRequestedDocsText(e.target.value)}
                                     placeholder="e.g. Bio-Ethics Clearance Letter"
-                                    className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 text-[10.5px] font-mono text-gray-650 outline-none focus:bg-white"
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 text-xs md:text-sm font-medium text-gray-650 outline-none focus:bg-white font-mono"
                                   />
                                 </div>
                               </div>
@@ -951,44 +957,67 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               <button
                                 disabled={isProcessingAction || !adminFeedback.trim()}
                                 onClick={() => handleRequestEdits(activeProj)}
-                                className="w-full py-2.5 bg-[#0a0b2c] text-[#3dd1e0] rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-ug-teal hover:text-white transition disabled:opacity-50 cursor-pointer"
+                                className="w-full py-3 bg-[#0a0b2c] text-[#3dd1e0] rounded-lg text-xs font-black uppercase tracking-wider hover:bg-ug-teal hover:text-white transition disabled:opacity-50 cursor-pointer"
                               >
                                 TRANSMIT TO RESEARCHER
                               </button>
                             </div>
 
                             {/* Column 2: Researcher Reply Channel terminal */}
-                            <div className="bg-white p-5 rounded-xl border border-gray-100 flex flex-col justify-between gap-4 font-sans">
-                              <div className="space-y-3">
-                                <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase block">REVISION CHANNEL</span>
+                            <div className="bg-white p-5 rounded-xl border border-gray-100 flex flex-col justify-between gap-4 font-serif">
+                              <div className="space-y-3 flex-1 flex flex-col">
+                                <span className="text-[11px] md:text-xs font-black text-gray-400 tracking-widest uppercase block">REVISION CHANNEL & MESSAGES</span>
                                 
-                                <div className="border border-dashed border-gray-200 bg-gray-50 rounded-xl p-5 text-center flex flex-col items-center justify-center space-y-2 h-[160px]">
-                                  <div className="p-2.5 bg-white text-gray-400 rounded-full border border-gray-100 shadow-sm">
-                                    <Layers size={18} className="stroke-[1.5]" />
+                                {projectMessages.length === 0 ? (
+                                  <div className="border border-dashed border-gray-200 bg-gray-50 rounded-xl p-5 text-center flex flex-col items-center justify-center space-y-2 flex-grow min-h-[160px]">
+                                    <div className="p-2.5 bg-white text-gray-400 rounded-full border border-gray-100 shadow-sm">
+                                      <Layers size={18} className="stroke-[1.5]" />
+                                    </div>
+                                    <p className="text-xs text-[#0a0b2c] font-black">Dynamic Revision Feed</p>
+                                    <p className="text-[10px] md:text-xs text-gray-400 font-medium px-4 leading-normal">
+                                      No message history or requested document slots yet. Use the feedback panel to transmit directions.
+                                    </p>
                                   </div>
-                                  <p className="text-[11px] text-[#0a0b2c] font-bold">Dynamic Revision Feed</p>
-                                  <p className="text-[10px] text-gray-400 font-medium px-4 leading-normal">
-                                    Requested document slots will be displayed here for direct researcher uploads.
-                                  </p>
-                                </div>
+                                ) : (
+                                  <div className="border border-gray-100 bg-gray-50/50 rounded-xl p-3 flex-grow max-h-[180px] overflow-y-auto space-y-2.5 custom-scrollbar text-left font-serif">
+                                    {projectMessages.map((msg: any, mIdx: number) => {
+                                      // Simple sender classification
+                                      const isAdminMsg = msg.sender_id === user.id || msg.user_name.toLowerCase().includes('admin') || msg.user_name.toLowerCase().includes('board');
+                                      return (
+                                        <div key={msg.id || mIdx} className={`p-2.5 rounded-lg max-w-[90%] text-xs leading-relaxed shadow-sm ${
+                                          isAdminMsg 
+                                            ? 'bg-blue-50/80 border border-blue-100 text-[#0a0b2c] ml-auto' 
+                                            : 'bg-white border border-gray-100 text-gray-700'
+                                        }`}>
+                                          <div className="flex justify-between items-center gap-2 mb-1 border-b border-gray-100/40 pb-0.5 text-[9px] font-bold text-gray-400">
+                                            <span>{msg.user_name}</span>
+                                            <span>{new Date(msg.created_at).toLocaleString()}</span>
+                                          </div>
+                                          <p className="whitespace-pre-wrap font-medium">{msg.message}</p>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
 
                                 {/* Active Uploaded Files status */}
                                 {reqDocs.length > 0 && (
-                                  <div className="space-y-1.5 max-h-24 overflow-y-auto pt-1 pr-1 custom-scrollbar">
+                                  <div className="space-y-1.5 max-h-24 overflow-y-auto pt-1 pr-1 custom-scrollbar w-full">
+                                    <p className="text-[10px] md:text-[11px] font-black text-[#0a0b2c]/65 uppercase tracking-widest mb-1">Uploaded Slots Status</p>
                                     {reqDocs.map((doc: any, dIdx: number) => (
-                                      <div key={dIdx} className="flex justify-between items-center bg-gray-50 p-2 border border-gray-100 rounded-lg text-[9.5px] font-semibold text-gray-600">
+                                      <div key={dIdx} className="flex justify-between items-center bg-gray-50 p-2 border border-gray-100 rounded-lg text-xs font-semibold text-gray-650">
                                         <div className="truncate flex items-center gap-1.5">
-                                          <FileText size={10} className="text-gray-400" />
+                                          <FileText size={11} className="text-gray-400" />
                                           {doc.url ? (
-                                            <a href={doc.url} target="_blank" rel="noreferrer" className="text-ug-teal hover:underline font-bold truncate max-w-xs">
+                                            <a href={doc.url} target="_blank" rel="noreferrer" className="text-ug-teal hover:underline font-black truncate max-w-xs">
                                               {doc.name}
                                             </a>
                                           ) : (
-                                            <span className="text-gray-400 italic truncate max-w-xs">{doc.name} (Awaiting Upload)</span>
+                                            <span className="text-gray-400 italic font-medium truncate max-w-xs">{doc.name} (Awaiting Upload)</span>
                                           )}
                                         </div>
                                         {doc.url && (
-                                          <a href={doc.url} target="_blank" rel="noreferrer" className="text-ug-teal font-bold hover:underline">
+                                          <a href={doc.url} target="_blank" rel="noreferrer" className="text-ug-teal font-black hover:underline text-xs">
                                             View
                                           </a>
                                         )}
@@ -998,7 +1027,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 )}
                               </div>
 
-                              <div className="w-full py-3 bg-gray-100 text-gray-400 rounded-lg text-xs font-bold uppercase tracking-wider text-center select-none font-mono">
+                              <div className="w-full py-3.5 bg-gray-100 text-gray-400 rounded-lg text-xs font-black uppercase tracking-wider text-center select-none font-mono">
                                 {activeProj.disclosure_status === 'Documents Requested' ? 'AWAITING REVISIONS' : 'STATION IDLE'}
                               </div>
                             </div>
@@ -1007,13 +1036,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                           {/* Historical audit trail log ledger */}
                           {timeline.length > 0 && (
-                            <div className="bg-white p-5 rounded-xl border border-gray-100 space-y-2 font-sans">
-                              <p className="text-[10px] font-bold text-[#0a0b2c] tracking-wider uppercase">COMPLIANCE AUDIT FEED</p>
+                            <div className="bg-white p-5 rounded-xl border border-gray-100 space-y-2 font-serif">
+                              <p className="text-[11px] md:text-xs font-black text-[#0a0b2c] tracking-widest uppercase">PERMANENT AUDIT TRAIL LIFE CYCLE LOG</p>
                               <div className="space-y-2 max-h-28 overflow-y-auto pl-1 pr-1 border-l border-gray-150 ml-1">
                                 {timeline.map((item: any, idx: number) => (
-                                  <div key={idx} className="text-[10px] font-medium text-gray-500 leading-relaxed pl-3 text-left relative">
+                                  <div key={idx} className="text-xs font-semibold text-gray-500 leading-relaxed pl-3 text-left relative">
                                     <span className="absolute left-0 top-1.5 h-1.5 w-1.5 rounded-full bg-ug-teal"></span>
-                                    <span className="text-[#0a0b2c] font-bold">[{item.status}]</span> {item.notes} <span className="text-gray-400">by {item.by} ({new Date(item.timestamp).toLocaleDateString()})</span>
+                                    <span className="text-[#0a0b2c] font-black">[{item.event || item.status}]</span> {item.details || item.notes} <span className="text-gray-400">by {item.user_name || item.by} ({new Date(item.timestamp).toLocaleDateString()})</span>
                                   </div>
                                 ))}
                               </div>
