@@ -14,11 +14,27 @@ import { useToast } from '../App';
 interface AdminDashboardProps {
   user: User | null;
   onRefresh?: () => void;
+  activeSubTab?: 'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs';
+  setActiveSubTab?: (tab: 'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs') => void;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
+  user, 
+  onRefresh,
+  activeSubTab: externalActiveSubTab,
+  setActiveSubTab: externalSetActiveSubTab
+}) => {
   const { showToast } = useToast();
-  const [activeSubTab, setActiveSubTab] = useState<'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs'>('metrics');
+  const [internalActiveSubTab, setInternalActiveSubTab] = useState<'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs'>('metrics');
+  
+  const activeSubTab = externalActiveSubTab !== undefined ? externalActiveSubTab : internalActiveSubTab;
+  const setActiveSubTab = (tab: 'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs') => {
+    if (externalSetActiveSubTab) {
+      externalSetActiveSubTab(tab);
+    } else {
+      setInternalActiveSubTab(tab);
+    }
+  };
   
   // Data states
   const [profiles, setProfiles] = useState<User[]>([]);
@@ -379,33 +395,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
         </button>
       </div>
 
-      {/* Internal Navigation Sub-Tabs */}
-      <div className="flex overflow-x-auto gap-1 border-b border-gray-100 pb-px scrollbar-none">
-        {[
-          { id: 'metrics', label: 'METRICS & ANALYTICS', icon: BarChart3 },
-          { id: 'users', label: 'USER DIRECTORY', icon: Users },
-          { id: 'disclosures', label: 'DISCLOSURES', icon: ShieldCheck },
-          { id: 'projects', label: 'PROJECT SCREENER', icon: FileText },
-          { id: 'news', label: 'NEWS CURATOR', icon: Radio },
-          { id: 'logs', label: 'GOVERNANCE AUDIT', icon: FileSpreadsheet }
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => {
-              setActiveSubTab(tab.id as any);
-              setSearchQuery('');
-            }}
-            className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${
-              activeSubTab === tab.id 
-                ? 'border-ug-teal text-ug-navy font-bold' 
-                : 'border-transparent text-gray-400 hover:text-ug-navy'
-            }`}
-          >
-            <tab.icon size={14} className={activeSubTab === tab.id ? 'text-ug-teal' : 'text-gray-400'} />
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Sub-tabs removed as they are driven by the modern left sidebar navigation menu */}
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24 space-y-4">
@@ -674,99 +664,111 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
               </div>
 
               {/* Main Ledger Grid split */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
                 {/* Left side: Disclosures matching filter */}
-                <div className="lg:col-span-5 bg-white rounded-3xl border border-gray-100 shadow-sm p-4 h-[700px] overflow-y-auto custom-scrollbar flex flex-col">
-                  <h4 className="text-[10px] font-black tracking-widest text-gray-400 uppercase mb-4 px-2">PENDING & ACTIVE SUBMISSIONS</h4>
-                  
-                  <div className="space-y-2 flex-1 overflow-y-auto pr-1">
-                    {(() => {
-                      const filtered = projects.filter(p => {
-                        // Search matches title or researcher/owner name
-                        const ownerProfile = profiles.find(pr => pr.id === p.owner_id);
-                        const matchSearch = p.title.toLowerCase().includes(disclosureSearchQuery.toLowerCase()) || 
-                          (ownerProfile?.name || '').toLowerCase().includes(disclosureSearchQuery.toLowerCase()) ||
-                          p.department.toLowerCase().includes(disclosureSearchQuery.toLowerCase());
+                <div className="lg:col-span-4 bg-white rounded-2xl border border-gray-100 p-4 h-[680px] overflow-y-auto custom-scrollbar flex flex-col">
+                  {(() => {
+                    const filtered = projects.filter(p => {
+                      const ownerProfile = profiles.find(pr => pr.id === p.owner_id);
+                      const matchSearch = p.title.toLowerCase().includes(disclosureSearchQuery.toLowerCase()) || 
+                        (ownerProfile?.name || '').toLowerCase().includes(disclosureSearchQuery.toLowerCase()) ||
+                        p.department.toLowerCase().includes(disclosureSearchQuery.toLowerCase());
+                      const matchStatus = disclosureStatusFilter === 'all' || p.disclosure_status === disclosureStatusFilter;
+                      return matchSearch && matchStatus;
+                    });
+
+                    const activePendingCount = filtered.filter(p => p.disclosure_status !== DisclosureStatus.Published && p.disclosure_status !== DisclosureStatus.Rejected).length;
+
+                    return (
+                      <>
+                        <div className="flex items-center justify-between mb-4 px-2">
+                          <h4 className="text-[10px] font-bold tracking-wider text-gray-400 uppercase">PENDING DISCLOSURES</h4>
+                          <span className="text-[10.5px] font-bold px-2 py-0.5 bg-[#0a0b2c] text-[#3dd1e0] rounded-full">
+                            {activePendingCount}
+                          </span>
+                        </div>
                         
-                        // Status matches
-                        const matchStatus = disclosureStatusFilter === 'all' || p.disclosure_status === disclosureStatusFilter;
-                        
-                        return matchSearch && matchStatus;
-                      });
-                      
-                      if (filtered.length === 0) {
-                        return (
-                          <div className="py-20 text-center text-gray-400 text-xs uppercase tracking-wider font-bold">
-                            No matching disclosures in ledger records
-                          </div>
-                        );
-                      }
-                      
-                      return filtered.map(p => {
-                        const ownerProfile = profiles.find(pr => pr.id === p.owner_id);
-                        const isChosen = selectedDisclosureId === p.id;
-                        return (
-                          <div 
-                            key={p.id}
-                            onClick={() => {
-                              setSelectedDisclosureId(p.id);
-                              setAdminInternalNotes(p.internal_notes || '');
-                              setAdminFeedback('');
-                              setAdminRequestedDocsText('');
-                            }}
-                            className={`p-4 rounded-2xl border transition cursor-pointer text-left ${
-                              isChosen 
-                                ? 'bg-ug-navy text-white border-ug-navy shadow-inner' 
-                                : 'bg-gray-50/50 hover:bg-gray-50 border-gray-100 text-ug-navy'
-                            }`}
-                          >
-                            <div className="flex justify-between items-start mb-1.5">
-                              <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                                isChosen 
-                                  ? 'bg-ug-teal text-white' 
-                                  : 'bg-ug-navy/5 text-ug-navy'
-                              }`}>
-                                {p.research_area.split(' ')[0]}
-                              </span>
-                              <span className={`text-[8px] font-bold ${isChosen ? 'text-gray-300' : 'text-gray-400'}`}>
-                                {new Date(p.created_at).toLocaleDateString()}
-                              </span>
+                        <div className="space-y-2.5 flex-1 overflow-y-auto pr-1">
+                          {filtered.length === 0 ? (
+                            <div className="py-20 text-center text-gray-400 text-xs font-semibold uppercase tracking-wider">
+                              No matching disclosures
                             </div>
-                            
-                            <h5 className="font-extrabold text-xs md:text-sm leading-snug line-clamp-2">{p.title}</h5>
-                            
-                            <p className={`text-[10px] font-bold mt-2 ${isChosen ? 'text-ug-teal' : 'text-gray-550'}`}>
-                              Researcher: {ownerProfile?.name || 'Academic Faculty'}
-                            </p>
-                            
-                            <div className="flex items-center gap-2 mt-3 text-[8px] font-black uppercase tracking-widest">
-                              <span className={`h-1.5 w-1.5 rounded-full ${
-                                p.disclosure_status === 'Published' ? 'bg-green-500 animate-pulse' :
-                                p.disclosure_status === 'Approved' ? 'bg-blue-500' :
-                                p.disclosure_status === 'Documents Requested' ? 'bg-red-500' :
-                                p.disclosure_status === 'Under Re-Review' ? 'bg-yellow-500' :
-                                'bg-gray-400'
-                              }`}></span>
-                              Status: {p.disclosure_status || 'Submitted'}
-                            </div>
-                          </div>
-                        );
-                      });
-                    })()}
-                  </div>
+                          ) : (
+                            filtered.map(p => {
+                              const ownerProfile = profiles.find(pr => pr.id === p.owner_id);
+                              const isChosen = selectedDisclosureId === p.id;
+                              
+                              const isWaiting = p.disclosure_status === 'Documents Requested' || p.disclosure_status === 'Submitted';
+                              const statusLabel = p.disclosure_status === 'Pending Review' ? 'PENDING REVIEW' 
+                                                : p.disclosure_status === 'Documents Requested' ? 'WAITING'
+                                                : p.disclosure_status === 'Under Re-Review' ? 'RE-REVIEW'
+                                                : p.disclosure_status === 'Published' ? 'PUBLISHED'
+                                                : (p.disclosure_status || 'SUBMITTED').toUpperCase();
+
+                              return (
+                                <div 
+                                  key={p.id}
+                                  onClick={() => {
+                                    setSelectedDisclosureId(p.id);
+                                    setAdminInternalNotes(p.internal_notes || '');
+                                    setAdminFeedback('');
+                                    setAdminRequestedDocsText('');
+                                  }}
+                                  className={`p-4 rounded-xl border transition-all cursor-pointer text-left relative flex flex-col justify-between h-34 ${
+                                    isChosen 
+                                      ? 'bg-white border-[#3dd1e0] shadow-sm' 
+                                      : 'bg-gray-50 hover:bg-gray-100/50 border-gray-100'
+                                  }`}
+                                >
+                                  <div>
+                                    <div className="flex justify-between items-start gap-2 mb-1">
+                                      <span className="font-extrabold text-[12.5px] text-[#0a0b2c]/90 truncate">
+                                        {ownerProfile?.name || 'Academic Faculty'}
+                                      </span>
+                                      <span className={`text-[8.5px] font-bold flex items-center gap-1 shrink-0 ${
+                                        p.disclosure_status === 'Published' ? 'text-green-500' :
+                                        isWaiting ? 'text-amber-500' : 'text-ug-teal'
+                                      }`}>
+                                        <span className={`h-1.5 w-1.5 rounded-full ${
+                                          p.disclosure_status === 'Published' ? 'bg-green-500' :
+                                          isWaiting ? 'bg-amber-500' : 'bg-[#3dd1e0]'
+                                        }`}></span>
+                                        {statusLabel}
+                                      </span>
+                                    </div>
+                                    
+                                    <h5 className="font-semibold text-xs text-gray-650 leading-snug line-clamp-2 pr-4">{p.title}</h5>
+                                  </div>
+                                  
+                                  <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100/40">
+                                    <span className="text-[9.5px] text-gray-400 font-medium">
+                                      Submitted: {new Date(p.created_at).toLocaleDateString()}
+                                    </span>
+                                    <span className={`text-xs ${isChosen ? 'text-[#3dd1e0]' : 'text-gray-300'}`}>
+                                      →
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Right side: Active disclosure screening interface */}
-                <div className="lg:col-span-7 bg-white rounded-3xl border border-gray-100 shadow-sm p-6 h-[700px] overflow-y-auto custom-scrollbar flex flex-col justify-between">
+                <div className="lg:col-span-8 bg-[#fafafa] rounded-2xl border border-gray-100 p-6 min-h-[680px] flex flex-col justify-between">
                   {(() => {
                     const activeProj = projects.find(p => p.id === selectedDisclosureId);
                     if (!activeProj) {
                       return (
-                        <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 space-y-3 py-36">
-                          <ShieldCheck size={48} className="text-gray-200 stroke-[1.5]" />
-                          <p className="text-[10px] font-black tracking-widest uppercase max-w-sm">
-                            Select a disclosure from the ledger list to begin regulatory screening & AI governance auditing
+                        <div className="h-[600px] flex flex-col items-center justify-center text-center text-gray-400 space-y-3 py-36 bg-white rounded-xl border border-dashed border-gray-200 w-full">
+                          <ShieldCheck size={40} className="text-gray-300 stroke-[1.5]" />
+                          <p className="text-[10.5px] font-bold tracking-wider uppercase max-w-sm">
+                            Select a disclosure from the pending ledger list to begin administrative review
                           </p>
                         </div>
                       );
@@ -816,189 +818,221 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onRefresh 
                     return (
                       <div className="space-y-6 text-left flex-1 flex flex-col justify-between">
                         <div className="space-y-6">
-                          {/* Header header info */}
-                          <div className="border-b border-gray-100 pb-4">
-                            <span className="text-[9px] font-black uppercase bg-ug-teal/10 text-ug-teal px-2 py-0.5 rounded tracking-widest">{activeProj.disclosure_status || 'Submitted'}</span>
-                            <h4 className="text-base font-black text-ug-navy line-clamp-2 mt-2 leading-snug">{activeProj.title}</h4>
-                            <p className="text-xs font-bold text-gray-500 mt-1">
-                              Owner: <span className="text-ug-navy">{ownerPr?.name || 'Academic Faculty'}</span> | Dept: <span className="text-ug-navy">{activeProj.department}</span>
-                            </p>
-                          </div>
-
-                          {/* Original technical file - Always visible (No Locks) */}
-                          <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2.5 bg-ug-navy text-ug-teal rounded-xl">
-                                <FileText size={18} />
+                          
+                          {/* Top Detail Header Block containing metrics, title, & actions styled like the second design mockup */}
+                          <div className="bg-white p-5 rounded-xl border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="flex items-center gap-3.5">
+                              <div className="p-3 bg-gray-50 border border-gray-100 text-[#0a0b2c] rounded-xl shrink-0">
+                                <ShieldCheck size={22} className="stroke-[1.5]" />
                               </div>
                               <div>
-                                <p className="text-[10px] font-black text-ug-navy uppercase tracking-wider">Original Technical Disclosure Brief</p>
-                                <p className="text-[8px] text-gray-400">Governance protocol dictates uncompromised administrative accessibility to files.</p>
+                                <h4 className="text-sm font-bold text-[#0a0b2c] leading-snug line-clamp-2">{activeProj.title}</h4>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] font-semibold text-gray-400 mt-1">
+                                  <span>Researcher: <span className="text-[#0a0b2c] font-bold">{ownerPr?.name || 'Academic Faculty'}</span></span>
+                                  <span className="hidden md:inline text-gray-300">|</span>
+                                  <span>Division: <span className="text-gray-650 font-bold">{activeProj.department}</span></span>
+                                  <span className="hidden md:inline text-[#3dd1e0]">|</span>
+                                  <span>Status: <span className="text-ug-teal font-extrabold uppercase">{activeProj.disclosure_status || 'Submitted'}</span></span>
+                                </div>
                               </div>
                             </div>
-                            {activeProj.technical_details_url ? (
-                              <a 
-                                href={activeProj.technical_details_url} 
-                                target="_blank" 
-                                rel="noreferrer" 
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-ug-navy text-white rounded-xl text-[9px] font-black uppercase tracking-wider hover:bg-ug-teal transition cursor-pointer shrink-0"
+
+                            {/* Prime action triggers right under overview */}
+                            <div className="flex items-center gap-2 shrink-0 border-t md:border-t-0 pt-3 md:pt-0 border-gray-100">
+                              <button
+                                disabled={isProcessingAction}
+                                onClick={() => handleApproveDisclosure(activeProj)}
+                                className="px-4 py-2 bg-ug-teal text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-[#0a0b2c] transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                               >
-                                <Download size={10} />
-                                Download PDF
-                              </a>
-                            ) : (
-                              <span className="text-[8px] text-red-500 font-extrabold tracking-wider uppercase">NO BRIEF UPLOADED</span>
-                            )}
-                          </div>
-
-                          {/* Dynamic AI Verification Advisory Tool */}
-                          <div className="p-5 bg-ug-navy text-white rounded-[2rem] border border-gray-800 space-y-3.5 relative overflow-hidden shadow-xl">
-                            <div className="absolute top-0 right-0 h-24 w-24 bg-ug-teal/5 rounded-full blur-2xl"></div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 bg-ug-teal/15 text-ug-teal rounded-full flex items-center gap-1.5">
-                                <Sparkles size={10} />
-                                AI ADVISORY ENGINE (ADVISORY ONLY)
-                              </span>
+                                <CheckCircle2 size={13} />
+                                APPROVE
+                              </button>
                               
-                              <span className={`text-[8px] font-black uppercase px-2.5 py-1 rounded-full border tracking-widest ${aiAdvisory.riskColor}`}>
-                                {aiAdvisory.riskIcon} RISK PROFILE: {aiAdvisory.riskLevel}
-                              </span>
-                            </div>
-
-                            <p className="text-[9px] text-gray-300 leading-relaxed font-semibold italic border-l-2 border-ug-teal/30 pl-3">
-                              "{aiAdvisory.riskBullet}"
-                            </p>
-
-                            <div className="space-y-1.5 text-[8px] font-mono text-gray-400">
-                              <div className="flex items-center gap-1.5">
-                                <span className="h-1 w-1 bg-ug-teal rounded-full"></span>
-                                {aiAdvisory.pubmedCheck}
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="h-1 w-1 bg-ug-teal rounded-full"></span>
-                                {aiAdvisory.scholarCheck}
-                              </div>
-                            </div>
-
-                            <div className="pt-1.5 border-t border-white/5 space-y-1">
-                              <p className="text-[8px] font-black uppercase tracking-wider text-ug-teal">RECOMMENDED ADMINISTRATIVE AUDITS:</p>
-                              {aiAdvisory.recommendedActions.map((act, aIdx) => (
-                                <p key={aIdx} className="text-[8px] text-gray-300 font-medium">{act}</p>
-                              ))}
+                              <button
+                                disabled={isProcessingAction}
+                                onClick={() => handleRequestEdits(activeProj)}
+                                className="px-4 py-2 bg-[#0a0b2c] text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-ug-teal transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                              >
+                                <AlertTriangle size={13} />
+                                NEED EDITS
+                              </button>
                             </div>
                           </div>
 
-                          {/* Board interactive management tools */}
-                          <div className="space-y-4 pt-1">
-                            {/* Board comments entry */}
+                          {/* ATTACHED DISCLOSURE FILES & RECOVERY */}
+                          <div className="bg-white p-5 rounded-xl border border-gray-100 space-y-3">
+                            <h5 className="text-[10px] font-bold tracking-wider text-[#0a0b2c] uppercase">ATTACHED DISCLOSURE FILES</h5>
+                            
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                <label className="text-[9px] font-black tracking-widest text-ug-navy uppercase ml-1">Board Internal Working Notes (Private)</label>
-                                <textarea 
-                                  rows={3} 
-                                  value={adminInternalNotes}
-                                  onChange={e => setAdminInternalNotes(e.target.value)}
-                                  placeholder="Record administrative screening notes strictly visible internally to governance members..."
-                                  className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-[11px] font-medium text-gray-600 outline-none focus:bg-white focus:ring-2 focus:ring-ug-teal/20 focus:border-ug-teal/30 leading-normal"
-                                />
+                              {/* Primary Technical Brief file */}
+                              <div className="p-3 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-between">
+                                <div className="flex items-center gap-3 truncate">
+                                  <div className="p-2 bg-blue-50 text-blue-500 rounded-lg">
+                                    <FileText size={16} />
+                                  </div>
+                                  <div className="truncate">
+                                    <p className="text-xs font-bold text-gray-750 truncate">Research_Brief_Draft.pdf</p>
+                                    <p className="text-[10px] text-gray-400 font-semibold">Technical Brief</p>
+                                  </div>
+                                </div>
+                                {activeProj.technical_details_url ? (
+                                  <a 
+                                    href={activeProj.technical_details_url} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    className="p-1.5 bg-gray-100 text-gray-500 hover:text-ug-teal rounded-lg transition"
+                                    title="View Technical Brief PDF"
+                                  >
+                                    <Eye size={14} />
+                                  </a>
+                                ) : (
+                                  <span className="text-[9px] font-bold text-amber-500">NO BRIEF</span>
+                                )}
                               </div>
-                              
-                              <div className="space-y-1">
-                                <label className="text-[9px] font-black tracking-widest text-ug-navy uppercase ml-1">Document Request Slots (One per Line)</label>
-                                <textarea 
-                                  rows={3} 
-                                  value={adminRequestedDocsText}
-                                  onChange={e => setAdminRequestedDocsText(e.target.value)}
-                                  placeholder="e.g.&#10;Ethics Approval Letter&#10;Principal Investigator CV&#10;Funding Approval spec"
-                                  className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-[11px] font-mono font-medium text-gray-600 outline-none focus:bg-white focus:ring-2 focus:ring-ug-teal/20 focus:border-ug-teal/30 leading-normal"
+
+                              {/* Verified structural record */}
+                              <div className="p-3 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-between">
+                                <div className="flex items-center gap-3 truncate">
+                                  <div className="p-2 bg-red-50 text-red-500 rounded-lg">
+                                    <FileText size={16} />
+                                  </div>
+                                  <div className="truncate">
+                                    <p className="text-xs font-bold text-gray-750 truncate">Academic_CV_Record.pdf</p>
+                                    <p className="text-[10px] text-gray-400 font-semibold">Creds Verification</p>
+                                  </div>
+                                </div>
+                                <span className="p-1.5 bg-gray-105 text-gray-300 rounded-lg">
+                                  <Download size={14} />
+                                </span>
+                              </div>
+                            </div>
+                          </div>                            {/* Two Columns layout matching the second image workflow block */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            
+                            {/* Column 1: FROM: ADMINISTRATOR feedback terminal */}
+                            <div className="bg-white p-5 rounded-xl border border-gray-100 flex flex-col justify-between gap-4 font-sans max-w-full">
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-bold text-[#0a0b2c] tracking-wider uppercase">FROM: ADMINISTRATOR</span>
+                                  <span className="text-[9.5px] text-gray-400 font-semibold font-mono">MARKDOWN OK</span>
+                                </div>
+                                
+                                <textarea
+                                  rows={4}
+                                  value={adminFeedback}
+                                  onChange={e => setAdminFeedback(e.target.value)}
+                                  placeholder="Provide instructions or feedback to the researcher..."
+                                  className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[11px] font-medium text-[#0a0b2c] outline-none focus:bg-white focus:ring-1 focus:ring-ug-teal/30 focus:border-ug-teal/40 leading-normal resize-none"
                                 />
+
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-bold tracking-wider text-gray-400 uppercase">INTERNAL BOARD NOTES</label>
+                                  <input 
+                                    type="text"
+                                    value={adminInternalNotes}
+                                    onChange={e => setAdminInternalNotes(e.target.value)}
+                                    placeholder="Private working notes..."
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 text-[10.5px] font-medium text-gray-650 outline-none focus:bg-white"
+                                  />
+                                </div>
+
+                                <div className="space-y-1 font-sans">
+                                  <label className="text-[9px] font-bold tracking-wider text-gray-400 uppercase">REQUEST DOCUMENT SLOT</label>
+                                  <input 
+                                    type="text"
+                                    value={adminRequestedDocsText}
+                                    onChange={e => setAdminRequestedDocsText(e.target.value)}
+                                    placeholder="e.g. Bio-Ethics Clearance Letter"
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 text-[10.5px] font-mono text-gray-650 outline-none focus:bg-white"
+                                  />
+                                </div>
+                              </div>
+
+                              <button
+                                disabled={isProcessingAction || !adminFeedback.trim()}
+                                onClick={() => handleRequestEdits(activeProj)}
+                                className="w-full py-2.5 bg-[#0a0b2c] text-[#3dd1e0] rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-ug-teal hover:text-white transition disabled:opacity-50 cursor-pointer"
+                              >
+                                TRANSMIT TO RESEARCHER
+                              </button>
+                            </div>
+
+                            {/* Column 2: Researcher Reply Channel terminal */}
+                            <div className="bg-white p-5 rounded-xl border border-gray-100 flex flex-col justify-between gap-4 font-sans">
+                              <div className="space-y-3">
+                                <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase block">REVISION CHANNEL</span>
+                                
+                                <div className="border border-dashed border-gray-200 bg-gray-50 rounded-xl p-5 text-center flex flex-col items-center justify-center space-y-2 h-[160px]">
+                                  <div className="p-2.5 bg-white text-gray-400 rounded-full border border-gray-100 shadow-sm">
+                                    <Layers size={18} className="stroke-[1.5]" />
+                                  </div>
+                                  <p className="text-[11px] text-[#0a0b2c] font-bold">Dynamic Revision Feed</p>
+                                  <p className="text-[10px] text-gray-400 font-medium px-4 leading-normal">
+                                    Requested document slots will be displayed here for direct researcher uploads.
+                                  </p>
+                                </div>
+
+                                {/* Active Uploaded Files status */}
+                                {reqDocs.length > 0 && (
+                                  <div className="space-y-1.5 max-h-24 overflow-y-auto pt-1 pr-1 custom-scrollbar">
+                                    {reqDocs.map((doc: any, dIdx: number) => (
+                                      <div key={dIdx} className="flex justify-between items-center bg-gray-50 p-2 border border-gray-100 rounded-lg text-[9.5px] font-semibold text-gray-600">
+                                        <div className="truncate flex items-center gap-1.5">
+                                          <FileText size={10} className="text-gray-400" />
+                                          {doc.url ? (
+                                            <a href={doc.url} target="_blank" rel="noreferrer" className="text-ug-teal hover:underline font-bold truncate max-w-xs">
+                                              {doc.name}
+                                            </a>
+                                          ) : (
+                                            <span className="text-gray-400 italic truncate max-w-xs">{doc.name} (Awaiting Upload)</span>
+                                          )}
+                                        </div>
+                                        {doc.url && (
+                                          <a href={doc.url} target="_blank" rel="noreferrer" className="text-ug-teal font-bold hover:underline">
+                                            View
+                                          </a>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="w-full py-3 bg-gray-100 text-gray-400 rounded-lg text-xs font-bold uppercase tracking-wider text-center select-none font-mono">
+                                {activeProj.disclosure_status === 'Documents Requested' ? 'AWAITING REVISIONS' : 'STATION IDLE'}
                               </div>
                             </div>
 
-                            <div className="space-y-1">
-                              <label className="text-[9px] font-black tracking-widest text-ug-navy uppercase ml-1">Instructions / Clarification Feedback to Researcher</label>
-                              <textarea 
-                                rows={3} 
-                                value={adminFeedback}
-                                onChange={e => setAdminFeedback(e.target.value)}
-                                placeholder="Describe details of compliance issues, changes required in methodology presentation, or why additional support letters are requested..."
-                                className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-[11px] font-semibold text-gray-705 outline-none focus:bg-white focus:ring-2 focus:ring-ug-teal/20 focus:border-ug-teal/30 leading-normal"
-                              />
-                            </div>
                           </div>
 
-                          {/* Support uploaded files status */}
-                          {reqDocs.length > 0 && (
-                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                              <p className="text-[9px] font-black text-ug-navy tracking-widest uppercase mb-2">Researcher Uploaded Documentation</p>
-                              <div className="space-y-1.5">
-                                {reqDocs.map((doc: any, dIdx: number) => (
-                                  <div key={dIdx} className="flex justify-between items-center bg-white p-2 border border-gray-100 rounded-lg text-[9px] font-bold text-gray-600">
-                                    <div className="truncate flex items-center gap-1.5">
-                                      <FileText size={10} className="text-gray-400" />
-                                      {doc.url ? (
-                                        <a href={doc.url} target="_blank" rel="noreferrer" className="text-ug-teal hover:underline font-black truncate max-w-xs">
-                                          {doc.name}
-                                        </a>
-                                      ) : (
-                                        <span className="text-gray-400 italic font-medium truncate max-w-xs">{doc.name} (Awaiting Upload)</span>
-                                      )}
-                                    </div>
-                                    {doc.url && (
-                                      <a href={doc.url} target="_blank" rel="noreferrer" className="text-ug-teal flex items-center gap-1 shrink-0 px-2 py-0.5 bg-ug-teal/5 rounded hover:underline text-[8px] font-black tracking-wider uppercase">
-                                        <Download size={10} />
-                                        DOWNLOAD
-                                      </a>
-                                    )}
+                          {/* Historical audit trail log ledger */}
+                          {timeline.length > 0 && (
+                            <div className="bg-white p-5 rounded-xl border border-gray-100 space-y-2 font-sans">
+                              <p className="text-[10px] font-bold text-[#0a0b2c] tracking-wider uppercase">COMPLIANCE AUDIT FEED</p>
+                              <div className="space-y-2 max-h-28 overflow-y-auto pl-1 pr-1 border-l border-gray-150 ml-1">
+                                {timeline.map((item: any, idx: number) => (
+                                  <div key={idx} className="text-[10px] font-medium text-gray-500 leading-relaxed pl-3 text-left relative">
+                                    <span className="absolute left-0 top-1.5 h-1.5 w-1.5 rounded-full bg-ug-teal"></span>
+                                    <span className="text-[#0a0b2c] font-bold">[{item.status}]</span> {item.notes} <span className="text-gray-400">by {item.by} ({new Date(item.timestamp).toLocaleDateString()})</span>
                                   </div>
                                 ))}
                               </div>
                             </div>
                           )}
 
-                          {/* Historical timeline */}
-                          {timeline.length > 0 && (
-                            <div className="border border-gray-100 rounded-xl p-4 space-y-2">
-                              <p className="text-[10px] font-black text-ug-navy tracking-widest uppercase">Audit Trail Ledger logs</p>
-                              <div className="space-y-2 max-h-36 overflow-y-auto pl-1 pr-1 border-l-2 border-gray-100 ml-1">
-                                {timeline.map((item: any, idx: number) => (
-                                  <div key={idx} className="text-[9px] font-bold text-gray-500 leading-relaxed relative pl-3 text-left">
-                                    <span className="absolute -left-[5px] top-1.5 h-1.5 w-1.5 rounded bg-ug-teal"></span>
-                                    <span className="text-ug-teal font-extrabold">[{item.status}]</span> {item.notes} <span className="text-gray-400">by {item.by} ({new Date(item.timestamp).toLocaleDateString()})</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
 
-                        {/* Audit operations console buttons */}
-                        <div className="pt-4 border-t border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <button
-                            disabled={isProcessingAction}
-                            onClick={() => handleApproveDisclosure(activeProj)}
-                            className="bg-ug-teal text-white py-4.5 rounded-2xl text-[9px] font-black tracking-widest uppercase hover:bg-ug-navy active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                          >
-                            <Check size={12} />
-                            Approve For Hub
-                          </button>
-                          
-                          <button
-                            disabled={isProcessingAction}
-                            onClick={() => handleRequestEdits(activeProj)}
-                            className="bg-ug-navy text-white py-4.5 rounded-2xl text-[9px] font-black tracking-widest uppercase hover:bg-ug-teal active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                          >
-                            <AlertTriangle size={12} className="text-amber-400" />
-                            Request Clarifications
-                          </button>
-                          
+                        {/* Quiet caution footer details of regulatory framework logs */}
+                        <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-4 font-sans">
+                          <p className="text-[9.5px] text-gray-400 font-medium">
+                            * All administrative determinations are logged in the secure academic innovation ledger for historical audits.
+                          </p>
                           <button
                             disabled={isProcessingAction}
                             onClick={() => handleRejectDisclosure(activeProj)}
-                            className="bg-gray-100 text-red-500 hover:bg-red-50 border border-gray-200 py-4.5 rounded-2xl text-[9px] font-black tracking-widest uppercase active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            className="px-4 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer disabled:opacity-50"
                           >
-                            <X size={12} />
-                            Reject Submission
+                            REJECT DISCLOSURE
                           </button>
                         </div>
                       </div>
