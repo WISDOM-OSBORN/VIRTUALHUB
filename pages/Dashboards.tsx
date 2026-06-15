@@ -67,15 +67,29 @@ const MobileNav: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; r
 };
 
 // --- DESKTOP SIDEBAR ---
-const Sidebar: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; role: UserRole; user: User | null }> = ({ activeTab, setActiveTab, role, user }) => {
-  const tabs = role === UserRole.Admin 
-    ? [ { id: 'overview', icon: LayoutGrid, label: 'Overview' } ]
-    : [
-        { id: 'overview', icon: LayoutGrid, label: 'Overview' },
-        { id: 'matches', icon: Target, label: 'MY MATCHES', sparkles: true },
-        { id: 'messages', icon: MessageSquare, label: 'Messages' },
-        { id: 'profile', icon: UserIcon, label: 'Profile' },
-      ];
+const Sidebar: React.FC<{ 
+  activeTab: string; 
+  setActiveTab: (t: any) => void; 
+  role: UserRole; 
+  user: User | null;
+  adminSubTab?: 'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs';
+  setAdminSubTab?: (t: 'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs') => void;
+}> = ({ activeTab, setActiveTab, role, user, adminSubTab = 'metrics', setAdminSubTab }) => {
+  const tabs = [
+    { id: 'overview', icon: LayoutGrid, label: 'Overview' },
+    { id: 'matches', icon: Target, label: 'MY MATCHES', sparkles: true },
+    { id: 'messages', icon: MessageSquare, label: 'Messages' },
+    { id: 'profile', icon: UserIcon, label: 'Profile' },
+  ];
+
+  const adminTabs = [
+    { id: 'metrics', icon: LayoutGrid, label: 'Overview' },
+    { id: 'users', icon: Users, label: 'Users Directorate' },
+    { id: 'disclosures', icon: FileText, label: 'Disclosure' },
+    { id: 'projects', icon: ShieldCheck, label: 'Project Screener' },
+    { id: 'news', icon: Globe, label: 'News Curator' },
+    { id: 'logs', icon: Activity, label: 'Governance Audit' },
+  ] as const;
 
   const getPortalTitle = () => {
     switch(role) {
@@ -99,23 +113,46 @@ const Sidebar: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; rol
       </div>
 
       <nav className="flex-1 space-y-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all group ${
-              activeTab === tab.id 
-                ? 'bg-ug-navy text-white shadow-xl shadow-ug-navy/20 active-nav' 
-                : 'text-gray-400 hover:bg-gray-50 hover:text-ug-navy'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <tab.icon size={18} />
-              <span className="text-xs font-black tracking-widest uppercase">{tab.label}</span>
-            </div>
-            {tab.sparkles && <Sparkles size={12} className={activeTab === tab.id ? 'text-ug-teal' : 'text-gray-300 opacity-0 group-hover:opacity-100 transition'} />}
-          </button>
-        ))}
+        {role === UserRole.Admin ? (
+          adminTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                if (setAdminSubTab) {
+                  setAdminSubTab(tab.id);
+                }
+              }}
+              className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all group ${
+                adminSubTab === tab.id 
+                  ? 'bg-ug-navy text-white shadow-xl shadow-ug-navy/20 active-nav' 
+                  : 'text-gray-400 hover:bg-gray-50 hover:text-ug-navy'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <tab.icon size={18} />
+                <span className="text-xs font-black tracking-widest uppercase">{tab.label}</span>
+              </div>
+            </button>
+          ))
+        ) : (
+          tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all group ${
+                activeTab === tab.id 
+                  ? 'bg-ug-navy text-white shadow-xl shadow-ug-navy/20 active-nav' 
+                  : 'text-gray-400 hover:bg-gray-50 hover:text-ug-navy'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <tab.icon size={18} />
+                <span className="text-xs font-black tracking-widest uppercase">{tab.label}</span>
+              </div>
+              {tab.sparkles && <Sparkles size={12} className={activeTab === tab.id ? 'text-ug-teal' : 'text-gray-300 opacity-0 group-hover:opacity-100 transition'} />}
+            </button>
+          ))
+        )}
       </nav>
     </div>
   );
@@ -1325,6 +1362,7 @@ interface DashboardsProps extends DashboardProps {
 const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, onThreadHandled, onLogout, onProfileUpdate }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'matches' | 'messages' | 'profile'>('overview');
+  const [adminSubTab, setAdminSubTab] = useState<'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs'>('metrics');
   const [localUser, setLocalUser] = useState<User | null>(user);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -1375,7 +1413,14 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F8FAFC]">
-      <Sidebar role={role} user={localUser} activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar 
+        role={role} 
+        user={localUser} 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        adminSubTab={adminSubTab}
+        setAdminSubTab={setAdminSubTab}
+      />
       
       <div className="flex-1 flex flex-col min-w-0 relative h-full overflow-hidden">
         <header className="bg-ug-navy text-white flex items-center justify-between px-4 sm:px-8 py-5 shrink-0 shadow-2xl z-50">
@@ -1453,6 +1498,8 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
                 <AdminDashboard 
                   user={localUser} 
                   onRefresh={refreshProfile} 
+                  activeSubTab={adminSubTab}
+                  setActiveSubTab={setAdminSubTab}
                 />
               )}
             </div>
