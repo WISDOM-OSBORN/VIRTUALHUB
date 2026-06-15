@@ -74,7 +74,9 @@ const Sidebar: React.FC<{
   user: User | null;
   adminSubTab?: 'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs';
   setAdminSubTab?: (t: 'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs') => void;
-}> = ({ activeTab, setActiveTab, role, user, adminSubTab = 'metrics', setAdminSubTab }) => {
+  isCollapsed: boolean;
+  setIsCollapsed: (c: boolean) => void;
+}> = ({ activeTab, setActiveTab, role, user, adminSubTab = 'metrics', setAdminSubTab, isCollapsed, setIsCollapsed }) => {
   const tabs = [
     { id: 'overview', icon: LayoutGrid, label: 'Overview' },
     { id: 'matches', icon: Target, label: 'MY MATCHES', sparkles: true },
@@ -102,14 +104,28 @@ const Sidebar: React.FC<{
   };
 
   return (
-    <div className="hidden lg:flex w-64 h-full bg-white border-r border-gray-100 flex-col p-6 shrink-0">
-      <div className="mb-12 px-4 flex items-center gap-3">
-        <div className="bg-ug-navy p-2 rounded-xl text-white">
+    <div className={`hidden lg:flex h-full bg-white border-r border-gray-100 flex-col relative transition-all duration-300 ${isCollapsed ? 'w-20 p-4' : 'w-64 p-6'} shrink-0`}>
+      {/* Dynamic Floating Toggle Button */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="absolute top-1/2 -right-3.5 -translate-y-1/2 bg-white border border-gray-200 text-[#0a0b2c] hover:bg-[#0a0b2c] hover:text-white h-7 w-7 rounded-full flex items-center justify-center shadow-md cursor-pointer transition-all duration-300 z-50 hover:scale-105 active:scale-95 group"
+        title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+      >
+        <ChevronLeft 
+          size={14} 
+          className={`transition-transform duration-300 ${isCollapsed ? 'rotate-180 text-ug-teal' : 'text-gray-500 group-hover:text-white'}`} 
+        />
+      </button>
+
+      <div className={`mb-12 flex items-center gap-3 transition-all duration-300 ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}>
+        <div className="bg-ug-navy p-2 rounded-xl text-white shrink-0 transition-transform duration-300">
           <GraduationCap size={20} />
         </div>
-        <h2 className="text-sm font-black text-ug-navy uppercase tracking-widest leading-none">
-          {getPortalTitle()}<br/><span className="text-ug-teal">PORTAL</span>
-        </h2>
+        {!isCollapsed && (
+          <h2 className="text-sm font-black text-ug-navy uppercase tracking-widest leading-none block animate-fade-in">
+            {getPortalTitle()}<br/><span className="text-ug-teal">PORTAL</span>
+          </h2>
+        )}
       </div>
 
       <nav className="flex-1 space-y-2">
@@ -122,15 +138,22 @@ const Sidebar: React.FC<{
                   setAdminSubTab(tab.id);
                 }
               }}
-              className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all group ${
+              className={`w-full flex items-center rounded-2xl transition-all group duration-300 ${
+                isCollapsed ? 'justify-center p-3' : 'justify-between px-5 py-4'
+              } ${
                 adminSubTab === tab.id 
                   ? 'bg-ug-navy text-white shadow-xl shadow-ug-navy/20 active-nav' 
                   : 'text-gray-400 hover:bg-gray-50 hover:text-ug-navy'
               }`}
+              title={isCollapsed ? tab.label : undefined}
             >
               <div className="flex items-center gap-3">
-                <tab.icon size={18} />
-                <span className="text-xs font-black tracking-widest uppercase">{tab.label}</span>
+                <tab.icon size={18} className="shrink-0" />
+                {!isCollapsed && (
+                  <span className="text-xs font-black tracking-widest uppercase whitespace-nowrap">
+                    {tab.label}
+                  </span>
+                )}
               </div>
             </button>
           ))
@@ -139,17 +162,26 @@ const Sidebar: React.FC<{
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all group ${
+              className={`w-full flex items-center rounded-2xl transition-all group duration-300 ${
+                isCollapsed ? 'justify-center p-3' : 'justify-between px-5 py-4'
+              } ${
                 activeTab === tab.id 
                   ? 'bg-ug-navy text-white shadow-xl shadow-ug-navy/20 active-nav' 
                   : 'text-gray-400 hover:bg-gray-50 hover:text-ug-navy'
               }`}
+              title={isCollapsed ? tab.label : undefined}
             >
               <div className="flex items-center gap-3">
-                <tab.icon size={18} />
-                <span className="text-xs font-black tracking-widest uppercase">{tab.label}</span>
+                <tab.icon size={18} className="shrink-0" />
+                {!isCollapsed && (
+                  <span className="text-xs font-black tracking-widest uppercase whitespace-nowrap">
+                    {tab.label}
+                  </span>
+                )}
               </div>
-              {tab.sparkles && <Sparkles size={12} className={activeTab === tab.id ? 'text-ug-teal' : 'text-gray-300 opacity-0 group-hover:opacity-100 transition'} />}
+              {!isCollapsed && tab.sparkles && (
+                <Sparkles size={12} className={activeTab === tab.id ? 'text-ug-teal' : 'text-gray-300 opacity-0 group-hover:opacity-100 transition'} />
+              )}
             </button>
           ))
         )}
@@ -1363,6 +1395,7 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'matches' | 'messages' | 'profile'>('overview');
   const [adminSubTab, setAdminSubTab] = useState<'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs'>('metrics');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [localUser, setLocalUser] = useState<User | null>(user);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -1420,6 +1453,8 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
         setActiveTab={setActiveTab} 
         adminSubTab={adminSubTab}
         setAdminSubTab={setAdminSubTab}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
       />
       
       <div className="flex-1 flex flex-col min-w-0 relative h-full overflow-hidden">
