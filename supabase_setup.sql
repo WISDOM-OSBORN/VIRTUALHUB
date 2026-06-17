@@ -184,38 +184,37 @@ CREATE TABLE IF NOT EXISTS interaction_logs (
   created_at timestamp with time zone DEFAULT now()
 );
 
--- 6. ADMIN SECURITY policies to unblock disclosure submission & administrative review workflows
--- Allow Admin users to view, insert, update, or deletes all projects
+-- 6. ADMIN SECURITY helper function and policies to unblock disclosure submission & administrative review workflows
+-- We use a SECURITY DEFINER function to bypass Row Level Security recursion on public.profiles.
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER -- Essential: runs with database owner privileges, bypassing RLS checks
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+    AND role = 'Admin'
+  );
+END;
+$$;
+
+-- Allow Admin users to view, insert, update, or delete all projects
 DROP POLICY IF EXISTS "Admins can manage all projects" ON public.projects;
 CREATE POLICY "Admins can manage all projects" ON public.projects
 FOR ALL TO authenticated USING (
-  EXISTS (
-    SELECT 1 FROM public.profiles 
-    WHERE public.profiles.id = auth.uid() 
-    AND public.profiles.role = 'Admin'
-  )
+  public.is_admin()
 ) WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM public.profiles 
-    WHERE public.profiles.id = auth.uid() 
-    AND public.profiles.role = 'Admin'
-  )
+  public.is_admin()
 );
 
--- Allow Admin users to view and update other profiles (such as role elevations)
+-- Allow Admin users to view and update other profiles (such as role elevations) without causing infinite recursion
 DROP POLICY IF EXISTS "Admins can manage all profiles" ON public.profiles;
 CREATE POLICY "Admins can manage all profiles" ON public.profiles
 FOR ALL TO authenticated USING (
-  EXISTS (
-    SELECT 1 FROM public.profiles 
-    WHERE public.profiles.id = auth.uid() 
-    AND public.profiles.role = 'Admin'
-  )
+  public.is_admin()
 ) WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM public.profiles 
-    WHERE public.profiles.id = auth.uid() 
-    AND public.profiles.role = 'Admin'
-  )
+  public.is_admin()
 );
 

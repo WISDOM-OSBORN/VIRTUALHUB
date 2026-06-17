@@ -257,7 +257,7 @@ const AppContent: React.FC = () => {
                     isAuthenticated={isAuthenticated} 
                     onUnauthorized={handleUnauthorizedAccess}
                   >
-                    {!userProfile?.ai_profile && !localStorage.getItem(`onboarding_skipped_${userProfile?.id}`) ? (
+                    {userProfile?.role !== UserRole.Admin && !userProfile?.ai_profile && !localStorage.getItem(`onboarding_skipped_${userProfile?.id}`) ? (
                       <Onboarding 
                         user={userProfile} 
                         onComplete={() => userProfile && loadProfile(userProfile.id)} 

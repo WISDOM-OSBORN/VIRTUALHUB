@@ -31,6 +31,14 @@
     </script>
     <style>
       body { font-family: "Times New Roman", Times, Georgia, serif; }
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover, 
+      input:-webkit-autofill:focus, 
+      input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 1000px #1f2937 inset !important; /* bg-gray-800 or similar */
+        -webkit-text-fill-color: #ffffff !important;
+        transition: background-color 5000s ease-in-out 0s;
+      }
     </style>
   </head>
   <body>

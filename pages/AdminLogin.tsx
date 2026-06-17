@@ -76,10 +76,10 @@ export const AdminLogin: React.FC = () => {
             <ShieldAlert size={36} />
           </motion.div>
           <h2 className="text-3xl font-black tracking-tight text-white uppercase">
-            Administrative Login
+            Administrative Access
           </h2>
-          <p className="mt-2 text-xs text-gray-500 font-mono tracking-wider max-w-sm mx-auto">
-            Authorized Super Administrators Only. All transactions and alterations are audited on the blockchain database ledger.
+          <p className="mt-2 text-xs text-gray-400 max-w-sm mx-auto leading-relaxed uppercase tracking-wider font-bold">
+            Authorized Personnel Only. Please verify credentials to access directories and security metrics.
           </p>
         </div>
 
@@ -92,30 +92,30 @@ export const AdminLogin: React.FC = () => {
         >
           <form onSubmit={handleAdminAuth} className="space-y-4 text-left">
             {/* Email field */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 font-mono">
-                Admin Email Secure Index
+                Administrative Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input
                   required
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@institution.edu"
+                  placeholder="admin@ug.edu.gh"
                   className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-xs font-bold text-white placeholder-gray-600 focus:outline-none focus:border-ug-teal focus:bg-white/10 transition"
                 />
               </div>
             </div>
 
             {/* Password field */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 font-mono">
-                System Privilege Keyphrase
+                Security Access Phrase
               </label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input
                   required
                   type="password"
@@ -136,11 +136,11 @@ export const AdminLogin: React.FC = () => {
               {loading ? (
                 <>
                   <RefreshCw size={14} className="animate-spin" />
-                  Verifying Identity Clearance...
+                  Verifying Identity Authorized...
                 </>
               ) : (
                 <>
-                  Verify Credentials & Open Gate
+                  Verify Credentials & Enter Panel
                   <ArrowRight size={14} />
                 </>
               )}
@@ -149,14 +149,14 @@ export const AdminLogin: React.FC = () => {
         </motion.div>
 
         {/* Dynamic Trust Badges */}
-        <div className="flex items-center justify-center gap-6 text-gray-600 text-[9px] uppercase tracking-widest font-mono pt-4">
-          <div className="flex items-center gap-1.5">
+        <div className="flex items-center justify-center gap-6 text-gray-500 text-[9px] uppercase tracking-widest font-mono pt-4">
+          <div className="flex items-center gap-1.5 font-bold">
             <CheckCircle size={10} className="text-ug-teal" />
-            <span>Encrypted Tunnel</span>
+            <span>Encrypted Pipeline</span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 font-bold">
             <Sparkles size={10} className="text-ug-teal" />
-            <span>Super Admin Override</span>
+            <span>Role Governance</span>
           </div>
         </div>
       </div>
