@@ -24,6 +24,20 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS user_type TEXT;
 ALTER TABLE projects DROP COLUMN IF EXISTS embedding;
 ALTER TABLE projects ADD COLUMN embedding vector(768);
 
+-- Ensure all workflow, tracking, and metric columns exist on public.projects
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS owner_id UUID REFERENCES auth.users(id);
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS funding_amount_usd TEXT;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS open_to_collaboration BOOLEAN DEFAULT false;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS technical_details_url TEXT;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS expressions_of_interest INTEGER DEFAULT 0;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS requests INTEGER DEFAULT 0;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS disclosure_status TEXT DEFAULT 'Submitted';
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS internal_notes TEXT;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS requested_documents JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS disclosure_timeline JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS ai_verification JSONB DEFAULT '{}'::jsonb;
+
 -- 1. Create Buckets
 INSERT INTO storage.buckets (id, name, public) 
 VALUES ('projects', 'projects', true)

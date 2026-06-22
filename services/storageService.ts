@@ -149,10 +149,14 @@ export const StorageService = {
     if (!payload.embedding && payload.title && payload.description) {
       try {
         const textToEmbed = `${payload.title} ${payload.description} ${payload.research_area || ''} ${payload.department || ''}`;
-        payload.embedding = await EmbeddingService.getEmbedding(textToEmbed);
+        const generatedEmbed = await EmbeddingService.getEmbedding(textToEmbed);
+        payload.embedding = generatedEmbed || new Array(768).fill(0);
       } catch (err) {
-        console.warn("Project embedding failed during save:", err);
+        console.warn("Project embedding failed during save, falling back to zero vector:", err);
+        payload.embedding = new Array(768).fill(0);
       }
+    } else if (!payload.embedding) {
+      payload.embedding = new Array(768).fill(0);
     }
 
     if (project.id) {

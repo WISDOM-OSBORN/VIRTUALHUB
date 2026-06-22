@@ -48,8 +48,7 @@ export const AdminLogin: React.FC = () => {
       }
 
       showToast("Administrator Access Granted", "success");
-      window.location.href = '#/dashboard';
-      window.location.reload();
+      window.location.href = '/dashboard';
     } catch (err: any) {
       console.error("Admin Login Error:", err);
       showToast(err.message || "Failed to establish administrative privileges.", "error");
