@@ -1,3 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ug-navy: #1a1a4b;
+  --color-ug-teal: #0891b2;
+  --color-ug-success: #10b981;
+  --color-ug-warning: #f59e0b;
+  --color-ug-error: #ef4444;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }

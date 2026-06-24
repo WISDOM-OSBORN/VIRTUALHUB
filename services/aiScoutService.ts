@@ -23,11 +23,27 @@ export const AIScoutService = {
    */
   autoSyncNews: async (force: boolean = false): Promise<boolean> => {
     try {
+      // Client-side 24-hour cooldown check to prevent unnecessary API & rate-limit hits
+      if (!force) {
+        const lastSync = await AIScoutService.getLastSyncTime();
+        if (lastSync) {
+          const syncInterval = 24 * 60 * 60 * 1000;
+          if (Date.now() - lastSync.getTime() < syncInterval) {
+            console.log("AI Scout client: Sync within 24hr cooldown window. Skipping fetch.");
+            return false;
+          }
+        }
+      }
+
       console.log(`AI Scout client: requesting secure server side news sync (force: ${force})...`);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const response = await fetch('/api/ai-scout/sync', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ force })
       });
@@ -39,8 +55,8 @@ export const AIScoutService = {
 
       const data = await response.json();
       return !!data.didUpdate;
-    } catch (error) {
-      console.error("AI Scout client news sync failure:", error);
+    } catch (error: any) {
+      console.log("AI Scout client news sync status (gracefully handled):", error?.message || error);
       return false;
     }
   }

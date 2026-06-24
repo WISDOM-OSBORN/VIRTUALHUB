@@ -3,6 +3,38 @@ import { Project, NewsItem, User, UserRole } from '../types';
 import { supabase } from '../lib/supabase';
 import { EmbeddingService } from './embeddingService';
 
+const getStorageFilePath = (urlOrPath: string, bucket = 'projects'): string => {
+  if (!urlOrPath) return '';
+  const searchStr = `/object/public/${bucket}/`;
+  const idx = urlOrPath.indexOf(searchStr);
+  if (idx !== -1) {
+    return decodeURIComponent(urlOrPath.substring(idx + searchStr.length));
+  }
+  const searchSignStr = `/object/sign/${bucket}/`;
+  const idxSign = urlOrPath.indexOf(searchSignStr);
+  if (idxSign !== -1) {
+    const remaining = urlOrPath.substring(idxSign + searchSignStr.length);
+    const qIdx = remaining.indexOf('?');
+    const path = qIdx !== -1 ? remaining.substring(0, qIdx) : remaining;
+    return decodeURIComponent(path);
+  }
+  if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+    try {
+      const parsed = new URL(urlOrPath);
+      const parts = parsed.pathname.split('/');
+      return decodeURIComponent(parts[parts.length - 1]);
+    } catch (e) {
+      return urlOrPath;
+    }
+  }
+  return urlOrPath;
+};
+
+const isStorageUrl = (url: string, bucket = 'projects'): boolean => {
+  if (!url) return false;
+  return url.includes(`/object/public/${bucket}/`) || url.includes(`/object/sign/${bucket}/`);
+};
+
 export const StorageService = {
   // Initialization
   init: async () => {
@@ -35,6 +67,169 @@ export const StorageService = {
     return data.publicUrl;
   },
 
+  signProjectUrls: async (projects: Project[]): Promise<Project[]> => {
+    if (!projects || projects.length === 0) return [];
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+
+      let isAdmin = false;
+      if (userId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
+        if (profile?.role === 'Admin') {
+          isAdmin = true;
+        }
+      }
+
+      const briefsToSign: { index: number; filePath: string; expiry: number }[] = [];
+      const docsToSign: { projectIndex: number; docIndex: number; filePath: string }[] = [];
+      const imagesToSign: { projectIndex: number; partIndex: number; filePath: string }[] = [];
+      
+      const mutableProjects = JSON.parse(JSON.stringify(projects)) as Project[];
+      const projectImageParts: { [projectIndex: number]: string[] } = {};
+
+      for (let pIdx = 0; pIdx < mutableProjects.length; pIdx++) {
+        const proj = mutableProjects[pIdx];
+        const isOwnerOrAdmin = isAdmin || (userId && proj.owner_id === userId);
+
+        if (proj.image_url) {
+          const parts = proj.image_url.split('|');
+          projectImageParts[pIdx] = parts;
+          parts.forEach((part, partIdx) => {
+            if (isStorageUrl(part, 'projects')) {
+              const filePath = getStorageFilePath(part, 'projects');
+              if (filePath) {
+                imagesToSign.push({ projectIndex: pIdx, partIndex: partIdx, filePath });
+              }
+            }
+          });
+        }
+
+        if (proj.technical_details_url) {
+          let canAccessBrief = isOwnerOrAdmin;
+          let remainingSeconds = 3600;
+
+          if (!canAccessBrief && userId) {
+            // Check if they have an approved and active secure reveal
+            const { approved, remainingMinutes } = await StorageService.getRevealApprovalDetails(userId, proj.id);
+            if (approved) {
+              canAccessBrief = true;
+              remainingSeconds = remainingMinutes * 60;
+            }
+          }
+
+          if (canAccessBrief) {
+            const filePath = getStorageFilePath(proj.technical_details_url);
+            if (filePath) {
+              briefsToSign.push({ index: pIdx, filePath, expiry: remainingSeconds });
+            }
+          } else {
+            // Keep the property so the UI renders the locked brief box,
+            // but set it to a placeholder/non-downloadable value so they cannot direct-download
+            proj.technical_details_url = "locked";
+          }
+        }
+        
+        // Supporting documents: ONLY visible/accessible for owner or admins!
+        if (isOwnerOrAdmin && Array.isArray(proj.requested_documents)) {
+          proj.requested_documents.forEach((doc, dIdx) => {
+            if (doc.url) {
+              const filePath = getStorageFilePath(doc.url);
+              if (filePath) {
+                docsToSign.push({ projectIndex: pIdx, docIndex: dIdx, filePath });
+              }
+            }
+          });
+        } else {
+          proj.requested_documents = undefined;
+        }
+      }
+      
+      const briefPromises = briefsToSign.map(async (item) => {
+        try {
+          const { data, error } = await supabase.storage
+            .from('projects')
+            .createSignedUrl(item.filePath, item.expiry);
+          if (!error && data?.signedUrl) {
+            return { index: item.index, signedUrl: data.signedUrl };
+          }
+        } catch (e) {
+          console.warn(`Failed to sign brief filePath "${item.filePath}":`, e);
+        }
+        return { index: item.index, signedUrl: null };
+      });
+      
+      const docPromises = docsToSign.map(async (item) => {
+        try {
+          const { data, error } = await supabase.storage
+            .from('projects')
+            .createSignedUrl(item.filePath, 3600);
+          if (!error && data?.signedUrl) {
+            return { projectIndex: item.projectIndex, docIndex: item.docIndex, signedUrl: data.signedUrl };
+          }
+        } catch (e) {
+          console.warn(`Failed to sign doc filePath "${item.filePath}":`, e);
+        }
+        return { projectIndex: item.projectIndex, docIndex: item.docIndex, signedUrl: null };
+      });
+
+      const imagePromises = imagesToSign.map(async (item) => {
+        try {
+          const { data, error } = await supabase.storage
+            .from('projects')
+            .createSignedUrl(item.filePath, 3600);
+          if (!error && data?.signedUrl) {
+            return { projectIndex: item.projectIndex, partIndex: item.partIndex, signedUrl: data.signedUrl };
+          }
+        } catch (e) {
+          console.warn(`Failed to sign image filePath "${item.filePath}":`, e);
+        }
+        return { projectIndex: item.projectIndex, partIndex: item.partIndex, signedUrl: null };
+      });
+      
+      const [signedBriefs, signedDocs, signedImages] = await Promise.all([
+        Promise.all(briefPromises),
+        Promise.all(docPromises),
+        Promise.all(imagePromises)
+      ]);
+      
+      signedBriefs.forEach(item => {
+        if (item.signedUrl) {
+          mutableProjects[item.index].technical_details_url = item.signedUrl;
+        }
+      });
+      
+      signedDocs.forEach(item => {
+        if (item.signedUrl && mutableProjects[item.projectIndex]?.requested_documents?.[item.docIndex]) {
+          mutableProjects[item.projectIndex].requested_documents[item.docIndex].url = item.signedUrl;
+        }
+      });
+
+      signedImages.forEach(item => {
+        if (item.signedUrl && projectImageParts[item.projectIndex]) {
+          projectImageParts[item.projectIndex][item.partIndex] = item.signedUrl;
+        }
+      });
+
+      Object.keys(projectImageParts).forEach(pIdxStr => {
+        const pIdx = parseInt(pIdxStr, 10);
+        if (mutableProjects[pIdx]) {
+          mutableProjects[pIdx].image_url = projectImageParts[pIdx].join('|');
+        }
+      });
+      
+      return mutableProjects;
+    } catch (err) {
+      console.warn("Error in signProjectUrls, returning unmodified projects:", err);
+      return projects;
+    }
+  },
+
   // Projects CRUD
   getProjects: async (): Promise<Project[]> => {
     try {
@@ -61,17 +256,32 @@ export const StorageService = {
         }
       }
 
-      return data.filter((p: Project) => {
-        // Admin has absolute view coverage
+      // 1. Remove client-side privacy-filtering (which was based on visibility) to match 
+      // strict database Row Level Security (RLS). 
+      // 2. Clear out sensitive details (internal notes, requested docs list) for non-owners/non-admins
+      // to ensure they are never publicly queryable/accessible if selected.
+      const sanitizedAndFiltered = data.filter((p: Project) => {
         if (isAdmin) return true;
-        // User owns this project
         if (userId && p.owner_id === userId) return true;
-        // Public projects are viewable by everyone
-        if (p.visibility === 'Public') return true;
-        // Internal projects are viewable only by authenticated users
-        if (userId && p.visibility === 'Internal') return true;
-        return false;
+        
+        // Public users can only see public or published projects. Drafts are NEVER accessible.
+        const isPublicAllowed = p.visibility === 'Public' || p.disclosure_status === 'Published';
+        return isPublicAllowed && p.disclosure_status !== 'Draft';
+      }).map((p: Project) => {
+        const isOwnerOrAdmin = isAdmin || (userId && p.owner_id === userId);
+        if (!isOwnerOrAdmin) {
+          return {
+            ...p,
+            internal_notes: undefined,
+            requested_documents: undefined,
+            disclosure_timeline: undefined,
+            ai_verification: undefined
+          };
+        }
+        return p;
       });
+
+      return await StorageService.signProjectUrls(sanitizedAndFiltered);
     } catch (e) {
       return [];
     }
@@ -85,8 +295,122 @@ export const StorageService = {
         .select('*')
         .eq('owner_id', userId)
         .order('created_at', { ascending: false });
-      return data || [];
+      
+      if (error || !data) return [];
+
+      // Since these are already the user's projects (or the user is the owner),
+      // we don't need to strip owner properties, but we DO need to generate
+      // signed URLs for the technical brief & requested documents.
+      return await StorageService.signProjectUrls(data);
     } catch (e) {
+      return [];
+    }
+  },
+
+  getSignedTechnicalBrief: async (projectId: string): Promise<string> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) throw new Error("Authentication required to access technical brief.");
+
+    const { data: project, error: projError } = await supabase
+      .from('projects')
+      .select('owner_id, technical_details_url')
+      .eq('id', projectId)
+      .single();
+
+    if (projError || !project) {
+      throw new Error("Project not found.");
+    }
+
+    let isAuthorized = project.owner_id === userId;
+    if (!isAuthorized) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+      if (profile?.role === 'Admin') {
+        isAuthorized = true;
+      }
+    }
+
+    let expirySeconds = 3600; // def 1 hour
+
+    if (!isAuthorized) {
+      const { approved, remainingMinutes } = await StorageService.getRevealApprovalDetails(userId, projectId);
+      if (approved) {
+        isAuthorized = true;
+        expirySeconds = remainingMinutes * 60;
+      }
+    }
+
+    if (!isAuthorized) {
+      throw new Error("Access denied. A secure reveal approval is required to view this technical brief.");
+    }
+
+    if (!project.technical_details_url || project.technical_details_url === 'locked') {
+      // Fetch raw technical details url bypassing cached sign mapping if any
+      const { data: rawProj } = await supabase
+        .from('projects')
+        .select('technical_details_url')
+        .eq('id', projectId)
+        .single();
+      project.technical_details_url = rawProj?.technical_details_url;
+    }
+
+    if (!project.technical_details_url || project.technical_details_url === 'locked') {
+      throw new Error("No technical brief exists for this project.");
+    }
+
+    const filePath = getStorageFilePath(project.technical_details_url);
+    if (!filePath) {
+      throw new Error("Invalid technical brief path.");
+    }
+
+    const { data: signedData, error: signError } = await supabase.storage
+      .from('projects')
+      .createSignedUrl(filePath, expirySeconds);
+
+    if (signError || !signedData?.signedUrl) {
+      throw new Error("Failed to generate secure signed URL: " + (signError?.message || "unknown storage error"));
+    }
+
+    return signedData.signedUrl;
+  },
+
+  getPublicResearcherProjects: async (researcherId: string): Promise<Project[]> => {
+    if (!researcherId) return [];
+    try {
+      // Fetch researcher's projects that are Public/Published and NOT drafts.
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('owner_id', researcherId)
+        .neq('disclosure_status', 'Draft')
+        .order('created_at', { ascending: false });
+
+      if (error || !data) return [];
+
+      const filtered = data.filter((p: Project) => {
+        return p.visibility === 'Public' || p.disclosure_status === 'Published';
+      });
+
+      // Secure: sanitize and strip sensitive information (internal notes, requested docs, etc)
+      const sanitized = filtered.map((p: Project) => {
+        return {
+          ...p,
+          internal_notes: undefined,
+          requested_documents: undefined,
+          disclosure_timeline: undefined,
+          ai_verification: undefined
+        };
+      });
+
+      // Return researcher's public disclosures (they won't get briefs signed by default here,
+      // they must use approved reveal dynamically in ProjectDetail page via the secure 1-hour window)
+      return await StorageService.signProjectUrls(sanitized);
+    } catch (e) {
+      console.error("Failed to retrieve researcher public projects:", e);
       return [];
     }
   },
@@ -113,12 +437,12 @@ export const StorageService = {
 
     if (!currentUserId && !project.id) throw new Error("Authentication required.");
 
-    const payload = {
+    let payload: any = {
       title: project.title,
       description: project.description,
       department: project.department,
       status: project.status,
-      visibility: project.visibility || (project.id ? undefined : 'Private'),
+      visibility: (((project.visibility as any) === 'Private' ? 'Internal' : project.visibility) as any) || (project.id ? undefined : 'Internal'),
       trl: project.trl,
       research_area: project.research_area,
       image_url: project.image_url,
@@ -159,48 +483,125 @@ export const StorageService = {
       payload.embedding = new Array(768).fill(0);
     }
 
-    if (project.id) {
-      // Security Check: Get existing project owner_id
-      const { data: existingProject } = await supabase
-        .from('projects')
-        .select('owner_id')
-        .eq('id', project.id)
-        .maybeSingle();
+    let attempt = 0;
+    const maxAttempts = 12;
+
+    while (attempt < maxAttempts) {
+      try {
+        if (project.id) {
+          // Security Check: Get existing project owner_id
+          const { data: existingProject } = await supabase
+            .from('projects')
+            .select('owner_id')
+            .eq('id', project.id)
+            .maybeSingle();
+            
+          if (!existingProject) throw new Error("Project not found.");
+          
+          let isAdmin = false;
+          if (currentUserId) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', currentUserId)
+              .maybeSingle();
+            if (profile?.role === 'Admin') {
+              isAdmin = true;
+            }
+          }
+
+          if (existingProject.owner_id !== currentUserId && !isAdmin) {
+            throw new Error("Unauthorized. You do not have permission to modify this project.");
+          }
+
+          const { data, error } = await supabase
+            .from('projects')
+            .update(payload)
+            .eq('id', project.id)
+            .select()
+            .single();
+          if (error) throw error;
+          return data;
+        } else {
+          const { data, error } = await supabase
+            .from('projects')
+            .insert([payload])
+            .select()
+            .single();
+          if (error) throw error;
+          return data;
+        }
+      } catch (err: any) {
+        attempt++;
+        const errorMsg = (err?.message || "").toLowerCase();
+        const errorDetails = (err?.details || "").toLowerCase();
+        const fullErrorInfo = `${errorMsg} ${errorDetails}`;
         
-      if (!existingProject) throw new Error("Project not found.");
-      
-      let isAdmin = false;
-      if (currentUserId) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', currentUserId)
-          .maybeSingle();
-        if (profile?.role === 'Admin') {
-          isAdmin = true;
+        const isColumnOrSchemaError = 
+          err?.code === 'PGRST204' || 
+          fullErrorInfo.includes('column') || 
+          fullErrorInfo.includes('cache') || 
+          fullErrorInfo.includes('does not exist') ||
+          fullErrorInfo.includes('not found') || 
+          fullErrorInfo.includes('not exist');
+
+        if (isColumnOrSchemaError && attempt < maxAttempts) {
+          let columnRemoved = false;
+          
+          // Try to extract column name from error message/details (e.g. "Could not find the 'disclosure_status' column...")
+          const quotedMatches = fullErrorInfo.match(/['"`]([a-z0-9_]+)['"`]/g);
+          if (quotedMatches) {
+            for (const match of quotedMatches) {
+              const colName = match.replace(/['"`]/g, '');
+              if (payload[colName] !== undefined) {
+                console.warn(`[Autocorrect] Removing missing column '${colName}' from payload and retrying...`);
+                delete payload[colName];
+                columnRemoved = true;
+              }
+            }
+          }
+
+          // Fallback check against known custom or newer columns
+          if (!columnRemoved) {
+            const potentialNewColumns = [
+              'disclosure_status', 'internal_notes', 'requested_documents', 
+              'disclosure_timeline', 'ai_verification', 'owner_id', 
+              'funding_amount_usd', 'open_to_collaboration', 'technical_details_url',
+              'embedding', 'achievements', 'needs', 'views', 
+              'expressions_of_interest', 'requests'
+            ];
+            for (const colName of potentialNewColumns) {
+              if (payload[colName] !== undefined && fullErrorInfo.includes(colName)) {
+                console.warn(`[Autocorrect] Removing missing column '${colName}' from payload and retrying...`);
+                delete payload[colName];
+                columnRemoved = true;
+                break;
+              }
+            }
+          }
+
+          // Last-resort fallback to absolutely basic columns
+          if (!columnRemoved) {
+            console.warn("[Autocorrect] Schema mismatch detected, dropping to core columns.");
+            const coreFields = [
+              'title', 'description', 'department', 'status', 'visibility', 'trl', 'research_area', 'image_url', 'budget', 'start_date'
+            ];
+            const newPayload: any = {};
+            for (const key of coreFields) {
+              if (payload[key] !== undefined) {
+                newPayload[key] = payload[key];
+              }
+            }
+            if (payload.owner_id !== undefined && !fullErrorInfo.includes('owner_id')) {
+              newPayload.owner_id = payload.owner_id;
+            }
+            payload = newPayload;
+          }
+        } else {
+          console.error("Supabase Save Project Error:", err);
+          throw err;
         }
       }
-
-      if (existingProject.owner_id !== currentUserId && !isAdmin) {
-        throw new Error("Unauthorized. You do not have permission to modify this project.");
-      }
-
-      const { data, error } = await supabase
-        .from('projects')
-        .update(payload)
-        .eq('id', project.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    } else {
-      const { data, error } = await supabase
-        .from('projects')
-        .insert([payload])
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
     }
   },
 
@@ -263,8 +664,43 @@ export const StorageService = {
 
   getBookmarks: async (userId: string): Promise<Project[]> => {
     if (!userId) return [];
-    const { data } = await supabase.from('bookmarks').select('projects(*)').eq('user_id', userId);
-    return data?.map(item => (item as any).projects).filter(p => !!p) || [];
+    
+    try {
+      const { data } = await supabase.from('bookmarks').select('projects(*)').eq('user_id', userId);
+      const projects = data?.map(item => (item as any).projects).filter(p => !!p) || [];
+      
+      if (projects.length === 0) return [];
+
+      let isAdmin = false;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+      if (profile?.role === 'Admin') {
+        isAdmin = true;
+      }
+
+      // Stripping of sensitive items for public/unauthorized bookmark queries
+      const sanitized = projects.map((p: Project) => {
+        const isOwnerOrAdmin = isAdmin || (p.owner_id === userId);
+        if (!isOwnerOrAdmin) {
+          return {
+            ...p,
+            internal_notes: undefined,
+            requested_documents: undefined,
+            disclosure_timeline: undefined,
+            ai_verification: undefined
+          };
+        }
+        return p;
+      });
+
+      return await StorageService.signProjectUrls(sanitized);
+    } catch (err) {
+      console.warn("Failed to retrieve secured bookmarks:", err);
+      return [];
+    }
   },
 
   // News
@@ -334,14 +770,22 @@ export const StorageService = {
 
   searchUsers: async (query: string): Promise<User[]> => {
     if (!query || query.length < 2) return [];
+    
+    // Ensure the user searching is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return [];
+
     const { data, error } = await supabase
-      .from('users')
-      .select('*')
+      .from('profiles')
+      .select('id, name, email, role, avatar_url, company, department')
       .or(`name.ilike.%${query}%,email.ilike.%${query}%`)
       .limit(5);
     
-    if (error) return [];
-    return data || [];
+    if (error) {
+      console.warn("error searching users: ", error);
+      return [];
+    }
+    return (data || []) as User[];
   },
 
   getConversations: async (userId: string) => {
@@ -463,8 +907,51 @@ export const StorageService = {
   // Profiles
   getProfile: async (userId: string) => {
     if (!userId) return null;
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-    return data;
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+    if (!profile) return null;
+
+    try {
+      if (profile.role === 'Student') {
+        const { data: student } = await supabase.from('student_profiles').select('*').eq('user_id', userId).maybeSingle();
+        if (student) {
+          Object.assign(profile, {
+            education_level: student.education_level,
+            availability: student.availability,
+            looking_for: student.looking_for,
+            program: student.program
+          });
+        }
+      } else if (profile.role === 'Researcher') {
+        const { data: researcher } = await supabase.from('researcher_profiles').select('*').eq('user_id', userId).maybeSingle();
+        if (researcher) {
+          Object.assign(profile, {
+            research_stage: researcher.research_stage,
+            funding_needed: researcher.funding_needed,
+            needs_students: researcher.needs_students
+          });
+        }
+      } else if (profile.role === 'Investor') {
+        const { data: investor } = await supabase.from('investor_profiles').select('*').eq('user_id', userId).maybeSingle();
+        if (investor) {
+          Object.assign(profile, {
+            funding_range: investor.funding_range,
+            investment_focus: investor.investment_focus
+          });
+        }
+      } else if (profile.role === 'Industry/Partner' || profile.role === 'IndustryPartner') {
+        const { data: industry } = await supabase.from('industry_profiles').select('*').eq('user_id', userId).maybeSingle();
+        if (industry) {
+          Object.assign(profile, {
+            sector: industry.sector,
+            collaboration_type: industry.collaboration_type
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Error fetching role-specific profile data:", err);
+    }
+
+    return profile;
   },
 
   testConnection: async () => {
@@ -718,9 +1205,10 @@ export const StorageService = {
         }
       }
 
+      const signedProjects = await StorageService.signProjectUrls(finalProjects);
       return {
         profiles: finalProfiles,
-        projects: finalProjects
+        projects: signedProjects
       };
     } catch (error) {
       console.error("Matching engine error:", error);
@@ -745,7 +1233,9 @@ export const StorageService = {
           if (p.visibility === 'Public') return true;
           if (userId && p.visibility === 'Internal') return true;
           return false;
-        }).slice(0, 10);
+         }).slice(0, 10);
+
+        const signedFallbackProjects = await StorageService.signProjectUrls(secureFallbackProjects as any);
 
         return {
           profiles: (fallbackProfiles || []).map(p => ({
@@ -757,7 +1247,7 @@ export const StorageService = {
             similarity: 0.75,
             avatar_url: p.avatar_url
           })),
-          projects: secureFallbackProjects.map(p => ({
+          projects: signedFallbackProjects.map(p => ({
             id: p.id,
             title: p.title,
             description: p.description,

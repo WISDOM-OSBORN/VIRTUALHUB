@@ -1,12 +1,17 @@
 import { AIProfile } from "../types";
+import { supabase } from "../lib/supabase";
 
 export const AIProfileService = {
   processProfile: async (cvText: string = "", questionnaire: any = {}): Promise<AIProfile> => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const response = await fetch('/api/ai-profile', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           cvText,
@@ -30,10 +35,14 @@ export const AIProfileService = {
 
   processEntityProfile: async (answers: any): Promise<AIProfile> => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const response = await fetch('/api/ai-profile', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           cvText: "",

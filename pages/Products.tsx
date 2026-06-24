@@ -20,7 +20,7 @@ const Products: React.FC = () => {
     fetchProducts();
   }, []);
 
-  const getThumbnail = (urlStr: string) => urlStr ? urlStr.split('|')[0] : '';
+  const getThumbnail = (urlStr: string) => urlStr && urlStr.trim() !== '' ? urlStr.split('|')[0] : 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80';
 
   return (
     <div className="min-h-screen bg-gray-50 py-16">

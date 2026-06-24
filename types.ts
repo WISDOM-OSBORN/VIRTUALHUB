@@ -20,7 +20,7 @@ export enum Visibility {
   Draft = 'Draft',
   Internal = 'Internal',
   Public = 'Public',
-  Private = 'Private'
+  Private = 'Internal'
 }
 
 export enum DisclosureStatus {
@@ -59,6 +59,20 @@ export interface User {
   answers?: any;
   embedding?: number[];
   semantic_summary?: string;
+  created_at?: string;
+  
+  // Joined role-specific profile fields
+  education_level?: string;
+  availability?: string;
+  looking_for?: string;
+  program?: string;
+  research_stage?: string;
+  funding_needed?: string;
+  needs_students?: boolean;
+  funding_range?: string;
+  investment_focus?: string;
+  sector?: string;
+  collaboration_type?: string;
 }
 
 export interface Project {
@@ -74,6 +88,7 @@ export interface Project {
   budget: string;
   start_date: string;
   owner_id?: string;
+  created_at?: string;
   
   funding_amount_usd?: string;
   open_to_collaboration?: boolean;

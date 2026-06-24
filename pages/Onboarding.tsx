@@ -1262,10 +1262,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
           <div className="mb-10">
             <div className="flex items-center gap-4 mb-4">
               <div className="px-4 py-2 bg-ug-navy text-white rounded-xl text-[10px] font-black uppercase tracking-widest">
-                {extractedProfile?.role}
+                {extractedProfile?.professional_profile?.current_role || 'Member'}
               </div>
               <div className="px-4 py-2 bg-ug-teal text-white rounded-xl text-[10px] font-black uppercase tracking-widest">
-                {extractedProfile?.experience_level}
+                {extractedProfile?.professional_profile?.experience_level || 'General'}
               </div>
             </div>
             <h1 className="text-5xl font-black text-ug-navy tracking-tighter mb-6 leading-none">

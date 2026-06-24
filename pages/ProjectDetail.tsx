@@ -388,23 +388,26 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
-  const handleDownloadBrief = () => {
-    if (!project?.technical_details_url) {
-      showToast("Document not currently published for this record.", "info");
-      return;
-    }
+  const handleDownloadBrief = async () => {
+    if (!project?.id) return;
     setDownloadingBrief(true);
     showToast("Authenticating One-Hour Time-Limited Session...", "info");
     
-    setTimeout(() => {
+    try {
+      // Dynamically fetch the short-lived signed URL from backend to guarantee 1-hour access is strictly enforced
+      const signedUrl = await StorageService.getSignedTechnicalBrief(project.id);
+      
       const watermarkText = `Shared with ${currentUserProfile?.name || currentUserProfile?.email || 'Authorized Partner'} via Virtual Hub`;
       showToast(`Watermark Applied: "${watermarkText}"`, "success");
       
       setTimeout(() => {
-        window.open(project.technical_details_url, '_blank', 'noopener,noreferrer');
+        window.open(signedUrl, '_blank', 'noopener,noreferrer');
         setDownloadingBrief(false);
       }, 1000);
-    }, 1200);
+    } catch (err: any) {
+      showToast(err.message || "Access denied or session expired. Please request reveal again.", "error");
+      setDownloadingBrief(false);
+    }
   };
 
   if (pageLoading) {
@@ -441,7 +444,10 @@ const ProjectDetail: React.FC = () => {
     );
   }
 
-  const images = project.image_url.split('|');
+  const images = (project.image_url || '').split('|').filter(Boolean);
+  if (images.length === 0) {
+    images.push('https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80');
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">

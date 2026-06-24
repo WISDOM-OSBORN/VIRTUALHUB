@@ -1042,7 +1042,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 {timeline.map((item: any, idx: number) => (
                                   <div key={idx} className="text-xs font-semibold text-gray-500 leading-relaxed pl-3 text-left relative">
                                     <span className="absolute left-0 top-1.5 h-1.5 w-1.5 rounded-full bg-ug-teal"></span>
-                                    <span className="text-[#0a0b2c] font-black">[{item.event || item.status}]</span> {item.details || item.notes} <span className="text-gray-400">by {item.user_name || item.by} ({new Date(item.timestamp).toLocaleDateString()})</span>
+                                    <span className="text-[#0a0b2c] font-black">[{item.event || item.status}]</span> {item.details} <span className="text-gray-400">by {item.user_name || item.by} ({new Date(item.timestamp).toLocaleDateString()})</span>
                                   </div>
                                 ))}
                               </div>
@@ -1109,8 +1109,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <div key={p.id} className="bg-white rounded-[2.5rem] border border-gray-100 p-6 md:p-8 hover:shadow-xl transition flex flex-col lg:flex-row gap-8 items-start lg:items-center">
                       {/* Left: Thumbnail & Details */}
                       <div className="w-full lg:w-24 h-24 rounded-2xl overflow-hidden shadow-inner border border-gray-100 shrink-0 bg-gray-50">
-                        {p.image_url ? (
-                          <img src={p.image_url.split('|')[0]} className="w-full h-full object-cover" alt="" />
+                        {p.image_url && p.image_url.trim() !== '' ? (
+                          <img src={p.image_url.split('|')[0] || 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80'} className="w-full h-full object-cover" alt="" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-300">
                             <Layers size={32} />

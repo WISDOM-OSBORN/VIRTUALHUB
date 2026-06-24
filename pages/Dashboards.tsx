@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { UserRole, ProjectStatus, Visibility, Project, ResearchArea, User, AIProfile, DisclosureStatus } from '../types';
 import { StorageService } from '../services/storageService';
 import { MatchingService } from '../services/matchingService';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { 
   TrendingUp, Users, Plus, FileText, 
   Settings, Bell, ShieldCheck, Download, 
@@ -260,7 +260,7 @@ const HubStreamSidebar: React.FC = () => {
             >
                <div className="flex gap-4">
                   <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-sm shrink-0 border border-white">
-                     <img src={p.image_url.split('|')[0]} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" alt="" />
+                     <img src={p.image_url && p.image_url.trim() !== '' ? p.image_url.split('|')[0] : 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80'} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" alt="" />
                   </div>
                   <div className="flex-1 min-w-0">
                      <div className="flex items-center gap-2 mb-1">
@@ -1393,6 +1393,7 @@ interface DashboardsProps extends DashboardProps {
 
 const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, onThreadHandled, onLogout, onProfileUpdate }) => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<'overview' | 'matches' | 'messages' | 'profile'>('overview');
   const [adminSubTab, setAdminSubTab] = useState<'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs'>('metrics');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -1400,6 +1401,26 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Synchronize URL search params with active tab state
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['overview', 'matches', 'messages', 'profile'].includes(tabParam)) {
+      if (activeTab !== tabParam) {
+        setActiveTab(tabParam as any);
+      }
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam !== activeTab) {
+      setSearchParams((prev) => {
+        prev.set('tab', activeTab);
+        return prev;
+      }, { replace: true });
+    }
+  }, [activeTab, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (initialThreadId) {
@@ -1893,7 +1914,7 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between p-5 md:p-6 gap-4">
                     <div className="flex items-start gap-4 cursor-pointer flex-1 min-w-0" onClick={() => navigate(`/projects/${p.id}`)}>
                       <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden shadow-sm bg-gray-100 shrink-0">
-                        <img src={p.image_url.split('|')[0]} className="w-full h-full object-cover" alt="" />
+                        <img src={p.image_url && p.image_url.trim() !== '' ? p.image_url.split('|')[0] : 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80'} className="w-full h-full object-cover" alt="" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2 mb-1.5">
@@ -1917,8 +1938,8 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
                           </div>
                           
                           {lastAction && (
-                            <div className="text-gray-400 max-w-xs truncate" title={lastAction.notes}>
-                              Last Action: <span className="text-ug-navy">{lastAction.notes}</span>
+                            <div className="text-gray-400 max-w-xs truncate" title={lastAction.details}>
+                              Last Action: <span className="text-ug-navy">{lastAction.details}</span>
                             </div>
                           )}
                         </div>
@@ -2133,7 +2154,7 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
                                   <span className="text-[8px] text-gray-400">{new Date(event.timestamp).toLocaleString()}</span>
                                   <span className="text-[8px] text-gray-400">by {event.user_name || event.by || 'Board Administrator'}</span>
                                 </div>
-                                <p className="text-[9px] font-medium text-gray-600 mt-1">{event.details || event.notes}</p>
+                                <p className="text-[9px] font-medium text-gray-600 mt-1">{event.details}</p>
                               </div>
                             ))}
                           </div>
@@ -2326,7 +2347,7 @@ const RedesignedResearcherProfile = ({ user, onDisclosure }: { user: User | null
 const ActiveProjectHero = ({ project }: { project: Project }) => (
   <div className="bg-white rounded-xl border border-gray-100 shadow-md overflow-hidden animate-fade-in group">
     <div className="relative h-40 md:h-48 overflow-hidden">
-      <img src={project.image_url.split('|')[0]} className="w-full h-full object-cover group-hover:scale-105 transition duration-1000" alt="" />
+      <img src={project.image_url && project.image_url.trim() !== '' ? project.image_url.split('|')[0] : 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80'} className="w-full h-full object-cover group-hover:scale-105 transition duration-1000" alt="" />
       <div className="absolute inset-0 bg-gradient-to-t from-ug-navy via-ug-navy/50 to-transparent"></div>
       <div className="absolute top-3 left-3 md:top-4 md:left-4 flex flex-col gap-1.5 max-w-[90%]">
         <div className="bg-ug-teal text-white px-2.5 py-1 rounded-md text-[8px] md:text-[9px] font-bold uppercase tracking-wider shadow-md animate-pulse w-fit">
@@ -2813,8 +2834,8 @@ ${senderName}`
             <div key={proj.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 md:p-6 border border-gray-100 rounded-[2rem] bg-gray-50/30 hover:bg-white hover:border-ug-teal/20 hover:shadow-xl transition-all cursor-pointer group gap-4 text-left">
               <div className="flex items-center gap-4 md:gap-6 flex-1 min-w-0">
                 <div className="w-12 h-12 md:w-16 md:h-16 bg-ug-navy/5 rounded-2xl flex items-center justify-center text-ug-navy group-hover:bg-ug-teal group-hover:text-white transition shrink-0 overflow-hidden">
-                  {proj.image_url ? 
-                    <img src={proj.image_url.split('|')[0]} className="w-full h-full object-cover" alt="" /> :
+                  {proj.image_url && proj.image_url.trim() !== '' ? 
+                    <img src={proj.image_url.split('|')[0] || 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80'} className="w-full h-full object-cover" alt="" /> :
                     <Globe size={24} />
                   }
                 </div>
@@ -3220,7 +3241,7 @@ const BookmarkedProjectsList: React.FC<{ userId: string }> = ({ userId }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {bookmarks.map(p => (
           <div key={p.id} onClick={() => navigate(`/projects/${p.id}`)} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50/20 hover:bg-white hover:shadow-md transition cursor-pointer group">
-            <div className="w-12 h-12 rounded-xl overflow-hidden shadow-sm shrink-0"><img src={p.image_url.split('|')[0]} className="w-full h-full object-cover" alt="" /></div>
+            <div className="w-12 h-12 rounded-xl overflow-hidden shadow-sm shrink-0"><img src={p.image_url && p.image_url.trim() !== '' ? p.image_url.split('|')[0] : 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80'} className="w-full h-full object-cover" alt="" /></div>
             <div className="flex-1 min-w-0">
                <h4 className="font-black text-ug-navy text-sm truncate group-hover:text-ug-teal">{p.title}</h4>
                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{p.research_area}</p>

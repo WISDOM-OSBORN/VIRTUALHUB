@@ -80,8 +80,11 @@ app.use(express.urlencoded({ limit: '15mb', extended: true }));
 
 // Initialize backend Supabase client using env variables securely
 const getSupabaseClient = () => {
-  const url = process.env.VITE_SUPABASE_URL || 'https://uaqpearggivpwhextmki.supabase.co';
-  const anonKey = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_3jKQt1tu0TbrRonr3kmVGw_Tr5u3i3b';
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+  const anonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+  if (!url || !anonKey) {
+    throw new Error('Supabase environment variables are missing! Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.');
+  }
   return createClient(url, anonKey);
 };
 
@@ -124,8 +127,79 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
+// --- Authentication & Throttling Middleware ---
+const authenticateUser = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication token is missing or invalid' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const supabaseServer = getSupabaseClient();
+    const { data: { user }, error } = await supabaseServer.auth.getUser(token);
+
+    if (error || !user) {
+      return res.status(401).json({ error: 'Unauthorized: Invalid access token' });
+    }
+
+    // Attach user to req
+    (req as any).user = user;
+
+    // Fetch user role from profiles table to allow for auth & role-based restrictions
+    const { data: profile } = await supabaseServer
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    (req as any).userRole = profile?.role || 'Guest';
+
+    next();
+  } catch (err: any) {
+    console.error('Authentication Error:', err);
+    res.status(401).json({ error: 'Unauthorized: Authentication service error' });
+  }
+};
+
+interface RateLimitRecord {
+  count: number;
+  resetTime: number;
+}
+
+const rateLimitStore = new Map<string, RateLimitRecord>();
+
+const throttleLimit = (maxRequests: number, windowMs: number) => {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    // If authenticated, rate limit by user ID; otherwise fall back to IP address
+    const identityKey = (req as any).user?.id || req.ip || 'anonymous';
+    const now = Date.now();
+
+    let record = rateLimitStore.get(identityKey);
+
+    if (!record || now > record.resetTime) {
+      record = {
+        count: 1,
+        resetTime: now + windowMs
+      };
+      rateLimitStore.set(identityKey, record);
+      return next();
+    }
+
+    if (record.count >= maxRequests) {
+      const remainingSeconds = Math.ceil((record.resetTime - now) / 1000);
+      return res.status(429).json({
+        error: `Too many expensive AI requests. Rate limit exceeded. Please retry in ${remainingSeconds} seconds.`
+      });
+    }
+
+    record.count++;
+    next();
+  };
+};
+
 // 2. secure Gemini chat proxy
-app.post('/api/gemini/chat', async (req, res) => {
+app.post('/api/gemini/chat', authenticateUser, throttleLimit(30, 60 * 1000), async (req, res) => {
   const { message, history } = req.body;
   const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
 
@@ -166,7 +240,7 @@ Be professional, academic yet accessible, and helpful. Keep answers concise (und
 });
 
 // 3. secure Gemini embedding proxy
-app.post('/api/gemini/embed', async (req, res) => {
+app.post('/api/gemini/embed', authenticateUser, throttleLimit(100, 60 * 1000), async (req, res) => {
   const { text } = req.body;
   const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
 
@@ -217,7 +291,7 @@ app.post('/api/gemini/embed', async (req, res) => {
 });
 
 // 4. secure Profile mapping using Groq or fallback to Gemini
-app.post('/api/ai-profile', async (req, res) => {
+app.post('/api/ai-profile', authenticateUser, throttleLimit(10, 60 * 1000), async (req, res) => {
   const { cvText, questionnaire, userType } = req.body;
   const groqKey = process.env.VITE_GROQ_API_KEY || process.env.GROQ_API_KEY || '';
   const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
@@ -439,8 +513,17 @@ Provide semantic_summary (2-3 sentences) summarizing the profile, and embedding_
 });
 
 // 5. Server-side Scout Trend synchronization
-app.post('/api/ai-scout/sync', async (req, res) => {
+app.post('/api/ai-scout/sync', authenticateUser, throttleLimit(5, 60 * 1000), async (req, res) => {
   const { force } = req.body;
+
+  // Restrict forced scout sync to admin only
+  if (force && (req as any).userRole !== 'Admin') {
+    return res.status(403).json({
+      didUpdate: false,
+      error: 'Forbidden: Forced synchronization is restricted to Admins only.'
+    });
+  }
+
   const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
   const supabaseServer = getSupabaseClient();
   const today = new Date().toISOString().split('T')[0];
@@ -564,8 +647,8 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
             }
           }
         }
-      } catch (gemError) {
-        console.warn("Live Gemini News Sync failed, retreating to polished local fallback:", gemError);
+      } catch (gemError: any) {
+        console.log(`Live Gemini News Sync temporarily unavailable (${gemError?.message || gemError}), using polished local fallback.`);
       }
     }
 
@@ -628,7 +711,7 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
 });
 
 // 6. Secure AI Candidate Match ranking proxy
-app.post('/api/ai-match', async (req, res) => {
+app.post('/api/ai-match', authenticateUser, throttleLimit(20, 60 * 1000), async (req, res) => {
   const { userProfile, candidateMatches } = req.body;
   const groqKey = process.env.VITE_GROQ_API_KEY || process.env.GROQ_API_KEY || '';
   const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';

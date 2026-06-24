@@ -1,14 +1,19 @@
 import { AIProfile } from '../types';
+import { supabase } from '../lib/supabase';
 
 export const MatchingService = {
   rankMatches: async (userProfile: AIProfile, candidateMatches: any[]) => {
     if (!candidateMatches.length) return [];
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const response = await fetch('/api/ai-match', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           userProfile,

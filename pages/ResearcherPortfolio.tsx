@@ -84,7 +84,7 @@ const ResearcherPortfolio: React.FC = () => {
   useEffect(() => {
     if (id) {
       setLoading(true);
-      Promise.all([StorageService.getProfile(id), StorageService.getMyProjects(id)]).then(([p, projects]) => {
+      Promise.all([StorageService.getProfile(id), StorageService.getPublicResearcherProjects(id)]).then(([p, projects]) => {
         setProfile(p);
         setProjects(projects);
         setLoading(false);
@@ -178,7 +178,13 @@ const ResearcherPortfolio: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               {projects.length === 0 ? <div className="col-span-2 py-20 text-center font-bold text-gray-300">No public disclosures currently listed.</div> : projects.map(p => (
                 <Link key={p.id} to={`/projects/${p.id}`} className="bg-white rounded-[3.5rem] overflow-hidden shadow-sm border border-gray-100 hover:shadow-2xl transition-all duration-700 group flex flex-col h-full">
-                  <div className="h-56 overflow-hidden relative"><img src={p.image_url.split('|')[0]} className="w-full h-full object-cover group-hover:scale-110 transition duration-1000" /></div>
+                  <div className="h-56 overflow-hidden relative">
+                    <img 
+                      src={p.image_url && p.image_url.trim() !== '' ? p.image_url.split('|')[0] : 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80'} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition duration-1000" 
+                      alt=""
+                    />
+                  </div>
                   <div className="p-10 flex-1"><span className="text-[10px] font-black text-ug-teal uppercase tracking-[0.3em] mb-4 block">{p.research_area}</span><h3 className="font-black text-ug-navy text-xl group-hover:text-ug-teal transition">{p.title}</h3></div>
                 </Link>
               ))}

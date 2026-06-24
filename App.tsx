@@ -29,11 +29,11 @@ import { AIScoutService } from './services/aiScoutService';
 interface Toast {
   id: string;
   message: string;
-  type: 'success' | 'error' | 'info';
+  type: 'success' | 'error' | 'info' | 'warning';
 }
 
 const ToastContext = createContext<{
-  showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
 }>({ showToast: () => {} });
 
 export const useToast = () => useContext(ToastContext);
@@ -46,10 +46,17 @@ const ToastContainer: React.FC<{ toasts: Toast[]; removeToast: (id: string) => v
         className={`pointer-events-auto flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border animate-fade-in-right max-w-sm ${
           toast.type === 'success' ? 'bg-ug-navy border-ug-teal text-white' : 
           toast.type === 'error' ? 'bg-red-50 border-red-100 text-red-600' : 
+          toast.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-700' :
           'bg-white border-gray-100 text-ug-navy'
         }`}
       >
-        {toast.type === 'success' ? <CheckCircle2 className="text-ug-teal shrink-0" size={20} /> : <AlertCircle size={20} className="shrink-0" />}
+        {toast.type === 'success' ? (
+          <CheckCircle2 className="text-ug-teal shrink-0" size={20} />
+        ) : toast.type === 'warning' ? (
+          <AlertCircle className="text-amber-500 shrink-0" size={20} />
+        ) : (
+          <AlertCircle size={20} className="shrink-0" />
+        )}
         <span className="text-xs font-black uppercase tracking-widest">{toast.message}</span>
         <button onClick={() => removeToast(toast.id)} className="ml-2 p-1 hover:bg-white/10 rounded-full transition">
           <X size={14} />
@@ -92,7 +99,7 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  const showToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
     const id = Math.random().toString(36).substr(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => removeToast(id), 5000);
