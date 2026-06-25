@@ -1991,23 +1991,23 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
             />
           )}
           {activeTab === 'profile' && (
-            <div className="space-y-10 animate-fade-in">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-8">
+            <div className="space-y-6 md:space-y-10 animate-fade-in">
+              <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between border-b border-gray-100 pb-6 md:pb-8">
                 <div>
-                  <h2 className="text-3xl font-black text-ug-navy tracking-tight uppercase">Researcher Portfolio</h2>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mt-1">Verified Hub Identity Management</p>
+                  <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-ug-navy tracking-tight uppercase">Researcher Portfolio</h2>
+                  <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] sm:tracking-[0.4em] mt-1">Verified Hub Identity Management</p>
                 </div>
                 {!isRerunningOnboarding && (
-                  <div className="flex bg-gray-100 p-1 md:p-1.5 rounded-2xl md:rounded-3xl shadow-inner">
+                  <div className="flex w-full sm:w-auto bg-gray-100 p-1 rounded-xl sm:rounded-3xl shadow-inner">
                     <button 
                       onClick={() => setProfileMode('identity')}
-                      className={`px-6 md:px-10 py-3 rounded-[1.25rem] md:rounded-[2rem] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${profileMode === 'identity' ? 'bg-ug-navy text-white shadow-xl' : 'text-gray-400 hover:text-ug-navy'}`}
+                      className={`flex-1 sm:flex-none px-4 sm:px-8 py-2 sm:py-3 rounded-lg sm:rounded-[2rem] text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${profileMode === 'identity' ? 'bg-ug-navy text-white shadow-xl' : 'text-gray-400 hover:text-ug-navy'}`}
                     >
                       Identity & Narrative
                     </button>
                     <button 
                       onClick={() => setProfileMode('insights')}
-                      className={`px-6 md:px-10 py-3 rounded-[1.25rem] md:rounded-[2rem] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${profileMode === 'insights' ? 'bg-ug-navy text-white shadow-xl' : 'text-gray-400 hover:text-ug-navy'}`}
+                      className={`flex-1 sm:flex-none px-4 sm:px-8 py-2 sm:py-3 rounded-lg sm:rounded-[2rem] text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${profileMode === 'insights' ? 'bg-ug-navy text-white shadow-xl' : 'text-gray-400 hover:text-ug-navy'}`}
                     >
                       AI Research Analysis
                     </button>
@@ -2067,32 +2067,32 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
                       <div className="lg:col-span-8 flex flex-col gap-10">
                         <ProfileInsight profile={localUser?.ai_profile} />
                       </div>
-                      <div className="lg:col-span-4 shrink-0 space-y-8">
-                        <div className="bg-ug-navy text-white p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group">
+                      <div className="lg:col-span-4 shrink-0 space-y-6">
+                        <div className="bg-[#12073d] text-white p-5 md:p-6 rounded-[2rem] shadow-xl relative overflow-hidden group">
                           <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition duration-1000">
-                            <Target size={120} />
+                            <Target size={100} />
                           </div>
-                          <div className="relative z-10 space-y-6">
+                          <div className="relative z-10 space-y-5">
                             <div>
-                              <h4 className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-2">Ecosystem Compliance</h4>
-                              <h3 className="text-xl font-black tracking-tight uppercase leading-tight">Neural Sync Status</h3>
+                              <h4 className="text-[9px] font-black text-ug-teal uppercase tracking-widest mb-1">Ecosystem Compliance</h4>
+                              <h3 className="text-lg font-black tracking-tight uppercase leading-tight">Neural Sync Status</h3>
                             </div>
-                            <p className="text-xs font-medium leading-loose opacity-70 italic font-sans animate-pulse">
+                            <p className="text-[10px] font-medium leading-relaxed opacity-70 italic font-sans animate-pulse">
                               "AI insights are dynamically synthesized from your verified academic records. Significant changes to your biography may take up to 24 hours to re-index in the Neural Stream."
                             </p>
-                            <div className="pt-6 border-t border-white/10 space-y-4">
-                               <div className="flex items-center gap-4">
-                                  <div className="w-10 h-10 bg-ug-teal rounded-2xl flex items-center justify-center shadow-lg"><Zap size={18} /></div>
+                            <div className="pt-4 border-t border-white/10 space-y-3">
+                               <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 bg-ug-teal text-ug-navy rounded-xl flex items-center justify-center shadow-lg"><Zap size={16} /></div>
                                   <div>
-                                    <p className="text-[9px] font-black text-ug-teal uppercase tracking-widest animate-pulse">Matching Fidelity</p>
-                                    <p className="text-sm font-black text-white">98.4% Accuracy</p>
+                                    <p className="text-[8px] font-black text-ug-teal uppercase tracking-widest animate-pulse">Matching Fidelity</p>
+                                    <p className="text-xs font-black text-white">98.4% Accuracy</p>
                                   </div>
                                </div>
                             </div>
                             {localUser?.ai_profile && (
                               <button
                                 onClick={() => setIsRerunningOnboarding(true)}
-                                className="w-full bg-ug-teal text-ug-navy hover:bg-white text-center cursor-pointer font-black hover:scale-105 transition duration-150 py-3 rounded-2xl text-[9px] uppercase tracking-widest"
+                                className="w-full bg-ug-teal text-ug-navy hover:bg-white text-center cursor-pointer font-black hover:scale-[1.02] transition duration-150 py-2.5 rounded-xl text-[9px] uppercase tracking-widest"
                               >
                                 Update Mapping Analysis
                               </button>
@@ -2100,12 +2100,12 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
                           </div>
                         </div>
                         
-                        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4">
-                           <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Public Visibility</h4>
-                           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                              <span className="text-[10px] font-black text-ug-navy uppercase tracking-widest">Portfolio Visible</span>
-                              <div className="w-8 h-4 bg-ug-teal rounded-full relative">
-                                 <div className="absolute right-1 top-1 w-2 h-2 bg-white rounded-full"></div>
+                        <div className="bg-white p-5 rounded-[1.5rem] border border-gray-100 shadow-sm space-y-3">
+                           <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Public Visibility</h4>
+                           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                              <span className="text-[9px] font-black text-ug-navy uppercase tracking-widest">Portfolio Visible</span>
+                              <div className="w-7 h-3.5 bg-ug-teal rounded-full relative">
+                                 <div className="absolute right-0.5 top-0.5 w-2.5 h-2.5 bg-white rounded-full"></div>
                               </div>
                            </div>
                            <p className="text-[9px] text-gray-400 font-medium italic">Your profile is currently discoverable to verified technical partners and industry delegates.</p>
@@ -4525,76 +4525,81 @@ const ProfileSettings: React.FC<{
   };
 
   return (
-    <div className="animate-fade-in space-y-12 pb-24">
+    <div className="animate-fade-in space-y-6 pb-20">
       {/* Identity Card */}
-      <div className="bg-white p-10 md:p-14 rounded-[4rem] border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-12 md:gap-20">
+      <div className="bg-white p-5 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col sm:flex-row items-center gap-6 md:gap-10">
         <div>
           <div 
-            className="w-40 h-40 md:w-56 md:h-56 rounded-[4rem] overflow-hidden bg-gray-50 border-[12px] border-white shadow-2xl relative"
+            className="w-24 h-24 md:w-32 md:h-32 rounded-3xl overflow-hidden bg-gray-50 border-4 border-white shadow-lg relative cursor-pointer group/avatar"
+            onClick={openEditModal}
           >
             {avatarPreview ? (
               <img src={avatarPreview} className="w-full h-full object-cover" alt="Avatar" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-200 bg-ug-navy/5"><UserIcon size={72} strokeWidth={1} /></div>
+              <div className="w-full h-full flex items-center justify-center text-gray-200 bg-ug-navy/5"><UserIcon size={40} strokeWidth={1} /></div>
             )}
+            <div className="absolute inset-0 bg-ug-navy/60 opacity-0 group-hover/avatar:opacity-100 transition duration-200 flex flex-col items-center justify-center text-white text-[8px] font-black uppercase tracking-wider backdrop-blur-[1px]">
+              <Camera size={14} className="mb-0.5" />
+              Change
+            </div>
           </div>
         </div>
         
-        <div className="text-center md:text-left space-y-6 flex-1">
-          <div className="space-y-1">
-            <h3 className="text-3xl md:text-4xl font-black text-ug-navy tracking-tight">{name || 'New Member'}</h3>
-            <div className="flex flex-wrap justify-center md:justify-start gap-3 items-center">
-              <span className="text-[10px] font-black text-ug-teal uppercase tracking-[0.3em]">Official Researcher Profile</span>
-              <span className="w-1.5 h-1.5 bg-gray-200 rounded-full"></span>
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{user?.email}</span>
+        <div className="text-center sm:text-left space-y-4 flex-1">
+          <div className="space-y-0.5">
+            <h3 className="text-2xl font-black text-ug-navy tracking-tight">{name || 'New Member'}</h3>
+            <div className="flex flex-wrap justify-center sm:justify-start gap-2.5 items-center">
+              <span className="text-[9px] font-black text-ug-teal uppercase tracking-[0.2em]">Official Researcher Profile</span>
+              <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{user?.email}</span>
             </div>
           </div>
-          <p className="text-sm md:text-base text-gray-500 font-medium max-w-2xl leading-relaxed">
+          <p className="text-xs text-gray-500 font-medium max-w-2xl leading-relaxed">
             Update your profile details and personal links to ensure the intelligence engine can match you with the right projects and partners.
           </p>
-          <div className="flex flex-wrap justify-center md:justify-start gap-4">
+          <div className="flex flex-wrap justify-center sm:justify-start gap-3">
             <button 
               type="button" 
               onClick={openEditModal} 
-              className="px-8 py-4 bg-ug-navy text-white hover:bg-ug-teal transition rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2"
+              className="px-5 py-2.5 bg-ug-navy text-white hover:bg-ug-teal transition rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md flex items-center gap-1.5"
             >
-              <UserIcon size={14} /> Edit Profile
+              <UserIcon size={12} /> Edit Profile
             </button>
             {onRetakeOnboarding && (
               <button 
                 type="button" 
                 onClick={onRetakeOnboarding} 
-                className="px-8 py-4 bg-ug-teal/10 hover:bg-ug-teal hover:text-white text-ug-teal transition rounded-2xl text-[10px] font-black uppercase tracking-widest border border-ug-teal/20 flex items-center gap-2"
+                className="px-5 py-2.5 bg-ug-teal/10 hover:bg-ug-teal hover:text-white text-ug-teal transition rounded-xl text-[9px] font-black uppercase tracking-widest border border-ug-teal/20 flex items-center gap-1.5"
               >
-                <Sparkles size={14} /> Refine AI Matching (Retake Questionnaire / CV)
+                <Sparkles size={12} /> Refine AI Matching
               </button>
             )}
-            <div className="px-8 py-4 bg-white text-gray-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-gray-100 flex items-center justify-center">Status: Verified</div>
+            <div className="px-5 py-2.5 bg-white text-gray-400 rounded-xl text-[9px] font-black uppercase tracking-widest border border-gray-100 flex items-center justify-center">Verified Hub</div>
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        <div className="lg:col-span-8 space-y-10">
-          <div className="bg-white p-10 md:p-14 rounded-[4rem] border border-gray-100 shadow-sm space-y-14">
+      <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
+        <div className="lg:col-span-8 space-y-6 md:space-y-8">
+          <div className="bg-white p-5 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm space-y-8 md:space-y-10">
             {/* Biography Section */}
-            <div className="space-y-8">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-ug-teal/10 text-ug-teal rounded-2xl flex items-center justify-center"><FileText size={24} /></div>
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-ug-teal/10 text-ug-teal rounded-xl flex items-center justify-center shrink-0"><FileText size={18} /></div>
                 <div>
-                  <h4 className="text-xl font-black text-ug-navy tracking-tight uppercase">My Information</h4>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">Professional Narrative</p>
+                  <h4 className="text-lg font-black text-ug-navy tracking-tight uppercase">My Information</h4>
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mt-0.5">Professional Narrative</p>
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 gap-8">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-gray-500 tracking-widest ml-2">Short Bio</label>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-gray-500 tracking-widest ml-1">Short Bio</label>
                   <textarea 
-                    rows={8} 
+                    rows={6} 
                     value={bio || ''} 
                     onChange={e => setBio(e.target.value)} 
-                    className="w-full bg-gray-50/50 border-2 border-transparent rounded-[1.5rem] p-6 font-medium text-gray-600 focus:bg-white focus:border-ug-teal/50 outline-none resize-none leading-relaxed text-base shadow-inner" 
+                    className="w-full bg-gray-50/50 border border-gray-200 rounded-xl p-4 font-medium text-gray-600 focus:bg-white focus:border-ug-teal outline-none resize-none leading-relaxed text-sm shadow-inner" 
                     placeholder="Tell us about your expertise, research interests, and goals..." 
                   />
                 </div>
@@ -4602,28 +4607,28 @@ const ProfileSettings: React.FC<{
             </div>
 
             {user?.user_type === 'entity' && (
-              <div className="bg-white p-10 md:p-14 rounded-[4rem] border border-gray-100 shadow-sm space-y-8">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-ug-teal/10 text-ug-teal rounded-2xl flex items-center justify-center">
-                    <Target size={24} />
+              <div className="bg-white p-5 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-ug-teal/10 text-ug-teal rounded-xl flex items-center justify-center shrink-0">
+                    <Target size={18} />
                   </div>
                   <div>
-                    <h4 className="text-xl font-black text-ug-navy tracking-tight uppercase">Active Focus Tracks</h4>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">Manage Sector Tracks & Dynamic Tags</p>
+                    <h4 className="text-lg font-black text-ug-navy tracking-tight uppercase">Active Focus Tracks</h4>
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mt-0.5">Manage Sector Tracks & Dynamic Tags</p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2.5">
+                <div className="flex flex-wrap gap-2">
                   {sectorVector.map(tag => (
                     <span 
                       key={tag} 
-                      className="px-4 py-2 bg-ug-teal text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2"
+                      className="px-3 py-1.5 bg-ug-teal text-white rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5"
                     >
                       {tag}
                       <button 
                         type="button" 
                         onClick={() => setSectorVector(sectorVector.filter(t => t !== tag))}
-                        className="hover:scale-125 transition-transform"
+                        className="hover:scale-125 transition-transform font-bold"
                       >
                         &times;
                       </button>
@@ -4646,7 +4651,7 @@ const ProfileSettings: React.FC<{
                         }
                       }
                     }}
-                    className="flex-1 bg-gray-50/50 border-2 border-transparent rounded-xl py-4 px-6 font-bold text-ug-navy focus:bg-white focus:border-ug-teal outline-none text-xs shadow-inner"
+                    className="flex-1 bg-gray-50/50 border border-gray-200 rounded-xl py-3 px-4 font-bold text-ug-navy focus:bg-white focus:border-ug-teal outline-none text-xs shadow-inner"
                   />
                   <button 
                     type="button"
@@ -4656,7 +4661,7 @@ const ProfileSettings: React.FC<{
                         setNewTag('');
                       }
                     }}
-                    className="px-8 py-2 bg-ug-navy text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-ug-teal transition-colors focus:outline-none"
+                    className="px-5 py-2 bg-ug-navy text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-ug-teal transition-colors focus:outline-none"
                   >
                     Add Tag
                   </button>
@@ -4665,34 +4670,34 @@ const ProfileSettings: React.FC<{
             )}
 
             {/* Portfolio Links */}
-            <div className="space-y-8">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-ug-navy text-white rounded-2xl flex items-center justify-center shadow-2xl"><LinkIcon size={24} /></div>
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-ug-navy text-white rounded-xl flex items-center justify-center shadow-md shrink-0"><LinkIcon size={18} /></div>
                 <div>
-                  <h4 className="text-xl font-black text-ug-navy tracking-tight uppercase">Portfolio Slots</h4>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">External Research Links (Up to 4)</p>
+                  <h4 className="text-lg font-black text-ug-navy tracking-tight uppercase">Portfolio Slots</h4>
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mt-0.5">External Research Links (Up to 4)</p>
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                 {[
                   { label: "Main Portfolio Website", val: website, setter: setWebsite, placeholder: "https://yourwebsite.com" },
                   { label: "LinkedIn Profile", val: website2, setter: setWebsite2, placeholder: "https://linkedin.com/in/..." },
                   { label: "Research Archive Link", val: website3, setter: setWebsite3, placeholder: "Scholar or Project link" },
                   { label: "Extra Portfolio Slot", val: website4, setter: setWebsite4, placeholder: "Any other relevant link" },
                 ].map((input, idx) => (
-                  <div key={idx} className="space-y-3">
-                    <label className="text-[10px] font-black text-gray-500 tracking-widest ml-2">{input.label}</label>
+                  <div key={idx} className="space-y-2">
+                    <label className="text-[9px] font-black text-gray-500 tracking-widest ml-1">{input.label}</label>
                     <div className="relative group">
-                      <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-ug-teal transition-colors">
-                        <LinkIcon size={16} />
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-ug-teal transition-colors">
+                        <LinkIcon size={14} />
                       </div>
                       <input 
                         type="url" 
                         placeholder={input.placeholder}
                         value={input.val || ''} 
                         onChange={e => input.setter(e.target.value)} 
-                        className="w-full pl-16 pr-6 py-5 bg-gray-50/50 border-2 border-transparent rounded-[1.5rem] font-bold text-ug-navy focus:bg-white focus:border-ug-teal focus:ring-8 focus:ring-ug-teal/5 outline-none transition-all shadow-inner text-sm" 
+                        className="w-full pl-11 pr-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl font-bold text-ug-navy focus:bg-white focus:border-ug-teal focus:ring-4 focus:ring-ug-teal/5 outline-none transition-all shadow-inner text-xs" 
                       />
                     </div>
                   </div>
@@ -4700,38 +4705,38 @@ const ProfileSettings: React.FC<{
               </div>
             </div>
 
-            <div className="flex justify-end pt-8">
+            <div className="flex justify-end pt-4">
               <button 
                 type="submit" 
                 disabled={loading} 
-                className="group w-full md:w-auto bg-ug-navy text-white px-16 py-6 rounded-[1.5rem] font-black uppercase text-[12px] tracking-[0.3em] shadow-2xl hover:bg-ug-teal transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
+                className="group w-full sm:w-auto bg-ug-navy text-white px-8 py-3.5 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md hover:bg-ug-teal transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
               >
-                {loading ? <Loader2 className="animate-spin" size={24} /> : <Check size={24} className="group-hover:scale-125 transition-transform" />}
+                {loading ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} className="group-hover:scale-125 transition-transform" />}
                 Save My Profile
               </button>
             </div>
           </div>
         </div>
 
-        <div className="lg:col-span-4 space-y-10">
-          <div className="bg-ug-navy text-white p-10 md:p-12 rounded-[4rem] shadow-2xl relative overflow-hidden group/secure">
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bg-[#12073d] text-white p-5 md:p-6 rounded-[2rem] shadow-xl relative overflow-hidden group/secure">
             <div className="absolute -bottom-10 -right-10 opacity-5 group-hover/secure:opacity-10 transition-all duration-1000 rotate-12">
-              <ShieldCheck size={240} />
+              <ShieldCheck size={200} />
             </div>
             
-            <div className="relative z-10 space-y-10">
+            <div className="relative z-10 space-y-6">
               <div>
-                <h4 className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-2 flex items-center gap-2">
-                  <ShieldCheck size={14} /> Security Hub
+                <h4 className="text-[9px] font-black text-ug-teal uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                  <ShieldCheck size={12} /> Security Hub
                 </h4>
-                <h3 className="text-2xl font-black tracking-tight leading-tight uppercase">Privacy Controls</h3>
+                <h3 className="text-xl font-black tracking-tight uppercase">Privacy Controls</h3>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {isResettingPassword ? (
-                  <div className="p-6 bg-white/5 rounded-3xl border border-white/10 space-y-4 animate-fade-in relative z-20">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-ug-teal">Change Password</span>
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3.5 animate-fade-in relative z-20">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-ug-teal">Change Password</span>
                       <button 
                         type="button" 
                         onClick={() => {
@@ -4739,26 +4744,26 @@ const ProfileSettings: React.FC<{
                           setNewPassword('');
                           setConfirmPassword('');
                         }}
-                        className="text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white"
+                        className="text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white"
                       >
                         Cancel
                       </button>
                     </div>
                     
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <input 
                         type="password"
                         placeholder="New Password"
                         value={newPassword}
                         onChange={e => setNewPassword(e.target.value)}
-                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-xs text-white placeholder-white/30 focus:border-ug-teal/50 outline-none"
+                        className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-white/35 focus:border-ug-teal/50 outline-none"
                       />
                       <input 
                         type="password"
                         placeholder="Confirm Password"
                         value={confirmPassword}
                         onChange={e => setConfirmPassword(e.target.value)}
-                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-xs text-white placeholder-white/30 focus:border-ug-teal/50 outline-none"
+                        className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-white/35 focus:border-ug-teal/50 outline-none"
                       />
                     </div>
                     
@@ -4766,7 +4771,7 @@ const ProfileSettings: React.FC<{
                       type="button"
                       disabled={updatingPassword}
                       onClick={handleResetPassword}
-                      className="w-full bg-ug-teal hover:bg-white text-ug-navy py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest transition flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                      className="w-full bg-ug-teal hover:bg-white text-ug-navy py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50"
                     >
                       {updatingPassword ? 'Updating...' : 'Update Password'}
                     </button>
@@ -4775,57 +4780,57 @@ const ProfileSettings: React.FC<{
                   <button 
                     type="button" 
                     onClick={() => setIsResettingPassword(true)}
-                    className="w-full flex items-center justify-between p-6 bg-white/5 hover:bg-white/10 rounded-3xl border border-white/5 transition group text-left"
+                    className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition group text-left cursor-pointer"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="p-2.5 bg-ug-teal/10 text-ug-teal rounded-xl shadow-lg border border-ug-teal/20"><Lock size={18} /></div>
-                      <span className="text-[10px] font-black uppercase tracking-widest">Reset Password</span>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-[#1c0f56] text-ug-teal rounded-xl"><Lock size={16} /></div>
+                      <span className="text-[9px] font-black uppercase tracking-widest">Reset Password</span>
                     </div>
-                    <ChevronRight size={18} className="text-white/20 group-hover:text-ug-teal group-hover:translate-x-1 transition" />
+                    <ChevronRight size={14} className="text-white/20 group-hover:text-ug-teal group-hover:translate-x-0.5 transition" />
                   </button>
                 )}
                 
                 <button 
                   type="button" 
-                  className="w-full flex items-center justify-between p-6 bg-white/5 hover:bg-white/10 rounded-3xl border border-white/5 transition group text-left"
+                  className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition group text-left cursor-pointer"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="p-2.5 bg-blue-500/10 text-blue-400 rounded-xl shadow-lg border border-blue-500/20"><Eye size={18} /></div>
-                    <span className="text-[10px] font-black uppercase tracking-widest">Visibility Mode</span>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-[#1c0f56] text-blue-400 rounded-xl"><Eye size={16} /></div>
+                    <span className="text-[9px] font-black uppercase tracking-widest">Visibility Mode</span>
                   </div>
-                  <ChevronRight size={18} className="text-white/20 group-hover:text-blue-400 group-hover:translate-x-1 transition" />
+                  <ChevronRight size={14} className="text-white/20 group-hover:text-blue-400 group-hover:translate-x-0.5 transition" />
                 </button>
               </div>
 
-              <div className="bg-white/5 p-6 rounded-3xl border border-white/5 space-y-4">
-                 <p className="text-[10px] font-medium text-white/50 leading-relaxed italic">
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/5 space-y-3">
+                 <p className="text-[9px] font-medium text-white/50 leading-relaxed italic">
                    "Your data is used specifically for matchmaking and is never shared with third-party advertisers."
                  </p>
-                 <div className="flex items-center gap-3">
-                    <span className="w-2 h-2 bg-ug-success rounded-full animate-pulse"></span>
-                    <span className="text-[8px] font-black uppercase tracking-widest text-ug-success">Encrypted & Secure</span>
+                 <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-ug-teal rounded-full animate-pulse"></span>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-ug-teal">Encrypted & Secure</span>
                  </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm space-y-6">
-            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Account Management</h4>
-            <div className="space-y-2">
+          <div className="bg-white p-5 rounded-[1.5rem] border border-gray-100 shadow-sm space-y-4">
+            <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-1">Account Management</h4>
+            <div className="space-y-1">
               <button 
                 type="button" 
                 onClick={handleDownloadData}
-                className="w-full flex items-center justify-between p-5 hover:bg-gray-50 rounded-2xl transition group text-left border border-transparent hover:border-gray-100"
+                className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition group text-left border border-transparent hover:border-gray-100 cursor-pointer"
               >
-                <div className="flex items-center gap-4">
-                  <Download size={18} className="text-gray-300 group-hover:text-ug-navy transition" />
-                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Download Data</span>
+                <div className="flex items-center gap-3">
+                  <Download size={16} className="text-gray-300 group-hover:text-ug-navy transition" />
+                  <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Download Data</span>
                 </div>
               </button>
-              <button type="button" className="w-full flex items-center justify-between p-5 hover:bg-red-50 rounded-2xl transition group text-left border border-transparent hover:border-red-100">
-                <div className="flex items-center gap-4">
-                  <Trash2 size={18} className="text-gray-300 group-hover:text-red-500 transition" />
-                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest group-hover:text-red-600 transition">Delete Account</span>
+              <button type="button" className="w-full flex items-center justify-between p-3 hover:bg-red-50 rounded-xl transition group text-left border border-transparent hover:border-red-100 cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <Trash2 size={16} className="text-gray-300 group-hover:text-red-500 transition" />
+                  <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest group-hover:text-red-600 transition">Delete Account</span>
                 </div>
               </button>
             </div>
