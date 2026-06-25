@@ -215,7 +215,6 @@ app.post('/api/gemini/chat', authenticateUser, throttleLimit(30, 60 * 1000), asy
       httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
     });
 
-    const model = 'gemini-3.5-flash';
     const systemInstruction = `You are the Virtual Assistant for the University of Ghana (UG) Industry Hub.
 Your goal is to help researchers, students, and industry partners connect.
 You know about:
@@ -225,13 +224,28 @@ You know about:
 
 Be professional, academic yet accessible, and helpful. Keep answers concise (under 150 words) unless asked for detail.`;
 
-    const chat = ai.chats.create({
-      model,
-      config: { systemInstruction },
-      history
-    });
+    let result;
+    let chatError;
+    const chatModels = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+    for (const chatModel of chatModels) {
+      try {
+        const chat = ai.chats.create({
+          model: chatModel,
+          config: { systemInstruction },
+          history
+        });
+        result = await chat.sendMessage({ message });
+        break;
+      } catch (err: any) {
+        chatError = err;
+        console.warn(`Chat model ${chatModel} failed:`, err?.message || err);
+      }
+    }
 
-    const result = await chat.sendMessage({ message });
+    if (!result) {
+      throw chatError || new Error("All chat models failed.");
+    }
+
     res.json({ text: result.text || '' });
   } catch (error: any) {
     console.error('Server Gemini error:', error);
@@ -387,12 +401,23 @@ Provide semantic_summary (2-3 sentences) summarizing the profile, and embedding_
         apiKey: geminiKey,
         httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
       });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: `${systemPrompt}\n\n${userPrompt}`,
-        config: { responseMimeType: 'application/json' }
-      });
-      const text = response.text;
+      let response;
+      let extractError;
+      const extractModels = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+      for (const modelName of extractModels) {
+        try {
+          response = await ai.models.generateContent({
+            model: modelName,
+            contents: `${systemPrompt}\n\n${userPrompt}`,
+            config: { responseMimeType: 'application/json' }
+          });
+          if (response && response.text) break;
+        } catch (err: any) {
+          extractError = err;
+          console.warn(`Extract model ${modelName} failed:`, err?.message || err);
+        }
+      }
+      const text = response?.text;
       if (text) {
         return res.json({ profile: JSON.parse(text.trim()) });
       }
@@ -559,9 +584,14 @@ app.post('/api/ai-scout/sync', authenticateUser, throttleLimit(5, 60 * 1000), as
         const sitesPrompt = UG_SOURCES.join(", ");
         const globalPrompt = GLOBAL_ACCREDITED.join(", ");
 
-        const researchResponse = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
-          contents: `Act as a Lead Intelligence Scout for the University of Ghana.
+        let researchResponse;
+        let scoutError;
+        const scoutModels = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+        for (const modelName of scoutModels) {
+          try {
+            researchResponse = await ai.models.generateContent({
+              model: modelName,
+              contents: `Act as a Lead Intelligence Scout for the University of Ghana.
 Find 4 RECENT breakthroughs in Medicines, Vaccines, or Diagnostics.
 
 For each news item, you MUST write a highly detailed 'visual_prompt'. 
@@ -571,25 +601,35 @@ Sources: ${sitesPrompt}
 Global context: ${globalPrompt}
 
 Output: JSON array of objects (title, category, summary, source_name, external_url, visual_prompt).`,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING },
-                  category: { type: Type.STRING },
-                  summary: { type: Type.STRING },
-                  source_name: { type: Type.STRING },
-                  external_url: { type: Type.STRING },
-                  visual_prompt: { type: Type.STRING }
-                },
-                required: ["title", "category", "summary", "source_name", "external_url", "visual_prompt"]
+              config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      title: { type: Type.STRING },
+                      category: { type: Type.STRING },
+                      summary: { type: Type.STRING },
+                      source_name: { type: Type.STRING },
+                      external_url: { type: Type.STRING },
+                      visual_prompt: { type: Type.STRING }
+                    },
+                    required: ["title", "category", "summary", "source_name", "external_url", "visual_prompt"]
+                  }
+                }
               }
-            }
+            });
+            if (researchResponse && researchResponse.text) break;
+          } catch (err: any) {
+            scoutError = err;
+            console.warn(`Scout news sync model ${modelName} failed:`, err?.message || err);
           }
-        });
+        }
+
+        if (!researchResponse || !researchResponse.text) {
+          throw scoutError || new Error("Failed to fetch scout news from all models.");
+        }
 
         if (researchResponse.text) {
           const rawScoutedData = JSON.parse(researchResponse.text.trim());
@@ -600,20 +640,31 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
             console.log(`Server Scout: generating bespoke illustration: "${item.title}"`);
             
             try {
-              const imageResponse = await ai.models.generateContent({
-                model: 'gemini-2.5-flash-image',
-                contents: {
-                  parts: [{ 
-                    text: `Professional, cinematic, high-quality medical illustration for: ${item.visual_prompt}. Style: Hyper-realistic 3D render, clean white laboratory background, blue and teal lighting, shallow depth of field, 8k resolution.` 
-                  }]
-                },
-                config: {
-                  imageConfig: { aspectRatio: "16:9" }
+              let imageResponse;
+              let imgGenError;
+              const imageModels = ['gemini-2.5-flash-image', 'gemini-3.1-flash-image'];
+              for (const imgModel of imageModels) {
+                try {
+                  imageResponse = await ai.models.generateContent({
+                    model: imgModel,
+                    contents: {
+                      parts: [{ 
+                        text: `Professional, cinematic, high-quality medical illustration for: ${item.visual_prompt}. Style: Hyper-realistic 3D render, clean white laboratory background, blue and teal lighting, shallow depth of field, 8k resolution.` 
+                      }]
+                    },
+                    config: {
+                      imageConfig: { aspectRatio: "16:9" }
+                    }
+                  });
+                  if (imageResponse) break;
+                } catch (err: any) {
+                  imgGenError = err;
+                  console.warn(`Image generation model ${imgModel} failed:`, err?.message || err);
                 }
-              });
+              }
 
               let base64Image = '';
-              if (imageResponse.candidates?.[0]?.content?.parts) {
+              if (imageResponse && imageResponse.candidates?.[0]?.content?.parts) {
                 for (const part of imageResponse.candidates[0].content.parts) {
                   if (part.inlineData) {
                     base64Image = `data:image/png;base64,${part.inlineData.data}`;
@@ -792,12 +843,23 @@ app.post('/api/ai-match', authenticateUser, throttleLimit(20, 60 * 1000), async 
         apiKey: geminiKey,
         httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
       });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: prompt,
-        config: { responseMimeType: 'application/json' }
-      });
-      const text = response.text;
+      let response;
+      let rankError;
+      const rankModels = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+      for (const modelName of rankModels) {
+        try {
+          response = await ai.models.generateContent({
+            model: modelName,
+            contents: prompt,
+            config: { responseMimeType: 'application/json' }
+          });
+          if (response && response.text) break;
+        } catch (err: any) {
+          rankError = err;
+          console.warn(`Rank model ${modelName} failed:`, err?.message || err);
+        }
+      }
+      const text = response?.text;
       if (text) {
         return res.json({ rankings: JSON.parse(text.trim()).rankings });
       }

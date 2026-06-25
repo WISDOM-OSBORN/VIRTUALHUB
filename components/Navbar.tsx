@@ -72,26 +72,16 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
              >
                 {isAuthenticated ? <User size={18} /> : <LogIn size={18} />}
              </div>
-
-             {isAuthenticated && (
-                <button 
-                  onClick={onLogout}
-                  className="text-gray-400 hover:text-white transition"
-                  title="Logout"
-                >
-                  <LogOut size={20} />
-                </button>
-             )}
           </div>
 
           {/* Mobile menu progress & action elements */}
-          <div className="-mr-2 flex md:hidden items-center gap-2">
+          <div className="-mr-2 flex md:hidden items-center gap-3">
              {isAuthenticated && (
                <NotificationCenter user={user} onSelectMessage={onSelectMessage} />
              )}
              <button
                onClick={() => setIsOpen(!isOpen)}
-               className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-white/10 focus:outline-none transition-colors"
+               className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-white/10 focus:outline-none transition-colors cursor-pointer"
              >
                {isOpen ? <X size={24} /> : <Menu size={24} />}
              </button>
@@ -101,7 +91,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
 
       {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden">
+        <div className="md:hidden animate-fade-in">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-ug-navy border-t border-gray-700">
             {navLinks.map((link) => (
               <Link
@@ -136,7 +126,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
                {isAuthenticated && (
                  <button 
                     onClick={() => { setIsOpen(false); onLogout(); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-gray-300 hover:text-white"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-red-400 hover:text-red-300 hover:bg-white/5 rounded-md font-bold transition-colors"
                  >
                     <LogOut size={18} />
                     <span>Logout</span>

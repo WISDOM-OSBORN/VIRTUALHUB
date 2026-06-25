@@ -660,8 +660,30 @@ const ProjectFormModal: React.FC<{
   );
 };
 
+// --- HELPER TO PARSE ATTACHMENTS FROM MESSAGE TEXT ---
+const parseMessageWithAttachments = (fullMessage: string) => {
+  if (!fullMessage) return { textContent: '', attachments: [] };
+  const parts = fullMessage.split('\n\n---attachments_meta---');
+  const textContent = parts[0];
+  let attachments: {name: string, url: string, type: 'file' | 'image'}[] = [];
+  if (parts.length > 1) {
+    try {
+      attachments = JSON.parse(parts[1]);
+    } catch (e) {
+      console.error("Error parsing attachments JSON:", e);
+    }
+  }
+  return { textContent, attachments };
+};
+
 // --- MESSAGES SECTION (GMAIL STYLE) ---
-const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | null }> = ({ user, initialThreadId }) => {
+interface MessagesSectionProps {
+  user: User | null;
+  initialThreadId?: string | null;
+  onResetInitialThread?: () => void;
+}
+
+const MessagesSection: React.FC<MessagesSectionProps> = ({ user, initialThreadId, onResetInitialThread }) => {
   const [threads, setThreads] = useState<any[][]>([]);
   const [selectedThread, setSelectedThread] = useState<any[] | null>(null);
   const [reply, setReply] = useState('');
@@ -677,6 +699,53 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
   const [isMobileListOpen, setIsMobileListOpen] = useState(true);
   const { showToast } = useToast();
 
+  // Attachment states for compose and reply views
+  const [replyAttachments, setReplyAttachments] = useState<{name: string, url: string, type: 'file' | 'image'}[]>([]);
+  const [composeAttachments, setComposeAttachments] = useState<{name: string, url: string, type: 'file' | 'image'}[]>([]);
+  const [uploadingReply, setUploadingReply] = useState(false);
+  const [uploadingCompose, setUploadingCompose] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, context: 'reply' | 'compose', type: 'file' | 'image') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (context === 'reply') {
+      setUploadingReply(true);
+    } else {
+      setUploadingCompose(true);
+    }
+
+    try {
+      showToast(`Uploading ${file.name}...`, "info");
+      const url = await StorageService.uploadFile(file, 'projects');
+      const newAttachment = { name: file.name, url, type };
+      
+      if (context === 'reply') {
+        setReplyAttachments(prev => [...prev, newAttachment]);
+      } else {
+        setComposeAttachments(prev => [...prev, newAttachment]);
+      }
+      showToast("File uploaded successfully!", "success");
+    } catch (error: any) {
+      showToast(error.message || "Failed to upload file", "error");
+    } finally {
+      if (context === 'reply') {
+        setUploadingReply(false);
+      } else {
+        setUploadingCompose(false);
+      }
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveAttachment = (index: number, context: 'reply' | 'compose') => {
+    if (context === 'reply') {
+      setReplyAttachments(prev => prev.filter((_, i) => i !== index));
+    } else {
+      setComposeAttachments(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
   useEffect(() => {
     if (selectedThread) {
       setIsMobileListOpen(false);
@@ -687,25 +756,53 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
 
   useEffect(() => {
     if (user?.id) {
-      StorageService.getConversations(user.id).then(data => {
+      StorageService.getConversations(user.id).then(async data => {
         setThreads(data);
         if (initialThreadId && initialThreadId !== 'all') {
-          const thread = data.find(t => t[0].project_id === initialThreadId);
-          if (thread) setSelectedThread(thread);
+          const thread = data.find(t => 
+            t[0].project_id === initialThreadId || 
+            t[0].sender_id === initialThreadId || 
+            t[0].recipient_id === initialThreadId
+          );
+          if (thread) {
+            setSelectedThread(thread);
+            setIsComposing(false);
+          } else {
+            try {
+              const partnerProfile = await StorageService.getProfile(initialThreadId);
+              if (partnerProfile) {
+                setSelectedRecipient(partnerProfile);
+                setComposeRecipient(partnerProfile.name || partnerProfile.email);
+                setComposeSubject(`Strategic Inquiry from ${user.name}`);
+                setComposeMessage(`Hello ${partnerProfile.name},\n\nI found your profile in the Academic Hub Matchmaker with high alignment, and would love to connect to discuss potential collaboration opportunities.`);
+                setIsComposing(true);
+                setSelectedThread(null);
+              }
+            } catch (err) {
+              console.warn("Could not load direct partner profile for messaging:", err);
+            }
+          }
+          if (onResetInitialThread) onResetInitialThread();
         }
       });
     }
   }, [user?.id, initialThreadId]);
 
   const handleSendReply = async () => {
-    if (!reply.trim() || !selectedThread || !user) return;
+    if ((!reply.trim() && replyAttachments.length === 0) || !selectedThread || !user) return;
     setSending(true);
     try {
       const firstMsg = selectedThread[0];
       const recipientId = firstMsg.sender_id === user.id ? firstMsg.recipient_id : firstMsg.sender_id;
       
-      await StorageService.submitEOI(firstMsg.project_id, user.name, reply, recipientId);
+      let finalMessage = reply;
+      if (replyAttachments.length > 0) {
+        finalMessage += `\n\n---attachments_meta---${JSON.stringify(replyAttachments)}`;
+      }
+
+      await StorageService.submitEOI(firstMsg.project_id, user.name, finalMessage, recipientId);
       setReply('');
+      setReplyAttachments([]);
       showToast("Message Sent", "success");
       const updated = await StorageService.getConversations(user.id);
       setThreads(updated);
@@ -827,19 +924,25 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
   };
 
   const handleSendDirectMessage = async () => {
-    if (!selectedRecipient || !composeMessage.trim() || !user) {
+    if (!selectedRecipient || (!composeMessage.trim() && composeAttachments.length === 0) || !user) {
       showToast("Please select a recipient and enter a message", "error");
       return;
     }
     setSending(true);
     try {
-      await StorageService.submitEOI(null, user.name, composeMessage, selectedRecipient.id);
+      let finalMessage = composeMessage;
+      if (composeAttachments.length > 0) {
+        finalMessage += `\n\n---attachments_meta---${JSON.stringify(composeAttachments)}`;
+      }
+
+      await StorageService.submitEOI(null, user.name, finalMessage, selectedRecipient.id);
       showToast("Message Sent Successfully", "success");
       setIsComposing(false);
       setComposeMessage('');
       setComposeSubject('');
       setComposeRecipient('');
       setSelectedRecipient(null);
+      setComposeAttachments([]);
       
       const updated = await StorageService.getConversations(user.id);
       setThreads(updated);
@@ -942,7 +1045,7 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
                                       {lastMsg.projects?.title || 'General Inquiry'}
                                     </h4>
                                     <p className="text-[10px] text-gray-400 line-clamp-1 italic">
-                                      "{lastMsg.message}"
+                                      "{parseMessageWithAttachments(lastMsg.message).textContent}"
                                     </p>
                                   </div>
                                   <ChevronRight size={14} className="text-gray-300" />
@@ -975,15 +1078,71 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-gray-50/20">
-              {[...selectedThread].reverse().map((msg, i) => (
-                <div key={i} className={`flex items-start gap-3 ${msg.sender_id === user?.id ? 'flex-row-reverse' : ''}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 shadow-sm ${msg.sender_id === user?.id ? 'bg-ug-navy text-white' : 'bg-white border border-gray-100 text-ug-navy'}`}>
-                    {msg.user_name.charAt(0)}
-                  </div>
-                  <div className={`max-w-[80%] p-4 rounded-2xl text-[11px] leading-relaxed shadow-sm ${
-                    msg.sender_id === user?.id ? 'bg-[#0092B0] text-white rounded-tr-none' : 'bg-white text-gray-700 rounded-tl-none border border-gray-100'
-                  }`}>
-                    <div className="whitespace-pre-wrap">{msg.message}</div>
+              {[...selectedThread].reverse().map((msg, i) => {
+                const { textContent, attachments } = parseMessageWithAttachments(msg.message);
+                return (
+                  <div key={i} className={`flex items-start gap-3 ${msg.sender_id === user?.id ? 'flex-row-reverse' : ''}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 shadow-sm ${msg.sender_id === user?.id ? 'bg-ug-navy text-white' : 'bg-white border border-gray-100 text-ug-navy'}`}>
+                      {msg.user_name.charAt(0)}
+                    </div>
+                    <div className={`max-w-[80%] p-4 rounded-2xl text-[11px] leading-relaxed shadow-sm ${
+                      msg.sender_id === user?.id ? 'bg-[#0092B0] text-white rounded-tr-none' : 'bg-white text-gray-700 rounded-tl-none border border-gray-100'
+                    }`}>
+                      <div className="whitespace-pre-wrap">{textContent}</div>
+
+                      {attachments.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-gray-100/50">
+                          {attachments.map((att, attIdx) => {
+                            const isImg = att.type === 'image';
+                            return (
+                              <div key={attIdx} className="flex flex-col gap-1.5 max-w-[200px]">
+                                {isImg ? (
+                                  <div className="relative group border border-gray-150 rounded-xl overflow-hidden bg-gray-50/50 shadow-sm max-w-[150px]">
+                                    <img 
+                                      src={att.url} 
+                                      alt={att.name} 
+                                      className="max-h-[100px] w-auto object-cover" 
+                                      referrerPolicy="no-referrer"
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                                      <a 
+                                        href={att.url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                        className="p-1 bg-white/25 hover:bg-white/45 text-white rounded-lg transition"
+                                        title="Open"
+                                      >
+                                        <Eye size={12} />
+                                      </a>
+                                      <a 
+                                        href={att.url} 
+                                        download={att.name} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                        className="p-1 bg-white/25 hover:bg-white/45 text-white rounded-lg transition"
+                                        title="Download"
+                                      >
+                                        <Download size={12} />
+                                      </a>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <a
+                                    href={att.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl transition text-[10px] font-semibold text-gray-700 shadow-sm truncate"
+                                  >
+                                    <File size={12} className="text-blue-500 shrink-0" />
+                                    <span className="truncate max-w-[100px]">{att.name}</span>
+                                    <Download size={10} className="text-gray-400 shrink-0" />
+                                  </a>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
 
                     {msg.message.includes('🔐 Technical Disclosure Request') && (
                       <div className="mt-4 pt-3 border-t border-gray-100 space-y-3">
@@ -1025,7 +1184,7 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
 
             <div className="p-4 border-t border-gray-100 bg-white">
@@ -1038,10 +1197,69 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
                     className="w-full bg-transparent p-2 text-xs focus:outline-none resize-none min-h-[40px] max-h-[120px]"
                     rows={1}
                   />
+
+                  {/* Attached Files Preview */}
+                  {replyAttachments.length > 0 && (
+                    <div className="px-2 py-1.5 flex flex-wrap gap-1.5 border-t border-gray-100/30">
+                      {replyAttachments.map((att, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5 pl-2 pr-1 py-0.5 bg-white border border-gray-200 rounded-lg text-[10px] font-medium text-gray-700 shadow-sm animate-fade-in">
+                          {att.type === 'image' ? <ImageIcon size={10} className="text-emerald-500 shrink-0" /> : <File size={10} className="text-blue-500 shrink-0" />}
+                          <span className="truncate max-w-[80px]">{att.name}</span>
+                          <button 
+                            onClick={() => handleRemoveAttachment(idx, 'reply')} 
+                            className="p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-red-500 transition"
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {uploadingReply && (
+                    <div className="px-2 py-1 flex items-center gap-1.5 text-[9px] text-blue-600 font-semibold animate-pulse border-t border-gray-100/30">
+                      <Loader2 size={10} className="animate-spin" />
+                      <span>Uploading...</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between border-t border-gray-150/10 pt-1.5 px-1 bg-transparent shrink-0">
+                    <div className="flex items-center gap-1">
+                      <input 
+                        type="file" 
+                        id="mobile-reply-file-input"
+                        className="hidden" 
+                        onChange={(e) => handleFileChange(e, 'reply', 'file')}
+                      />
+                      <input 
+                        type="file" 
+                        id="mobile-reply-image-input"
+                        accept="image/*"
+                        className="hidden" 
+                        onChange={(e) => handleFileChange(e, 'reply', 'image')}
+                      />
+                      <button 
+                        onClick={() => document.getElementById('mobile-reply-file-input')?.click()}
+                        disabled={uploadingReply}
+                        className="p-1 hover:bg-gray-200 rounded-lg text-gray-500 transition disabled:opacity-55"
+                        title="Attach file"
+                      >
+                        <Paperclip size={14} />
+                      </button>
+                      <button 
+                        onClick={() => document.getElementById('mobile-reply-image-input')?.click()}
+                        disabled={uploadingReply}
+                        className="p-1 hover:bg-gray-200 rounded-lg text-gray-500 transition disabled:opacity-55"
+                        title="Attach image"
+                      >
+                        <ImageIcon size={14} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <button 
                   onClick={handleSendReply}
-                  disabled={sending || !reply.trim()}
+                  disabled={sending || (uploadingReply) || (!reply.trim() && replyAttachments.length === 0)}
                   className="bg-blue-600 text-white p-3 rounded-full shadow-lg active:scale-90 transition disabled:opacity-50 h-10 w-10 flex items-center justify-center"
                 >
                   {sending ? <Loader2 size={18} className="animate-spin" /> : <SendIcon size={18} />}
@@ -1140,24 +1358,82 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8 custom-scrollbar bg-gray-50/20">
-              {[...selectedThread].reverse().map((msg, i) => (
-                <div key={i} className="group animate-fade-in">
-                  <div className="flex items-start gap-3 md:gap-4">
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-full bg-ug-navy/5 flex items-center justify-center text-ug-navy shrink-0 shadow-sm">
-                      <UserIcon size={16} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-col md:flex-row md:items-center justify-between mb-1 gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-gray-900 text-sm">{msg.user_name}</span>
-                          <span className="text-[10px] text-gray-400 font-medium hidden sm:inline">&lt;{msg.sender_id.substring(0, 8)}...&gt;</span>
-                        </div>
-                        <span className="text-[10px] text-gray-400">
-                          {new Date(msg.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
-                        </span>
+              {[...selectedThread].reverse().map((msg, i) => {
+                const { textContent, attachments } = parseMessageWithAttachments(msg.message);
+                return (
+                  <div key={i} className="group animate-fade-in">
+                    <div className="flex items-start gap-3 md:gap-4">
+                      <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-full bg-ug-navy/5 flex items-center justify-center text-ug-navy shrink-0 shadow-sm">
+                        <UserIcon size={16} />
                       </div>
-                      <div className="text-xs md:text-sm text-gray-700 leading-relaxed whitespace-pre-wrap p-3 md:p-0 bg-white md:bg-transparent rounded-2xl md:rounded-none shadow-sm md:shadow-none border border-gray-100 md:border-none">
-                        <div>{msg.message}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-1 gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-gray-900 text-sm">{msg.user_name}</span>
+                            {msg.user_name !== 'UG Industry Hub Admin' && (
+                              <span className="text-[10px] text-gray-400 font-medium hidden sm:inline">&lt;{msg.sender_id.substring(0, 8)}...&gt;</span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-gray-400">
+                            {new Date(msg.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                          </span>
+                        </div>
+                        <div className="text-xs md:text-sm text-gray-700 leading-relaxed whitespace-pre-wrap p-3 md:p-0 bg-white md:bg-transparent rounded-2xl md:rounded-none shadow-sm md:shadow-none border border-gray-100 md:border-none">
+                          <div>{textContent}</div>
+
+                          {attachments.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2.5 pt-2 border-t border-gray-100/50">
+                              {attachments.map((att, attIdx) => {
+                                const isImg = att.type === 'image';
+                                return (
+                                  <div key={attIdx} className="flex flex-col gap-1.5 max-w-[280px]">
+                                    {isImg ? (
+                                      <div className="relative group border border-gray-100 rounded-xl overflow-hidden bg-gray-50/50 shadow-sm max-w-[200px]">
+                                        <img 
+                                          src={att.url} 
+                                          alt={att.name} 
+                                          className="max-h-[140px] w-auto object-cover" 
+                                          referrerPolicy="no-referrer"
+                                        />
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                          <a 
+                                            href={att.url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            className="p-1.5 bg-white/20 hover:bg-white/45 text-white rounded-lg transition"
+                                            title="Open image"
+                                          >
+                                            <Eye size={16} />
+                                          </a>
+                                          <a 
+                                            href={att.url} 
+                                            download={att.name} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            className="p-1.5 bg-white/20 hover:bg-white/45 text-white rounded-lg transition"
+                                            title="Download image"
+                                          >
+                                            <Download size={16} />
+                                          </a>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <a
+                                        href={att.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl transition text-xs font-semibold text-gray-700 shadow-sm hover:shadow truncate"
+                                      >
+                                        <File size={16} className="text-blue-500 shrink-0" />
+                                        <span className="truncate max-w-[150px]">{att.name}</span>
+                                        <Download size={14} className="text-gray-400 shrink-0 ml-1" />
+                                      </a>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
 
                         {msg.message.includes('🔐 Technical Disclosure Request') && (
                           <div className="mt-4 pt-3 border-t border-gray-100 space-y-3 max-w-md">
@@ -1198,7 +1474,7 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
 
             {/* Reply Area */}
@@ -1210,14 +1486,66 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
                   placeholder="Type your reply here..."
                   className="w-full p-4 text-xs md:text-sm focus:outline-none resize-none min-h-[80px] md:min-h-[100px]"
                 />
+                {/* Attached Files Preview */}
+                {replyAttachments.length > 0 && (
+                  <div className="px-4 py-2.5 bg-gray-50/50 border-t border-gray-100 flex flex-wrap gap-2">
+                    {replyAttachments.map((att, idx) => (
+                      <div key={idx} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shadow-sm animate-fade-in">
+                        {att.type === 'image' ? <ImageIcon size={14} className="text-emerald-500 shrink-0" /> : <File size={14} className="text-blue-500 shrink-0" />}
+                        <span className="truncate max-w-[120px]">{att.name}</span>
+                        <button 
+                          onClick={() => handleRemoveAttachment(idx, 'reply')} 
+                          className="p-0.5 hover:bg-gray-150 rounded text-gray-400 hover:text-red-500 transition ml-1"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {uploadingReply && (
+                  <div className="px-4 py-2 bg-blue-50 border-t border-gray-100 flex items-center gap-2 text-xs text-blue-600 font-semibold animate-pulse">
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Uploading attachment...</span>
+                  </div>
+                )}
+
                 <div className="px-4 py-3 border-t border-gray-50 flex items-center justify-between bg-gray-50/50">
                   <div className="flex items-center gap-1 md:gap-2">
-                    <button className="p-2 hover:bg-gray-200 rounded-lg text-gray-500 transition"><Paperclip size={18} /></button>
-                    <button className="p-2 hover:bg-gray-200 rounded-lg text-gray-500 transition"><ImageIcon size={18} /></button>
+                    <input 
+                      type="file" 
+                      id="desktop-reply-file-input"
+                      className="hidden" 
+                      onChange={(e) => handleFileChange(e, 'reply', 'file')}
+                    />
+                    <input 
+                      type="file" 
+                      id="desktop-reply-image-input"
+                      accept="image/*"
+                      className="hidden" 
+                      onChange={(e) => handleFileChange(e, 'reply', 'image')}
+                    />
+                    <button 
+                      onClick={() => document.getElementById('desktop-reply-file-input')?.click()}
+                      disabled={uploadingReply}
+                      className="p-2 hover:bg-gray-200 rounded-lg text-gray-500 transition disabled:opacity-55"
+                      title="Attach file"
+                    >
+                      <Paperclip size={18} />
+                    </button>
+                    <button 
+                      onClick={() => document.getElementById('desktop-reply-image-input')?.click()}
+                      disabled={uploadingReply}
+                      className="p-2 hover:bg-gray-200 rounded-lg text-gray-500 transition disabled:opacity-55"
+                      title="Attach image"
+                    >
+                      <ImageIcon size={18} />
+                    </button>
                   </div>
                   <button 
                     onClick={handleSendReply}
-                    disabled={sending || !reply.trim()}
+                    disabled={sending || (uploadingReply) || (!reply.trim() && replyAttachments.length === 0)}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-5 md:px-6 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 transition-all disabled:opacity-50"
                   >
                     {sending ? <Loader2 size={16} className="animate-spin" /> : <><SendIcon size={16} /> Send</>}
@@ -1270,7 +1598,7 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
                           </span>
                           <span className="text-gray-400 text-xs shrink-0">•</span>
                           <span className="text-gray-500 text-xs truncate opacity-70">
-                            {lastMsg.message}
+                            {parseMessageWithAttachments(lastMsg.message).textContent}
                           </span>
                         </div>
                       </div>
@@ -1352,29 +1680,81 @@ const MessagesSection: React.FC<{ user: User | null; initialThreadId?: string | 
               />
             </div>
 
-            <div className="flex-1 min-h-[200px]">
+            <div className="flex-1 min-h-[200px] flex flex-col">
               <label className="text-[10px] font-black text-gray-400 tracking-widest block mb-2">Message</label>
               <textarea 
                 placeholder="Share your thoughts or research proposal..." 
                 value={composeMessage}
                 onChange={(e) => setComposeMessage(e.target.value)}
-                className="w-full h-full min-h-[200px] bg-gray-50 border-2 border-gray-100 rounded-2xl p-6 focus:bg-white focus:border-blue-500 outline-none transition-all text-sm font-medium resize-none shadow-inner" 
+                className="w-full flex-1 min-h-[160px] bg-gray-50 border-2 border-gray-100 rounded-2xl p-6 focus:bg-white focus:border-blue-500 outline-none transition-all text-sm font-medium resize-none shadow-inner" 
               />
             </div>
+
+            {/* Attached Files Preview */}
+            {composeAttachments.length > 0 && (
+              <div className="flex flex-wrap gap-2.5 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                {composeAttachments.map((att, idx) => (
+                  <div key={idx} className="flex items-center gap-2 pl-3 pr-2 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 shadow-sm animate-fade-in">
+                    {att.type === 'image' ? <ImageIcon size={14} className="text-emerald-500 shrink-0" /> : <File size={14} className="text-blue-500 shrink-0" />}
+                    <span className="truncate max-w-[140px]">{att.name}</span>
+                    <button 
+                      onClick={() => handleRemoveAttachment(idx, 'compose')} 
+                      className="p-1 hover:bg-gray-150 rounded text-gray-400 hover:text-red-500 transition ml-1"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {uploadingCompose && (
+              <div className="flex items-center gap-2.5 p-3 bg-blue-50 text-blue-600 rounded-2xl text-xs font-bold animate-pulse">
+                <Loader2 size={16} className="animate-spin" />
+                <span>Uploading attachment...</span>
+              </div>
+            )}
           </div>
-          <div className="p-6 md:p-8 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6 bg-white sticky bottom-0">
+          <div className="p-6 md:p-8 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6 bg-white sticky bottom-0 shrink-0">
             <button 
               onClick={handleSendDirectMessage}
-              disabled={sending || !selectedRecipient || !composeMessage.trim()}
-              className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-10 py-5 rounded-[1.5rem] font-black text-[12px] uppercase tracking-[0.2em] transition-all shadow-[0_10px_30px_-10px_rgba(37,99,235,0.4)] disabled:opacity-50 active:scale-95 flex items-center justify-center gap-3"
+              disabled={sending || uploadingCompose || !selectedRecipient || (!composeMessage.trim() && composeAttachments.length === 0)}
+              className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-10 py-5 rounded-[1.5rem] font-black text-[12px] uppercase tracking-[0.2em] transition-all shadow-[0_10px_30px_-10px_rgba(37,99,235,0.4)] disabled:opacity-50 active:scale-95 flex items-center justify-center gap-3 cursor-pointer"
             >
               {sending ? <Loader2 size={18} className="animate-spin" /> : <><SendIcon size={18} /> Transmit Message</>}
             </button>
             <div className="flex items-center gap-6 text-gray-300">
-              <button className="hover:text-blue-600 transition-colors"><Paperclip size={24} /></button>
-              <button className="hover:text-blue-600 transition-colors"><ImageIcon size={24} /></button>
+              <input 
+                type="file" 
+                id="compose-file-input"
+                className="hidden" 
+                onChange={(e) => handleFileChange(e, 'compose', 'file')}
+              />
+              <input 
+                type="file" 
+                id="compose-image-input"
+                accept="image/*"
+                className="hidden" 
+                onChange={(e) => handleFileChange(e, 'compose', 'image')}
+              />
+              <button 
+                onClick={() => document.getElementById('compose-file-input')?.click()}
+                disabled={uploadingCompose}
+                className="hover:text-blue-600 transition-colors disabled:opacity-50 cursor-pointer"
+                title="Attach file"
+              >
+                <Paperclip size={24} />
+              </button>
+              <button 
+                onClick={() => document.getElementById('compose-image-input')?.click()}
+                disabled={uploadingCompose}
+                className="hover:text-blue-600 transition-colors disabled:opacity-50 cursor-pointer"
+                title="Attach image"
+              >
+                <ImageIcon size={24} />
+              </button>
               <div className="w-px h-6 bg-gray-100 mx-2"></div>
-              <button onClick={() => setIsComposing(false)} className="hover:text-red-500 transition-colors"><Trash size={24} /></button>
+              <button onClick={() => setIsComposing(false)} className="hover:text-red-500 transition-colors cursor-pointer"><Trash size={24} /></button>
             </div>
           </div>
         </div>
@@ -1401,6 +1781,7 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [localInitialThreadId, setLocalInitialThreadId] = useState<string | null>(null);
 
   // Synchronize URL search params with active tab state
   useEffect(() => {
@@ -1431,10 +1812,27 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
 
   useEffect(() => {
     setLocalUser(user);
-    if (user?.id) {
-       StorageService.getUnreadCount(user.id).then(setInternalUnread);
+    const userId = user?.id;
+    if (userId) {
+       StorageService.getUnreadCount(userId).then(setInternalUnread);
     }
   }, [user]);
+
+  useEffect(() => {
+    const userId = localUser?.id || user?.id;
+    if (userId) {
+       StorageService.getUnreadCount(userId).then(setInternalUnread);
+    }
+  }, [activeTab, localUser?.id, user?.id]);
+
+  useEffect(() => {
+    const userId = localUser?.id || user?.id;
+    if (!userId) return;
+    const interval = setInterval(() => {
+       StorageService.getUnreadCount(userId).then(setInternalUnread);
+    }, 12000);
+    return () => clearInterval(interval);
+  }, [localUser?.id, user?.id]);
 
   const [internalUnread, setInternalUnread] = useState(0);
 
@@ -1479,41 +1877,57 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
       />
       
       <div className="flex-1 flex flex-col min-w-0 relative h-full overflow-hidden">
-        <header className="bg-ug-navy text-white flex items-center justify-between px-4 sm:px-8 py-5 shrink-0 shadow-2xl z-50">
-          <nav className="flex items-center gap-6 lg:gap-10 ml-0 lg:ml-8">
+        <header className="bg-ug-navy text-white flex items-center justify-between px-3 sm:px-8 py-3.5 sm:py-5 shrink-0 shadow-2xl z-50">
+          <nav className="flex items-center gap-2.5 xs:gap-4 sm:gap-6 lg:gap-10 ml-0 lg:ml-8">
              {role !== UserRole.Admin && ['Home', 'Projects', 'Products', 'News'].map(link => (
                <button 
                  key={link} 
                  onClick={() => navigate(link === 'Home' ? '/' : `/${link.toLowerCase()}`)}
-                 className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] lg:tracking-[0.25em] hover:text-ug-teal transition-all cursor-pointer opacity-80 hover:opacity-100"
+                 className="text-[8px] xs:text-[9px] lg:text-[10px] font-black uppercase tracking-[0.05em] xs:tracking-[0.1em] lg:tracking-[0.25em] hover:text-ug-teal transition-all cursor-pointer opacity-80 hover:opacity-100"
                >
                  {link}
                </button>
              ))}
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-6">
+          {(localUser?.name || user?.name) && (
+            <div className="hidden md:flex items-center gap-2.5 px-4 py-2 bg-white/5 rounded-full border border-white/10 text-xs shadow-inner">
+              <span className="font-light text-white/50">Welcome,</span>
+              <span className="font-extrabold text-ug-teal">{(localUser?.name || user?.name).split(' ')[0]}</span>
+              <span className="animate-bounce inline-block">👋</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse ml-0.5"></span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-1 sm:gap-6">
             {role !== UserRole.Admin && (
               <button 
                 onClick={() => setActiveTab('messages')}
-                className={`p-2 transition-all relative group rounded-xl hover:bg-white/10 ${activeTab === 'messages' ? 'text-ug-teal' : 'text-white/70 hover:text-white'}`}
+                className={`p-1.5 sm:p-2 transition-all relative group rounded-xl hover:bg-white/10 ${activeTab === 'messages' ? 'text-ug-teal' : 'text-white/70 hover:text-white'}`}
               >
-                <Bell size={20} />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-ug-teal rounded-full border-2 border-ug-navy"></span>
+                <Bell size={18} className="sm:w-[20px] sm:h-[20px]" />
+                {internalUnread > 0 && (
+                  <>
+                    <span className="absolute -top-1 -right-1 sm:top-0.5 sm:right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-ug-teal text-white text-[8px] sm:text-[9px] font-black flex items-center justify-center rounded-full border border-ug-navy z-10 shadow-lg animate-pulse">
+                      {internalUnread > 9 ? '9+' : internalUnread}
+                    </span>
+                    <span className="absolute -top-1 -right-1 sm:top-0.5 sm:right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-ug-teal rounded-full border border-ug-navy animate-ping opacity-75"></span>
+                  </>
+                )}
                 <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1.5 bg-gray-900 text-[9px] font-black uppercase rounded shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
                   Messages
                 </span>
               </button>
             )}
 
-            <div className="flex items-center gap-2 sm:gap-4 pl-2 sm:pl-6 border-l border-white/10">
+            <div className="flex items-center gap-1 sm:gap-4 pl-1.5 sm:pl-6 border-l border-white/10">
               {/* Home Icon - Only show on mobile header as a symbol */}
               {role !== UserRole.Admin && (
                 <button 
                   onClick={() => navigate('/')}
-                  className="sm:hidden p-2 text-white/70 hover:text-white transition-all group relative rounded-xl hover:bg-white/10"
+                  className="sm:hidden p-1.5 text-white/70 hover:text-white transition-all group relative rounded-xl hover:bg-white/10"
                 >
-                  <HomeIcon size={20} />
+                  <HomeIcon size={18} />
                   <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1.5 bg-gray-900 text-[9px] font-black uppercase rounded shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
                     Home
                   </span>
@@ -1522,9 +1936,9 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
 
               <button 
                 onClick={handleLogout}
-                className="p-2 text-white/50 hover:text-red-400 transition-all group relative rounded-xl hover:bg-white/5"
+                className="p-1.5 sm:p-2 text-white/50 hover:text-red-400 transition-all group relative rounded-xl hover:bg-white/5"
               >
-                <LogOut size={20} />
+                <LogOut size={18} className="sm:w-[20px] sm:h-[20px]" />
                 <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1.5 bg-gray-900 text-[9px] font-black uppercase rounded shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
                   Logout
                 </span>
@@ -1562,10 +1976,20 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
           )}
 
           {activeTab === 'matches' && (
-             <MatchesView user={localUser} />
+             <MatchesView 
+               user={localUser} 
+               setActiveTab={setActiveTab} 
+               setLocalInitialThreadId={setLocalInitialThreadId} 
+             />
           )}
 
-          {activeTab === 'messages' && <MessagesSection user={localUser} initialThreadId={initialThreadId} />}
+          {activeTab === 'messages' && (
+            <MessagesSection 
+              user={localUser} 
+              initialThreadId={localInitialThreadId || initialThreadId} 
+              onResetInitialThread={() => setLocalInitialThreadId(null)} 
+            />
+          )}
           {activeTab === 'profile' && (
             <div className="space-y-10 animate-fade-in">
               <div className="flex items-center justify-between border-b border-gray-100 pb-8">
@@ -1771,6 +2195,58 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
     }
   };
 
+  const handleUploadRequestedDocSlot = async (file: File, project: Project, slotId: string) => {
+    if (!user) return;
+    setUploadingDocId(slotId);
+    try {
+      const url = await StorageService.uploadFile(file, 'projects');
+      
+      const currentRequested = Array.isArray(project.requested_documents) ? project.requested_documents : [];
+      let slotName = '';
+      const updatedRequested = currentRequested.map(doc => {
+        if (doc.id === slotId) {
+          slotName = doc.name;
+          return {
+            ...doc,
+            status: 'uploaded' as const,
+            url: url,
+            uploaded_at: new Date().toISOString(),
+            by: user.name,
+            name: `${doc.name} (${file.name})`
+          };
+        }
+        return doc;
+      });
+      
+      const currentTimeline = Array.isArray(project.disclosure_timeline) ? project.disclosure_timeline : [];
+      const timelineEvent = {
+        event: 'Documents Uploaded',
+        details: `PI uploaded file for slot "${slotName}": ${file.name}`,
+        timestamp: new Date().toISOString(),
+        user_name: user.name
+      };
+      
+      const allSlotsUploaded = updatedRequested.every(doc => doc.status === 'uploaded' || doc.url);
+      const newStatus = allSlotsUploaded ? DisclosureStatus.UnderReReview : DisclosureStatus.DocumentsRequested;
+      
+      const updatedProject = {
+        ...project,
+        requested_documents: updatedRequested,
+        disclosure_timeline: [...currentTimeline, timelineEvent],
+        disclosure_status: newStatus
+      };
+      
+      await StorageService.saveProject(updatedProject);
+      showToast(`Document "${file.name}" uploaded successfully for "${slotName}"!`, "success");
+      await loadData();
+      onUpdate();
+    } catch (err: any) {
+      showToast(err.message || "Failed to upload document", "error");
+    } finally {
+      setUploadingDocId(null);
+    }
+  };
+
   const handleUploadRevisedBrief = async (file: File, project: Project) => {
     if (!user) return;
     setUploadingRevisedId(project.id);
@@ -1934,7 +2410,19 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
                              'bg-gray-100 text-gray-500'
                           }`}>
                             <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse"></span>
-                            Status: {p.disclosure_status || 'Submitted'}
+                            Disclosure: {p.disclosure_status || 'Submitted'}
+                          </div>
+                          
+                          <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border ${
+                             p.status === ProjectStatus.Concept ? 'bg-gray-50 text-gray-600 border-gray-100' :
+                             p.status === ProjectStatus.ProofOfConcept ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                             p.status === ProjectStatus.Prototype ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                             p.status === ProjectStatus.Validation ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                             p.status === ProjectStatus.Commercialization ? 'bg-teal-50 text-teal-700 border-teal-100' :
+                             p.status === ProjectStatus.MarketReady ? 'bg-green-50 text-green-700 border-green-100' :
+                             'bg-gray-50 text-gray-600 border-gray-100'
+                          }`}>
+                            Stage: {p.status}
                           </div>
                           
                           {lastAction && (
@@ -2113,25 +2601,68 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
                           </div>
                         </div>
 
-                        {/* Uploaded Documents List */}
+                        {/* Interactive Document Slots Checklist */}
                         {reqDocsCount > 0 && (
-                          <div className="bg-white p-4 rounded-xl border border-gray-100">
-                            <p className="text-[10px] font-black text-ug-navy uppercase tracking-wider mb-3">ACTIVE SUBMITTED SUPPORT DOCUMENTS</p>
-                            <div className="space-y-2">
-                              {p.requested_documents.map((doc: any, dIdx: number) => (
-                                <div key={dIdx} className="flex justify-between items-center p-2.5 bg-gray-50 rounded-lg text-[9px] font-bold text-gray-600">
-                                  <div className="flex items-center gap-2 truncate">
-                                    <File size={10} className="text-gray-400 shrink-0" />
-                                    <span className="truncate">{doc.name}</span>
-                                    <span className="text-[7px] text-gray-400">Uploaded {new Date(doc.uploaded_at).toLocaleString()}</span>
-                                  </div>
-                                  <a href={doc.url} target="_blank" rel="noreferrer" className="text-ug-teal hover:underline flex items-center gap-1 shrink-0 ml-1">
-                                    <Download size={10} />
-                                    DOWNLOAD
-                                  </a>
+                          <div className="space-y-4">
+                            {/* Pending Requests */}
+                            {p.requested_documents.some((doc: any) => !doc.url || doc.status === 'requested') && (
+                              <div className="bg-amber-50/40 p-4 rounded-xl border border-amber-100/50 text-left">
+                                <p className="text-[10px] font-black text-amber-800 uppercase tracking-wider mb-3">REQUIRED DOCUMENT SLOTS (AWAITING UPLOAD)</p>
+                                <div className="space-y-2">
+                                  {p.requested_documents.filter((doc: any) => !doc.url || doc.status === 'requested').map((doc: any, dIdx: number) => (
+                                    <div key={doc.id || dIdx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white border border-amber-100 rounded-xl">
+                                      <div className="flex items-start gap-2.5 min-w-0 text-left">
+                                        <div className="h-5 w-5 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0 mt-0.5">
+                                          <span className="text-[9px] font-bold text-amber-600">!</span>
+                                        </div>
+                                        <div className="min-w-0">
+                                          <p className="text-[10px] font-black text-gray-800 leading-normal">{doc.name}</p>
+                                          <p className="text-[8px] text-gray-400 mt-0.5">Requested {new Date(doc.requested_at).toLocaleDateString()}</p>
+                                        </div>
+                                      </div>
+                                      
+                                      <label className="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg cursor-pointer transition text-[9px] font-black tracking-wider uppercase shrink-0">
+                                        <Upload size={10} />
+                                        {uploadingDocId === doc.id ? 'Uploading...' : 'Upload File'}
+                                        <input 
+                                          type="file" 
+                                          className="hidden" 
+                                          disabled={uploadingDocId === doc.id}
+                                          onChange={e => {
+                                            const file = e.target.files?.[0];
+                                            if (file) handleUploadRequestedDocSlot(file, p, doc.id);
+                                          }} 
+                                        />
+                                      </label>
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
+                              </div>
+                            )}
+
+                            {/* Completed Uploads */}
+                            {p.requested_documents.some((doc: any) => doc.url) && (
+                              <div className="bg-white p-4 rounded-xl border border-gray-100 text-left">
+                                <p className="text-[10px] font-black text-ug-navy uppercase tracking-wider mb-3">ACTIVE SUBMITTED SUPPORT DOCUMENTS</p>
+                                <div className="space-y-2">
+                                  {p.requested_documents.filter((doc: any) => doc.url).map((doc: any, dIdx: number) => (
+                                    <div key={doc.id || dIdx} className="flex justify-between items-center p-2.5 bg-gray-50 rounded-lg text-[9px] font-bold text-gray-600 border border-gray-100 text-left">
+                                      <div className="flex items-center gap-2 truncate">
+                                        <div className="h-4 w-4 rounded-full bg-green-50 border border-green-200 flex items-center justify-center shrink-0">
+                                          <span className="text-[8px] font-bold text-green-600">✓</span>
+                                        </div>
+                                        <span className="truncate font-black">{doc.name}</span>
+                                        <span className="text-[7px] text-gray-400 font-medium">Uploaded by {doc.by || 'PI'}</span>
+                                      </div>
+                                      <a href={doc.url} target="_blank" rel="noreferrer" className="text-ug-teal hover:underline flex items-center gap-1 shrink-0 ml-1">
+                                        <Download size={10} />
+                                        DOWNLOAD
+                                      </a>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -2550,7 +3081,15 @@ const ProfileInsight = ({ profile, onRefresh }: { profile: AIProfile | null, onR
   );
 };
 
-const MatchesView = ({ user }: { user: User | null }) => {
+const MatchesView = ({ 
+  user, 
+  setActiveTab, 
+  setLocalInitialThreadId 
+}: { 
+  user: User | null; 
+  setActiveTab?: (tab: 'overview' | 'matches' | 'messages' | 'profile') => void; 
+  setLocalInitialThreadId?: (id: string | null) => void; 
+}) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
@@ -2840,16 +3379,27 @@ ${senderName}`
                   }
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     <span className="text-[8px] font-black text-ug-teal uppercase tracking-widest px-2 py-0.5 bg-ug-teal/5 rounded-full">{proj.ai_label || 'Project Match'}</span>
                     <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{proj.research_area}</span>
+                    <span className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-widest ${
+                      proj.status === ProjectStatus.Concept ? 'bg-gray-50 text-gray-600 border-gray-100' :
+                      proj.status === ProjectStatus.ProofOfConcept ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                      proj.status === ProjectStatus.Prototype ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                      proj.status === ProjectStatus.Validation ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                      proj.status === ProjectStatus.Commercialization ? 'bg-teal-50 text-teal-700 border-teal-100' :
+                      proj.status === ProjectStatus.MarketReady ? 'bg-green-50 text-green-700 border-green-100' :
+                      'bg-gray-50 text-gray-600 border-gray-100'
+                    }`}>
+                      {proj.status || 'Active'}
+                    </span>
                   </div>
                   <h4 className="font-black text-ug-navy text-sm group-hover:text-ug-teal transition truncate uppercase tracking-tight">{proj.title}</h4>
                   <p className="text-xs md:text-sm text-gray-500 font-medium line-clamp-2 mt-1 italic">"{proj.ai_reasoning || proj.description}"</p>
                 </div>
               </div>
-              <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-8 border-t sm:border-t-0 pt-4 sm:pt-0 border-gray-100">
-                 <div className="text-left sm:text-right">
+              <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-4 sm:pt-0 border-gray-100 flex-wrap">
+                 <div className="text-left sm:text-right mr-2">
                     <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">AI Match Score</p>
                     <p className="text-lg md:text-xl font-black text-ug-teal">
                       {proj.ai_score !== undefined && proj.ai_score !== null && !isNaN(Number(proj.ai_score)) 
@@ -2858,7 +3408,24 @@ ${senderName}`
                       }
                     </p>
                  </div>
-                 <button onClick={() => handleExpressInterestClick(proj)} className="bg-ug-navy text-white px-5 md:px-6 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition shadow-lg shrink-0">Express Interest</button>
+                 <div className="flex gap-2">
+                   <button 
+                     type="button"
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       if (setLocalInitialThreadId && setActiveTab) {
+                         setLocalInitialThreadId(proj.id);
+                         setActiveTab('messages');
+                       }
+                     }} 
+                     className="bg-white border border-gray-200 text-ug-navy hover:text-ug-teal hover:border-ug-teal px-4 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition flex items-center gap-1 shrink-0"
+                     title="Direct Message Project Team"
+                   >
+                     <MessageSquare size={12} />
+                     Direct Message
+                   </button>
+                   <button onClick={(e) => { e.stopPropagation(); handleExpressInterestClick(proj); }} className="bg-ug-navy text-white px-5 md:px-6 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition shadow-lg shrink-0">Express Interest</button>
+                 </div>
               </div>
             </div>
           ))}
@@ -2943,7 +3510,28 @@ ${senderName}`
                     </div>
                   </div>
                 </div>
-                <button onClick={() => handleInitiateCollaborationClick(collab)} className="w-full border-2 border-ug-navy text-ug-navy py-4 rounded-[1.5rem] text-xs font-black uppercase tracking-widest hover:bg-ug-navy hover:text-white transition-all shadow-sm active:scale-95">Initiate Collaboration</button>
+                <div className="grid grid-cols-2 gap-3 w-full">
+                  <button 
+                    onClick={() => handleInitiateCollaborationClick(collab)} 
+                    className="border border-ug-navy text-ug-navy py-3.5 px-2 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-wider hover:bg-ug-navy hover:text-white transition-all shadow-sm active:scale-95 truncate font-bold"
+                    title="Send formal strategic research proposal"
+                  >
+                    Initiate Proposal
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (setLocalInitialThreadId && setActiveTab) {
+                        setLocalInitialThreadId(collab.id);
+                        setActiveTab('messages');
+                      }
+                    }} 
+                    className="bg-ug-navy border border-transparent text-white py-3.5 px-2 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-wider hover:bg-ug-teal transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5 font-bold truncate"
+                    title="Open instant direct chat"
+                  >
+                    <MessageSquare size={11} />
+                    Quick Chat
+                  </button>
+                </div>
              </div>
            ))}
            
@@ -3119,37 +3707,262 @@ ${senderName}`
 
 const StudentDashboard = ({ user }: { user: User | null }) => {
    const [projects, setProjects] = useState<Project[]>([]);
+   const [applications, setApplications] = useState<any[]>([]);
+   const [bookmarks, setBookmarks] = useState<Project[]>([]);
+   const [recommendations, setRecommendations] = useState<any[]>([]);
+   const [loading, setLoading] = useState(true);
+   const [expandedAppId, setExpandedAppId] = useState<string | null>(null);
+
+   // Drawer States
+   const [drawerOpen, setDrawerOpen] = useState(false);
+   const [selectedProjectForApp, setSelectedProjectForApp] = useState<Project | null>(null);
+   const [appType, setAppType] = useState<'Research Assistantship' | 'Scholarship Application' | 'Lab Workspace Access'>('Research Assistantship');
+   const [eduLevel, setEduLevel] = useState('');
+   const [program, setProgram] = useState('');
+   const [interests, setInterests] = useState('');
+   const [availability, setAvailability] = useState('');
+   const [message, setMessage] = useState('');
+   const [submitting, setSubmitting] = useState(false);
+
    const navigate = useNavigate();
-   useEffect(() => { StorageService.getProjects().then(setProjects); }, []);
+   const { showToast } = useToast();
+
+   const loadDashboardData = async () => {
+     if (!user?.id) return;
+     try {
+       setLoading(true);
+       const allProjects = await StorageService.getProjects();
+       setProjects(allProjects);
+
+       const studentApps = await StorageService.getStudentApplications(user.id);
+       setApplications(studentApps);
+
+       const bookmarked = await StorageService.getBookmarks(user.id);
+       setBookmarks(bookmarked);
+
+       // Recommendations
+       const recs = getRecommendations(allProjects, user);
+       setRecommendations(recs);
+     } catch (err) {
+       console.error("Error loading student dashboard:", err);
+     } finally {
+       setLoading(false);
+     }
+   };
+
+   useEffect(() => {
+     loadDashboardData();
+     // Populate default student credentials
+     if (user) {
+       setEduLevel(user.education_level || '');
+       setProgram(user.program || '');
+       setInterests(user.looking_for || '');
+       setAvailability(user.availability || '');
+     }
+   }, [user?.id]);
+
+   const getRecommendations = (allProjects: Project[], profile: any) => {
+     if (!profile) return [];
+     const studentProgram = (profile.program || '').toLowerCase();
+     const studentInterests = (profile.looking_for || '').toLowerCase();
+     
+     const recs = allProjects.map(p => {
+       let score = 0;
+       let reason = '';
+       
+       const title = (p.title || '').toLowerCase();
+       const desc = (p.description || '').toLowerCase();
+       const dept = (p.department || '').toLowerCase();
+       const area = (p.research_area || '').toLowerCase();
+
+       if (studentProgram && (title.includes(studentProgram) || desc.includes(studentProgram) || dept.includes(studentProgram) || area.includes(studentProgram))) {
+         score += 4;
+         reason = `Aligned with your course: ${profile.program}`;
+       } else if (studentInterests) {
+         const keywords = studentInterests.split(',').map((k: string) => k.trim().toLowerCase()).filter(Boolean);
+         for (const kw of keywords) {
+           if (kw && (title.includes(kw) || desc.includes(kw) || dept.includes(kw) || area.includes(kw))) {
+             score += 3;
+             reason = `Matches your interest in ${kw}`;
+             break;
+           }
+         }
+       }
+       
+       if (p.open_to_collaboration) {
+         score += 1;
+         if (!reason) reason = 'Seeking talent';
+       }
+
+       return { project: p, score, reason };
+     });
+
+     return recs
+       .filter(r => r.score > 0)
+       .sort((a, b) => b.score - a.score)
+       .slice(0, 3);
+   };
+
+   const openApplicationDrawer = (proj: Project, defaultType: typeof appType = 'Research Assistantship') => {
+     setSelectedProjectForApp(proj);
+     setAppType(defaultType);
+     
+     // Set template cover letter
+     let template = '';
+     if (defaultType === 'Research Assistantship') {
+       template = `Dear Professor,\n\nI am writing to express my strong interest in joining your research team for the project "${proj.title}". My academic background and goals align perfectly with this research, and I am eager to contribute to your goals.`;
+     } else if (defaultType === 'Scholarship Application') {
+       template = `To the Selection Committee,\n\nI am writing to submit my formal inquiry regarding scholarships, funding, or fellowship opportunities for the project "${proj.title}". I would appreciate the chance to discuss potential pathways to support my research contribution.`;
+     } else if (defaultType === 'Lab Workspace Access') {
+       template = `Dear Lab Coordinator,\n\nI am requesting authorized workspace or laboratory access in connection with "${proj.title}". I require access to conduct research, run analysis, or collaborate with team members.`;
+     }
+     setMessage(template);
+     setDrawerOpen(true);
+   };
+
+   const handleInquireScholarship = (schName: string, provider: string) => {
+     // Search for an active project matching provider department or biochemistry/health keywords
+     const matchedProj = projects.find(p => 
+       p.department?.toLowerCase().includes(provider.toLowerCase()) ||
+       p.title?.toLowerCase().includes(provider.toLowerCase()) ||
+       p.description?.toLowerCase().includes(provider.toLowerCase())
+     ) || projects.find(p => p.open_to_collaboration) || projects[0];
+
+     if (matchedProj) {
+       openApplicationDrawer(matchedProj, 'Scholarship Application');
+     } else {
+       showToast("No active research project found to link this scholarship inquiry.", "error");
+     }
+   };
+
+   const handleSubmitApplication = async (e: React.FormEvent) => {
+     e.preventDefault();
+     if (!user?.id || !selectedProjectForApp) return;
+
+     try {
+       setSubmitting(true);
+
+       // 1. Update Student Profile fields dynamically
+       await StorageService.updateStudentProfile(user.id, {
+         education_level: eduLevel,
+         availability,
+         looking_for: interests,
+         program
+       });
+
+       // 2. Submit EOI with structured prefix and custom message
+       let messageText = '';
+       if (appType === 'Research Assistantship') {
+         messageText = `[ASSISTANTSHIP_APPLICATION] Student "${user.name}" has formally requested consideration for a Laboratory / Research Assistantship on this project. Education Level: ${eduLevel || 'N/A'}. Program/Course: ${program || 'N/A'}. Availability: ${availability || 'N/A'}. Interests: ${interests || 'N/A'}.\n\nPersonal Statement:\n${message}`;
+       } else if (appType === 'Scholarship Application') {
+         messageText = `[SCHOLARSHIP_APPLICATION] Student "${user.name}" has submitted an inquiry for Academic Scholarship & Fellowships on this project. Education Level: ${eduLevel || 'Graduate'}. Program: ${program || 'N/A'}. Availability: ${availability || 'N/A'}.\n\nStatement of Intent:\n${message}`;
+       } else if (appType === 'Lab Workspace Access') {
+         messageText = `[LAB_WORKSPACE_ACCESS] Student "${user.name}" is requesting secure authorization to access the workspace relative to this project. Justification:\n${message}`;
+       }
+
+       const metric = appType === 'Lab Workspace Access' ? 'requests' : 'expressions_of_interest';
+       await StorageService.submitEOI(selectedProjectForApp.id, user.name, messageText, undefined, metric);
+
+       showToast(`Your ${appType} request was successfully transmitted!`, "success");
+       setDrawerOpen(false);
+       
+       // Reload dashboard data to update stats and application history
+       loadDashboardData();
+     } catch (err: any) {
+       console.error("Application error:", err);
+       showToast(err.message || "Failed to submit application. Please try again.", "error");
+     } finally {
+       setSubmitting(false);
+     }
+   };
+
+   const parseAppType = (msg: string) => {
+     if (!msg) return 'General Inquiry';
+     if (msg.startsWith('[ASSISTANTSHIP_APPLICATION]')) return 'Research Assistantship';
+     if (msg.startsWith('[SCHOLARSHIP_APPLICATION]')) return 'Scholarship Inquiry';
+     if (msg.startsWith('[LAB_WORKSPACE_ACCESS]')) return 'Lab Workspace Access';
+     if (msg.includes('Technical Disclosure') || msg.includes('🔐')) return 'Technical Disclosure';
+     return 'Inquiry';
+   };
+
+   const cleanMessage = (msg: string) => {
+     if (!msg) return '';
+     return msg
+       .replace(/^\[ASSISTANTSHIP_APPLICATION\].*?\n\n(Personal Statement:\n)?/s, '')
+       .replace(/^\[SCHOLARSHIP_APPLICATION\].*?\n\n(Statement of Intent:\n)?/s, '')
+       .replace(/^\[LAB_WORKSPACE_ACCESS\].*?\n\n(Justification:\n)?/s, '')
+       .replace(/^🔐.*?\n\n/s, '');
+   };
+
+   const getStatusBadgeColor = (status: string) => {
+     const s = status ? status.toLowerCase() : '';
+     if (s === 'approved' || s === 'released' || s.startsWith('released:')) {
+       return 'bg-emerald-50 text-emerald-700 border border-emerald-100';
+     }
+     if (s === 'rejected') {
+       return 'bg-rose-50 text-rose-700 border border-rose-100';
+     }
+     return 'bg-amber-50 text-amber-700 border border-amber-100';
+   };
+
+   // Real opportunities are projects looking for collaboration or students
+   const openOpportunities = projects.filter(p => p.open_to_collaboration);
+
    return (
-      <div className="space-y-8">
+      <div className="space-y-8 animate-fade-in">
          <UnifiedDashboardProfile user={user} onAction={() => navigate('/projects')} actionLabel="Explore Research" />
          
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <StatCard label="Opportunities" value="12" trend="+3 New" icon={BookOpen} />
-            <StatCard label="Lab Access" value="Granted" trend="Verified" icon={GraduationCap} />
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <StatCard label="Active Opportunities" value={openOpportunities.length.toString()} trend="Seeking Talent" icon={BookOpen} />
+            <StatCard label="My Applications" value={applications.length.toString()} trend="Real-Time Tracking" icon={Clock} />
+            <StatCard label="Saved Bookmarks" value={bookmarks.length.toString()} trend="Watchlist" icon={Bookmark} />
          </div>
 
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 items-start">
             <div className="md:col-span-2 lg:col-span-8 space-y-8">
+               {/* COLLABORATION CALLS */}
                <section className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
                   <SectionTitle title="Collaboration Calls" subtitle="Active Research Projects Seeking Talent" />
-                  <div className="space-y-4">
-                     {projects.slice(0, 3).map(p => (
-                        <div key={p.id} className="flex flex-col md:flex-row md:items-center justify-between p-6 border border-gray-100 rounded-3xl bg-white hover:shadow-lg transition gap-4">
-                           <div className="flex gap-4">
-                              <div className="w-14 h-14 bg-ug-navy/5 rounded-2xl flex items-center justify-center text-ug-navy"><Briefcase size={24} /></div>
-                              <div>
-                                 <h4 className="font-black text-ug-navy text-lg">{p.title}</h4>
-                                 <p className="text-[10px] font-black uppercase text-ug-teal tracking-widest">{p.department}</p>
-                              </div>
-                           </div>
-                           <button onClick={() => navigate(`/projects/${p.id}`)} className="bg-ug-navy text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition">Apply for Assistantship</button>
-                        </div>
-                     ))}
+                  <div className="space-y-4 mt-6">
+                     {openOpportunities.length === 0 ? (
+                       <div className="text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                          <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">No active collaboration calls listed.</p>
+                       </div>
+                     ) : (
+                       openOpportunities.slice(0, 3).map(p => (
+                          <div key={p.id} className="flex flex-col md:flex-row md:items-center justify-between p-6 border border-gray-100 rounded-3xl bg-white hover:shadow-lg transition gap-4">
+                             <div className="flex gap-4">
+                                <div className="w-14 h-14 bg-ug-navy/5 rounded-2xl flex items-center justify-center text-ug-navy shrink-0"><Briefcase size={24} /></div>
+                                <div>
+                                   <h4 className="font-black text-ug-navy text-lg">{p.title}</h4>
+                                   <div className="flex flex-wrap items-center gap-2 mt-1">
+                                      <span className="text-[10px] font-black uppercase text-ug-teal tracking-widest">{p.department}</span>
+                                      <span className="text-gray-300 text-[10px]">•</span>
+                                      <span className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-widest ${
+                                        p.status === ProjectStatus.Concept ? 'bg-gray-50 text-gray-600 border-gray-100' :
+                                        p.status === ProjectStatus.ProofOfConcept ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                        p.status === ProjectStatus.Prototype ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                                        p.status === ProjectStatus.Validation ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                        p.status === ProjectStatus.Commercialization ? 'bg-teal-50 text-teal-700 border-teal-100' :
+                                        p.status === ProjectStatus.MarketReady ? 'bg-green-50 text-green-700 border-green-100' :
+                                        'bg-gray-50 text-gray-600 border-gray-100'
+                                      }`}>
+                                        {p.status || 'Active'}
+                                      </span>
+                                   </div>
+                                </div>
+                             </div>
+                             <div className="flex gap-2">
+                                <button onClick={() => navigate(`/projects/${p.id}`)} className="bg-gray-100 text-ug-navy px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition">View</button>
+                                <button onClick={() => openApplicationDrawer(p, 'Research Assistantship')} className="bg-ug-navy text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition">Apply for Assistantship</button>
+                             </div>
+                          </div>
+                       ))
+                     )}
                   </div>
                </section>
 
+               {/* SCHOLARSHIPS */}
                <section className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm mt-8">
                   <SectionTitle title="Scholarships & Research Fellowships" subtitle="Academically Funded Pathways to Support Innovation" />
                   <div className="space-y-4 mt-6">
@@ -3172,18 +3985,282 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
                                  <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block">Stipend Amount</span>
                                  <span className="text-xs font-black text-ug-navy">{sch.amount}</span>
                               </div>
-                              <button onClick={() => navigate('/projects')} className="bg-ug-navy text-white px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-ug-teal transition">Inquire</button>
+                              <button onClick={() => handleInquireScholarship(sch.title, sch.provider)} className="bg-ug-navy text-white px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-ug-teal transition cursor-pointer">Inquire</button>
                            </div>
                         </div>
                      ))}
                   </div>
                </section>
+
+               {/* STUDENT SPECIFIC RECOMMENDATIONS */}
+               {recommendations.length > 0 && (
+                 <section className="bg-gradient-to-tr from-ug-navy/[0.02] to-ug-teal/[0.02] p-8 rounded-[2.5rem] border border-gray-100 shadow-sm mt-8">
+                    <SectionTitle title="Recommended for You" subtitle="Personalized research matches based on your program and profile keywords" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                       {recommendations.map(({ project: p, reason }) => (
+                          <div key={p.id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                             <div>
+                                <span className="bg-ug-teal/10 text-ug-teal text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full mb-3 inline-block">
+                                   {reason}
+                                </span>
+                                <h4 className="font-black text-ug-navy text-sm leading-snug line-clamp-2 mb-2 hover:text-ug-teal transition cursor-pointer" onClick={() => navigate(`/projects/${p.id}`)}>{p.title}</h4>
+                                <p className="text-gray-400 text-[9px] uppercase tracking-wider font-bold mb-4">{p.department}</p>
+                             </div>
+                             <div className="flex gap-2">
+                                <button onClick={() => openApplicationDrawer(p)} className="flex-1 text-center bg-ug-navy hover:bg-ug-teal text-white py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition">Apply</button>
+                             </div>
+                          </div>
+                       ))}
+                    </div>
+                 </section>
+               )}
+
+               {/* APPLICATION HISTORY */}
+               <section className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm mt-8">
+                  <SectionTitle title="My Applications & Request Tracker" subtitle="Live tracking of your assistantships, fellowship inquiries, and workspace permissions" />
+                  <div className="space-y-4 mt-6">
+                     {loading ? (
+                       <div className="text-center py-8">
+                          <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Loading records...</p>
+                       </div>
+                     ) : applications.length === 0 ? (
+                       <div className="text-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                          <Inbox className="mx-auto text-gray-300 mb-3" size={32} />
+                          <h4 className="font-black text-ug-navy text-sm">No Active Submissions</h4>
+                          <p className="text-gray-400 text-[10px] uppercase font-bold mt-1 tracking-wider">Your formal submissions will accumulate here.</p>
+                       </div>
+                     ) : (
+                       applications.map(app => {
+                          const type = parseAppType(app.message);
+                          const isExpanded = expandedAppId === app.id;
+                          return (
+                             <div key={app.id} className="p-6 border border-gray-100 rounded-3xl bg-white hover:border-gray-200 transition">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                   <div className="flex items-start gap-4">
+                                      <div className="w-10 h-10 bg-ug-teal/5 rounded-xl flex items-center justify-center text-ug-teal shrink-0">
+                                         <Clock size={18} />
+                                      </div>
+                                      <div>
+                                         <span className="text-[8px] font-black text-ug-teal uppercase tracking-widest block mb-1">{type}</span>
+                                         <h4 className="font-black text-ug-navy text-sm">{app.projects?.title || 'General Department Grant'}</h4>
+                                         <p className="text-[8px] font-medium text-gray-400 mt-0.5">Submitted: {new Date(app.created_at).toLocaleDateString([], { dateStyle: 'medium' })}</p>
+                                      </div>
+                                   </div>
+                                   <div className="flex items-center gap-3 justify-between md:justify-end">
+                                      <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${getStatusBadgeColor(app.status)}`}>
+                                         {app.status || 'pending'}
+                                      </span>
+                                      <button 
+                                         onClick={() => setExpandedAppId(isExpanded ? null : app.id)}
+                                         className="p-1 text-gray-400 hover:text-ug-teal transition"
+                                      >
+                                         {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                      </button>
+                                   </div>
+                                </div>
+                                {isExpanded && (
+                                   <div className="mt-4 pt-4 border-t border-gray-50 text-xs text-gray-600 bg-gray-50/50 p-4 rounded-2xl">
+                                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block mb-2">Message Body</span>
+                                      <p className="whitespace-pre-wrap font-medium">{cleanMessage(app.message)}</p>
+                                   </div>
+                                )}
+                             </div>
+                          );
+                       })
+                     )}
+                  </div>
+               </section>
             </div>
+
+            {/* SIDEBAR RIGHT */}
             <div className="md:col-span-2 lg:col-span-4 space-y-8 border-t lg:border-t-0 pt-8 lg:pt-0">
-               {user?.id && <BookmarkedProjectsList userId={user.id} />}
+               {/* SAVED WATCHLIST */}
+               <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+                  <SectionTitle title="Bookmarks & Watchlist" subtitle="Your pinned research interests" />
+                  <div className="space-y-4 mt-6">
+                     {loading ? (
+                        <p className="text-gray-400 text-xs font-black uppercase tracking-widest text-center">Loading watchlist...</p>
+                     ) : bookmarks.length === 0 ? (
+                        <div className="text-center py-6 bg-gray-50/50 rounded-2xl border border-dashed border-gray-100">
+                           <Bookmark className="mx-auto text-gray-300 mb-2" size={24} />
+                           <p className="text-gray-400 text-[9px] font-black uppercase tracking-widest">Bookmark items to save them.</p>
+                        </div>
+                     ) : (
+                        bookmarks.map(p => (
+                           <div key={p.id} className="flex items-center justify-between p-4 border border-gray-50 rounded-2xl bg-gray-50/30 hover:bg-white hover:shadow-md transition">
+                              <div className="flex items-center gap-3 min-w-0">
+                                 <div className="w-10 h-10 rounded-xl bg-ug-navy/5 flex items-center justify-center text-ug-navy shrink-0"><Briefcase size={20} /></div>
+                                 <div className="min-w-0">
+                                    <h5 className="font-black text-ug-navy text-xs truncate hover:text-ug-teal transition cursor-pointer" onClick={() => navigate(`/projects/${p.id}`)}>{p.title}</h5>
+                                    <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest truncate">{p.department}</p>
+                                 </div>
+                              </div>
+                              <button onClick={() => openApplicationDrawer(p)} className="bg-ug-navy text-white px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-ug-teal transition shrink-0">Apply</button>
+                           </div>
+                        ))
+                     )}
+                  </div>
+               </section>
+
                <HubStreamSidebar />
             </div>
          </div>
+
+         {/* APPLICATION DRAWER */}
+         <AnimatePresence>
+            {drawerOpen && selectedProjectForApp && (
+               <>
+                  {/* Backdrop */}
+                  <motion.div 
+                     className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 cursor-pointer"
+                     initial={{ opacity: 0 }}
+                     animate={{ opacity: 1 }}
+                     exit={{ opacity: 0 }}
+                     onClick={() => setDrawerOpen(false)}
+                  />
+
+                  {/* Drawer Content */}
+                  <motion.div 
+                     className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-white shadow-2xl z-50 overflow-y-auto flex flex-col border-l border-gray-100"
+                     initial={{ x: '100%' }}
+                     animate={{ x: 0 }}
+                     exit={{ x: '100%' }}
+                     transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  >
+                     {/* Drawer Header */}
+                     <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-ug-navy text-white">
+                        <div>
+                           <span className="text-[8px] font-black text-ug-teal uppercase tracking-widest block mb-1">Academic Request Portal</span>
+                           <h3 className="text-xl font-black">Submit Inquiry & Application</h3>
+                        </div>
+                        <button 
+                           onClick={() => setDrawerOpen(false)}
+                           className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition cursor-pointer"
+                        >
+                           <X size={20} />
+                        </button>
+                     </div>
+
+                     {/* Drawer Body */}
+                     <form onSubmit={handleSubmitApplication} className="p-6 flex-1 space-y-6">
+                        {/* Target Project Info */}
+                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                           <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Associated Project</span>
+                           <h4 className="font-black text-ug-navy text-sm mt-1">{selectedProjectForApp.title}</h4>
+                           <p className="text-[9px] font-bold text-ug-teal uppercase tracking-wider mt-0.5">{selectedProjectForApp.department}</p>
+                        </div>
+
+                        {/* Request Type Selector */}
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Request Category</label>
+                           <div className="grid grid-cols-1 gap-3">
+                              {[
+                                 { id: 'Research Assistantship', label: 'Research Assistantship', desc: 'Apply for a student assistant role inside this laboratory.' },
+                                 { id: 'Scholarship Application', label: 'Scholarship / Fellowship', desc: 'Inquire about available funding or stipends.' },
+                                 { id: 'Lab Workspace Access', label: 'Lab Workspace Access', desc: 'Request secure physical/digital authorization to access resources.' }
+                              ].map(t => (
+                                 <div 
+                                    key={t.id}
+                                    onClick={() => setAppType(t.id as any)}
+                                    className={`p-4 border rounded-2xl cursor-pointer transition text-left select-none ${appType === t.id ? 'border-ug-teal bg-ug-teal/5 text-ug-navy' : 'border-gray-100 hover:border-gray-200 text-gray-600'}`}
+                                 >
+                                    <h5 className="font-black text-xs">{t.label}</h5>
+                                    <p className="text-[10px] text-gray-400 mt-1">{t.desc}</p>
+                                 </div>
+                              ))}
+                           </div>
+                        </div>
+
+                        {/* Student Profile Info Verification */}
+                        <div className="space-y-4 pt-4 border-t border-gray-50">
+                           <span className="text-[10px] font-black text-ug-teal uppercase tracking-widest block">Verify Credentials (Saved to Profile)</span>
+                           
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                 <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Education Level</label>
+                                 <input 
+                                    type="text" 
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-ug-teal" 
+                                    placeholder="e.g. MPhil, PhD, BSc Senior"
+                                    value={eduLevel}
+                                    onChange={(e) => setEduLevel(e.target.value)}
+                                    required
+                                 />
+                              </div>
+                              <div>
+                                 <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Program / Course</label>
+                                 <input 
+                                    type="text" 
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-ug-teal" 
+                                    placeholder="e.g. Biochemistry"
+                                    value={program}
+                                    onChange={(e) => setProgram(e.target.value)}
+                                    required
+                                 />
+                              </div>
+                           </div>
+
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                 <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Availability</label>
+                                 <input 
+                                    type="text" 
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-ug-teal" 
+                                    placeholder="e.g. 15 hrs/week, Full-time"
+                                    value={availability}
+                                    onChange={(e) => setAvailability(e.target.value)}
+                                    required
+                                 />
+                              </div>
+                              <div>
+                                 <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Interests / Focus</label>
+                                 <input 
+                                    type="text" 
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-ug-teal" 
+                                    placeholder="e.g. Immunology, Vaccines"
+                                    value={interests}
+                                    onChange={(e) => setInterests(e.target.value)}
+                                    required
+                                 />
+                              </div>
+                           </div>
+                        </div>
+
+                        {/* Custom Cover Message */}
+                        <div className="space-y-2 pt-4 border-t border-gray-50">
+                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Custom Cover Message / Personal Statement</label>
+                           <textarea 
+                              rows={5}
+                              className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-medium text-gray-700 focus:outline-none focus:ring-1 focus:ring-ug-teal"
+                              placeholder="Describe your qualifications, goals, and why you should be chosen..."
+                              value={message}
+                              onChange={(e) => setMessage(e.target.value)}
+                              required
+                           />
+                        </div>
+
+                        {/* Submit Actions */}
+                        <div className="pt-6 border-t border-gray-100">
+                           <button 
+                              type="submit"
+                              disabled={submitting}
+                              className="w-full flex items-center justify-center gap-2 bg-ug-navy hover:bg-ug-teal text-white py-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all disabled:opacity-50 cursor-pointer"
+                           >
+                              {submitting ? (
+                                <>
+                                   <Loader2 className="animate-spin" size={16} />
+                                   <span>Transmitting Request...</span>
+                                </>
+                              ) : (
+                                <span>Transmit Secure Application</span>
+                              )}
+                           </button>
+                        </div>
+                     </form>
+                  </motion.div>
+               </>
+            )}
+         </AnimatePresence>
       </div>
    );
 };

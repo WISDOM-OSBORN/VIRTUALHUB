@@ -264,9 +264,15 @@ export const StorageService = {
         if (isAdmin) return true;
         if (userId && p.owner_id === userId) return true;
         
-        // Public users can only see public or published projects. Drafts are NEVER accessible.
-        const isPublicAllowed = p.visibility === 'Public' || p.disclosure_status === 'Published';
-        return isPublicAllowed && p.disclosure_status !== 'Draft';
+        // A project MUST be Approved or Published by an admin before showing to other users or the public!
+        const isApprovedOrPublished = p.disclosure_status === 'Approved' || p.disclosure_status === 'Published';
+        if (!isApprovedOrPublished) return false;
+
+        // If it is approved or published, respect its visibility setting
+        if (p.visibility === 'Public') return true;
+        if (p.visibility === 'Internal' && userId) return true;
+
+        return false;
       }).map((p: Project) => {
         const isOwnerOrAdmin = isAdmin || (userId && p.owner_id === userId);
         if (!isOwnerOrAdmin) {
@@ -381,18 +387,42 @@ export const StorageService = {
   getPublicResearcherProjects: async (researcherId: string): Promise<Project[]> => {
     if (!researcherId) return [];
     try {
-      // Fetch researcher's projects that are Public/Published and NOT drafts.
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUserId = session?.user?.id;
+
+      let isAdmin = false;
+      if (currentUserId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', currentUserId)
+          .maybeSingle();
+        if (profile?.role === 'Admin') {
+          isAdmin = true;
+        }
+      }
+
+      // Fetch researcher's projects
       const { data, error } = await supabase
         .from('projects')
         .select('*')
         .eq('owner_id', researcherId)
-        .neq('disclosure_status', 'Draft')
         .order('created_at', { ascending: false });
 
       if (error || !data) return [];
 
       const filtered = data.filter((p: Project) => {
-        return p.visibility === 'Public' || p.disclosure_status === 'Published';
+        if (isAdmin) return true;
+        if (currentUserId && p.owner_id === currentUserId) return true;
+
+        // A project MUST be Approved or Published by an admin before showing to other users or the public!
+        const isApprovedOrPublished = p.disclosure_status === 'Approved' || p.disclosure_status === 'Published';
+        if (!isApprovedOrPublished) return false;
+
+        if (p.visibility === 'Public') return true;
+        if (p.visibility === 'Internal' && currentUserId) return true;
+
+        return false;
       });
 
       // Secure: sanitize and strip sensitive information (internal notes, requested docs, etc)
@@ -718,6 +748,17 @@ export const StorageService = {
       throw new Error("Authentication Required: Please sign in to transmit messages.");
     }
 
+    let finalUserName = user_name;
+    const { data: senderProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', sender_id)
+      .maybeSingle();
+    
+    if (senderProfile?.role === 'Admin') {
+      finalUserName = 'UG Industry Hub Admin';
+    }
+
     let target_recipient = recipient_id;
 
     // Resolve project owner as recipient if not provided
@@ -737,7 +778,7 @@ export const StorageService = {
       .from('eois')
       .insert([{ 
         project_id: project_id, 
-        user_name, 
+        user_name: finalUserName, 
         message,
         read: false,
         sender_id: sender_id,
@@ -796,10 +837,32 @@ export const StorageService = {
       .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
       .order('created_at', { ascending: false });
     
-    if (error) return [];
+    if (error || !data) return [];
+
+    // Map profiles to replace any admin's user_name with 'UG Industry Hub Admin'
+    const userIds = Array.from(new Set(data.flatMap(msg => [msg.sender_id, msg.recipient_id])));
+    const adminUserIds = new Set<string>();
+
+    if (userIds.length > 0) {
+      const { data: profiles, error: pError } = await supabase
+        .from('profiles')
+        .select('id, role')
+        .in('id', userIds);
+      
+      if (!pError && profiles) {
+        profiles.forEach(p => {
+          if (p.role === 'Admin') {
+            adminUserIds.add(p.id);
+          }
+        });
+      }
+    }
 
     const threads: Record<string, any[]> = {};
-    data?.forEach(msg => {
+    data.forEach(msg => {
+      if (adminUserIds.has(msg.sender_id)) {
+        msg.user_name = 'UG Industry Hub Admin';
+      }
       const partnerId = msg.sender_id === userId ? msg.recipient_id : msg.sender_id;
       const threadKey = `${msg.project_id || 'direct'}-${partnerId}`;
       if (!threads[threadKey]) threads[threadKey] = [];
@@ -839,7 +902,33 @@ export const StorageService = {
       query = query.eq('recipient_id', userId);
     }
     const { data } = await query;
-    return data || [];
+    if (!data) return [];
+
+    const userIds = Array.from(new Set(data.flatMap(msg => [msg.sender_id, msg.recipient_id])));
+    const adminUserIds = new Set<string>();
+
+    if (userIds.length > 0) {
+      const { data: profiles, error: pError } = await supabase
+        .from('profiles')
+        .select('id, role')
+        .in('id', userIds);
+      
+      if (!pError && profiles) {
+        profiles.forEach(p => {
+          if (p.role === 'Admin') {
+            adminUserIds.add(p.id);
+          }
+        });
+      }
+    }
+
+    data.forEach(msg => {
+      if (adminUserIds.has(msg.sender_id)) {
+        msg.user_name = 'UG Industry Hub Admin';
+      }
+    });
+
+    return data;
   },
 
   markEOIRead: async (id: string) => {
@@ -1175,7 +1264,7 @@ export const StorageService = {
           const projectIds = finalProjects.map((p: any) => p.id);
           const { data: visData } = await supabase
             .from('projects')
-            .select('id, visibility, owner_id')
+            .select('id, visibility, owner_id, disclosure_status')
             .in('id', projectIds);
           
           if (visData) {
@@ -1194,6 +1283,11 @@ export const StorageService = {
               if (!row) return false;
               if (isAdmin) return true;
               if (userId && row.owner_id === userId) return true;
+
+              // A project MUST be Approved or Published by an admin before showing to other users or the public!
+              const isApprovedOrPublished = row.disclosure_status === 'Approved' || row.disclosure_status === 'Published';
+              if (!isApprovedOrPublished) return false;
+
               if (row.visibility === 'Public') return true;
               if (userId && row.visibility === 'Internal') return true;
               return false;
@@ -1216,7 +1310,7 @@ export const StorageService = {
       try {
         const [{ data: fallbackProfiles }, { data: fallbackProjects }] = await Promise.all([
           supabase.from('profiles').select('id, name, role, ai_profile, semantic_summary, avatar_url').neq('id', userId).limit(10),
-          supabase.from('projects').select('id, title, description, image_url, research_area, visibility, owner_id').limit(20)
+          supabase.from('projects').select('id, title, description, image_url, research_area, visibility, owner_id, disclosure_status').limit(20)
         ]);
 
         let isAdmin = false;
@@ -1230,6 +1324,11 @@ export const StorageService = {
         const secureFallbackProjects = (fallbackProjects || []).filter((p: any) => {
           if (isAdmin) return true;
           if (userId && p.owner_id === userId) return true;
+
+          // A project MUST be Approved or Published by an admin before showing to other users or the public!
+          const isApprovedOrPublished = p.disclosure_status === 'Approved' || p.disclosure_status === 'Published';
+          if (!isApprovedOrPublished) return false;
+
           if (p.visibility === 'Public') return true;
           if (userId && p.visibility === 'Internal') return true;
           return false;
@@ -1429,5 +1528,30 @@ export const StorageService = {
       console.error('Error deleting news item:', err);
       throw err;
     }
+  },
+
+  getStudentApplications: async (userId: string) => {
+    if (!userId) return [];
+    const { data, error } = await supabase
+      .from('eois')
+      .select('*, projects(*)')
+      .eq('sender_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error("Error fetching student applications:", error);
+      return [];
+    }
+    return data || [];
+  },
+
+  updateStudentProfile: async (userId: string, data: { education_level: string; availability: string; looking_for: string; program: string }) => {
+    const { error } = await supabase.from('student_profiles').upsert({
+      user_id: userId,
+      education_level: data.education_level,
+      availability: data.availability,
+      looking_for: data.looking_for,
+      program: data.program
+    });
+    if (error) throw error;
   }
 };

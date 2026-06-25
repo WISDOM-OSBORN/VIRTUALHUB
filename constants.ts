@@ -2,9 +2,12 @@
 import { Project, ProjectStatus, Visibility, ResearchArea, NewsItem } from './types';
 
 export const HERO_IMAGES = [
-  'https://images.unsplash.com/photo-1618961734760-466979ec35b0?auto=format&fit=crop&w=1920&q=80',
-  'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1920&q=80',
-  'https://images.unsplash.com/photo-1532187875605-1ef638272ee4?auto=format&fit=crop&w=1920&q=80'
+  // Vaccine Innovation: Clean modern clinical lab and vaccine research
+  'https://images.unsplash.com/photo-1584036561566-baf241830990?auto=format&fit=crop&w=1920&q=80',
+  // Diagnostic Excellence: Advanced diagnostic testing and systems
+  'https://images.unsplash.com/photo-1579154204601-01588f351167?auto=format&fit=crop&w=1920&q=80',
+  // Pharmaceutical Research: Biochemistry, herbal validation and pharma research
+  'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=1920&q=80'
 ];
 
 export const PROJECTS: Project[] = [

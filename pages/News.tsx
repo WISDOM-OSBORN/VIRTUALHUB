@@ -1,12 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
-import { Calendar, Tag, ChevronRight, Newspaper, Sparkles, Loader2, ExternalLink, Globe, Zap, RefreshCw, Microscope, Clock } from 'lucide-react';
+import { Calendar, Tag, ChevronRight, Newspaper, Sparkles, Loader2, ExternalLink, Globe, Zap, RefreshCw, Microscope, Clock, Search, Filter } from 'lucide-react';
 import { StorageService } from '../services/storageService';
 import { AIScoutService } from '../services/aiScoutService';
 import { NewsItem } from '../types';
 
 const News: React.FC = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [isScouting, setIsScouting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lastSync, setLastSync] = useState<Date | null>(null);
@@ -55,12 +56,20 @@ const News: React.FC = () => {
     target.src = 'https://images.unsplash.com/photo-1532187875605-1ef638272ee4?auto=format&fit=crop&w=800&q=80';
   };
 
+  // Filtering Logic
+  const filteredNews = news.filter(item => {
+    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          item.summary.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
   return (
     <div className="min-h-screen bg-white py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-20 border-b border-gray-100 pb-12 gap-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-16 border-b border-gray-100 pb-12 gap-8">
           <div className="flex-1">
             <div className="flex items-center gap-4 mb-4">
               <div className="p-4 bg-ug-navy rounded-[2rem] text-white shadow-2xl">
@@ -102,6 +111,38 @@ const News: React.FC = () => {
           </button>
         </div>
 
+        {/* Search and Category Filters */}
+        <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 mb-12 flex flex-col md:flex-row gap-6 items-center justify-between">
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input 
+              type="text" 
+              placeholder="Search news..." 
+              className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-ug-teal focus:border-transparent transition-all font-bold"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <div className="relative w-full md:w-64">
+             <select 
+                className="appearance-none w-full bg-white border border-gray-200 text-gray-700 py-3 px-6 pr-12 rounded-2xl font-black text-sm leading-tight focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+             >
+                <option value="All">All Categories</option>
+                <option value="Announcement">Announcement</option>
+                <option value="Breakthrough">Breakthrough</option>
+                <option value="Insight">Insight</option>
+                <option value="Milestone">Milestone</option>
+                <option value="Research">Research</option>
+             </select>
+             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+                <Filter size={18} />
+             </div>
+          </div>
+        </div>
+
         {/* Loading State */}
         {loading && !isScouting && (
            <div className="flex flex-col items-center justify-center py-40">
@@ -112,15 +153,15 @@ const News: React.FC = () => {
 
         {/* News Grid */}
         <div className="grid lg:grid-cols-1 gap-12">
-          {news.length === 0 && !loading && (
+          {filteredNews.length === 0 && !loading && (
             <div className="text-center py-40 border-2 border-dashed border-gray-100 rounded-[3rem]">
                <Globe className="text-gray-200 mx-auto mb-8" size={80} />
-               <h3 className="text-2xl font-black text-ug-navy">The Feed is Prime</h3>
-               <p className="text-gray-400 font-medium mt-3 text-lg">Autonomous scouting is active. New breakthroughs will appear every 24 hours.</p>
+               <h3 className="text-2xl font-black text-ug-navy">No news items matched</h3>
+               <p className="text-gray-400 font-medium mt-3 text-lg">Try clearing your filters or refining your search words.</p>
             </div>
           )}
 
-          {news.map((item, idx) => (
+          {filteredNews.map((item, idx) => (
             <article 
               key={item.id} 
               onClick={() => handleNewsClick(item)}

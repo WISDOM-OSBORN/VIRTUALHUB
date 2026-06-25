@@ -342,3 +342,37 @@ FOR ALL TO authenticated USING (
   public.is_admin()
 );
 
+-- Bookmarks table to support saving research projects
+CREATE TABLE IF NOT EXISTS public.bookmarks (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CONSTRAINT unique_user_project_bookmark UNIQUE (user_id, project_id)
+);
+
+-- Enable Row Level Security on public.bookmarks
+ALTER TABLE public.bookmarks ENABLE ROW LEVEL SECURITY;
+
+-- Allow users to read their own bookmarks
+DROP POLICY IF EXISTS "Users can view their own bookmarks" ON public.bookmarks;
+CREATE POLICY "Users can view their own bookmarks" ON public.bookmarks
+FOR SELECT TO authenticated USING (
+  auth.uid() = user_id
+);
+
+-- Allow users to create their own bookmarks
+DROP POLICY IF EXISTS "Users can insert their own bookmarks" ON public.bookmarks;
+CREATE POLICY "Users can insert their own bookmarks" ON public.bookmarks
+FOR INSERT TO authenticated WITH CHECK (
+  auth.uid() = user_id
+);
+
+-- Allow users to delete their own bookmarks
+DROP POLICY IF EXISTS "Users can delete their own bookmarks" ON public.bookmarks;
+CREATE POLICY "Users can delete their own bookmarks" ON public.bookmarks
+FOR DELETE TO authenticated USING (
+  auth.uid() = user_id
+);
+
+

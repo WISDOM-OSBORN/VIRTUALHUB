@@ -10,6 +10,8 @@ import {
 import { User, Project, NewsItem, UserRole, ProjectStatus, Visibility, ResearchArea, DisclosureStatus } from '../types';
 import { StorageService } from '../services/storageService';
 import { useToast } from '../App';
+import { AIScoutService } from '../services/aiScoutService';
+import { getGeminiResponse } from '../services/geminiService';
 
 interface AdminDashboardProps {
   user: User | null;
@@ -53,6 +55,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newsImageUrl, setNewsImageUrl] = useState('');
   const [newsExternalUrl, setNewsExternalUrl] = useState('');
   const [isSavingNews, setIsSavingNews] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [isScoutingNews, setIsScoutingNews] = useState(false);
 
   // Admin Disclosure Workflows states
   const [selectedDisclosureId, setSelectedDisclosureId] = useState<string | null>(null);
@@ -199,6 +203,67 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  const handleRejectDocumentSlot = async (proj: Project, slotId: string) => {
+    if (!user) return;
+    const reason = window.prompt("Enter the reason for rejecting this document slot and requesting a re-upload:");
+    if (reason === null) return; // User cancelled
+    if (!reason.trim()) {
+      showToast("A reason is required to request a document re-upload.", "error");
+      return;
+    }
+
+    setIsProcessingAction(true);
+    try {
+      const currentRequested = Array.isArray(proj.requested_documents) ? proj.requested_documents : [];
+      let slotName = '';
+      const updatedRequested = currentRequested.map(doc => {
+        if (doc.id === slotId) {
+          slotName = doc.name;
+          return {
+            ...doc,
+            status: 'requested' as const,
+            url: undefined,
+            uploaded_at: undefined,
+            by: undefined
+          };
+        }
+        return doc;
+      });
+
+      const currentTimeline = Array.isArray(proj.disclosure_timeline) ? proj.disclosure_timeline : [];
+      const newEvent = {
+        event: 'Document Rejected',
+        details: `Admin rejected file in slot "${slotName}". Reason: ${reason.trim()}`,
+        timestamp: new Date().toISOString(),
+        user_name: user.name
+      };
+
+      const updated = {
+        ...proj,
+        disclosure_status: DisclosureStatus.DocumentsRequested,
+        requested_documents: updatedRequested,
+        disclosure_timeline: [...currentTimeline, newEvent]
+      };
+
+      await StorageService.saveProject(updated);
+
+      await StorageService.submitEOI(
+        proj.id,
+        user.name,
+        `⚠️ DOCUMENT RE-UPLOAD REQUESTED for slot [${slotName}]:\n\nReason: ${reason.trim()}\n\nPlease go to your portfolio dashboard and upload a revised or correct file in the corresponding slot.`,
+        proj.owner_id
+      );
+
+      showToast(`Document slot "${slotName}" has been reset and researcher notified.`, "success");
+      await loadAdminData();
+      if (onRefresh) onRefresh();
+    } catch (err: any) {
+      showToast(err.message || "Failed to reject document slot", "error");
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
   // Load all admin data
   const loadAdminData = async () => {
     try {
@@ -283,6 +348,53 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setProjects(prev => prev.filter(p => p.id !== projectId));
     } catch (err) {
       showToast("Failed to delete project", "error");
+    }
+  };
+
+  const handleAIScoutSync = async () => {
+    if (isScoutingNews) return;
+    setIsScoutingNews(true);
+    showToast("AI Scout: Initializing synchronization with external academic feeds...", "info");
+    try {
+      const updated = await AIScoutService.autoSyncNews(true);
+      if (updated) {
+        showToast("AI Scout: Successfully synchronized new relevant announcements!", "success");
+        await loadAdminData();
+      } else {
+        showToast("AI Scout: Feeds are already up to date. No new announcements found.", "success");
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed running AI Scout sync", "error");
+    } finally {
+      setIsScoutingNews(false);
+    }
+  };
+
+  const handleGenerateAIPressRelease = async () => {
+    if (!newsTitle) {
+      showToast("Please enter a title first to guide the AI news writer.", "error");
+      return;
+    }
+    setIsGeneratingAI(true);
+    showToast("AI Agent: Writing descriptive copy summary...", "info");
+    try {
+      const prompt = `Write a professional, engaging academic announcement or press release summary based on the following:
+Title: "${newsTitle}"
+Category: "${newsCategory}"
+
+Instructions:
+1. The tone should be authoritative yet exciting.
+2. Highlight the impact on University of Ghana research, strategic ecosystem funding, or public interest.
+3. Keep the summary under 120 words.
+4. Output ONLY the written copy summary, do not include markdown formatting or meta tags.`;
+
+      const responseText = await getGeminiResponse(prompt, []);
+      setNewsSummary(responseText.trim());
+      showToast("AI Agent: Draft generated successfully!", "success");
+    } catch (err: any) {
+      showToast("Failed to draft with Gemini", "error");
+    } finally {
+      setIsGeneratingAI(false);
     }
   };
 
@@ -1017,9 +1129,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                           )}
                                         </div>
                                         {doc.url && (
-                                          <a href={doc.url} target="_blank" rel="noreferrer" className="text-ug-teal font-black hover:underline text-xs">
-                                            View
-                                          </a>
+                                          <div className="flex items-center gap-2">
+                                            <a href={doc.url} target="_blank" rel="noreferrer" className="text-ug-teal font-black hover:underline text-xs">
+                                              View
+                                            </a>
+                                            <button 
+                                              onClick={() => handleRejectDocumentSlot(activeProj, doc.id)}
+                                              className="text-red-500 hover:text-red-700 font-black text-xs cursor-pointer border-l pl-2 border-gray-200"
+                                              title="Reject this file and request a re-upload"
+                                            >
+                                              Reject
+                                            </button>
+                                          </div>
                                         )}
                                       </div>
                                     ))}
@@ -1224,7 +1345,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   {/* Summary */}
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Short Summary</label>
+                    <div className="flex justify-between items-center ml-1">
+                      <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Short Summary</label>
+                      <button
+                        type="button"
+                        onClick={handleGenerateAIPressRelease}
+                        disabled={isGeneratingAI}
+                        className="text-[9px] font-black uppercase text-purple-600 hover:text-purple-700 tracking-wider flex items-center gap-1 transition disabled:opacity-50"
+                      >
+                        {isGeneratingAI ? (
+                          <>
+                            <Loader2 size={10} className="animate-spin" /> Drafting...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={10} /> Write with AI
+                          </>
+                        )}
+                      </button>
+                    </div>
                     <textarea 
                       value={newsSummary}
                       onChange={(e) => setNewsSummary(e.target.value)}
@@ -1303,9 +1442,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
               {/* Right Column: News History Feed List */}
               <div className="lg:col-span-2 space-y-6">
-                <div>
-                  <h3 className="text-xl font-black text-ug-navy">Broadcast Archives</h3>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Curation registry and control lists</p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <h3 className="text-xl font-black text-ug-navy">Broadcast Archives</h3>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Curation registry and control lists</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAIScoutSync}
+                    disabled={isScoutingNews}
+                    className="bg-purple-50 hover:bg-purple-100 text-purple-700 hover:text-purple-800 border border-purple-100 font-black text-[10px] uppercase tracking-widest px-4 py-2.5 rounded-xl transition flex items-center gap-2 disabled:opacity-50 shrink-0 shadow-sm"
+                  >
+                    {isScoutingNews ? (
+                      <>
+                        <Loader2 size={13} className="animate-spin" /> Scouting Feeds...
+                      </>
+                    ) : (
+                      <>
+                        <Radio size={13} className="animate-pulse" /> Trigger AI Scout Sync
+                      </>
+                    )}
+                  </button>
                 </div>
 
                 <div className="space-y-4">

@@ -410,6 +410,46 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
+  const handleToggleBookmark = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        showToast("Authentication Required. Please log in to bookmark projects.", "error");
+        return;
+      }
+      if (!id) return;
+      const result = await StorageService.toggleBookmark(session.user.id, id);
+      setIsBookmarked(result);
+      if (result) {
+        showToast("Project saved to bookmarks.", "success");
+        setProject(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            impact_metrics: {
+              ...(prev.impact_metrics || { views: 0, requests: 0, bookmarks: 0 }),
+              bookmarks: ((prev.impact_metrics?.bookmarks || 0) + 1)
+            }
+          };
+        });
+      } else {
+        showToast("Project removed from bookmarks.", "info");
+        setProject(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            impact_metrics: {
+              ...(prev.impact_metrics || { views: 0, requests: 0, bookmarks: 0 }),
+              bookmarks: Math.max(0, (prev.impact_metrics?.bookmarks || 1) - 1)
+            }
+          };
+        });
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to toggle bookmark", "error");
+    }
+  };
+
   if (pageLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -459,7 +499,6 @@ const ProjectDetail: React.FC = () => {
             <div className="max-w-3xl">
               <button onClick={() => navigate('/projects')} className="text-white/60 hover:text-white flex items-center gap-2 mb-6 text-xs font-black uppercase tracking-[0.2em]"><ArrowLeft size={16} /> Return to Hub</button>
               <div className="flex flex-wrap gap-3 mb-4">
-                <span className="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-ug-navy text-white shadow-xl">Stage {project.trl}</span>
                 <span className="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/10 text-white backdrop-blur-md border border-white/20">{project.status}</span>
               </div>
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter drop-shadow-2xl leading-tight">{project.title}</h1>
@@ -468,7 +507,25 @@ const ProjectDetail: React.FC = () => {
               <button onClick={handleShare} className="relative h-[56px] w-[56px] md:h-[64px] md:w-[64px] rounded-[18px] bg-white/10 border border-white/20 shadow-lg hover:bg-white/20 transition-all flex items-center justify-center text-white group" title="Share Project">
                 <Share2 size={24} className="group-hover:scale-110 transition" />
               </button>
-              <button onClick={() => setIsContactModalOpen(true)} className="px-6 md:px-10 h-[56px] md:h-[64px] bg-[#0092B0] hover:bg-[#007C96] rounded-[22px] shadow-xl flex items-center justify-center gap-3 md:gap-4 transition-all active:scale-95 group relative overflow-hidden border border-white/10">
+              {currentUserProfile && (
+                <button 
+                  onClick={handleToggleBookmark} 
+                  className={`relative h-[56px] w-[56px] md:h-[64px] md:w-[64px] rounded-[18px] border shadow-lg transition-all flex items-center justify-center group ${isBookmarked ? 'bg-ug-teal text-white border-ug-teal hover:bg-ug-teal/90' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`} 
+                  title={isBookmarked ? "Remove Bookmark" : "Bookmark Project"}
+                >
+                  <Bookmark size={24} className={`transition group-hover:scale-110 ${isBookmarked ? 'fill-current' : ''}`} />
+                </button>
+              )}
+              <button 
+                onClick={() => {
+                  if (!currentUserProfile) {
+                    showToast("Authentication Required. Please log in to connect with PI.", "error");
+                  } else {
+                    setIsContactModalOpen(true);
+                  }
+                }} 
+                className="px-6 md:px-10 h-[56px] md:h-[64px] bg-[#0092B0] hover:bg-[#007C96] rounded-[22px] shadow-xl flex items-center justify-center gap-3 md:gap-4 transition-all active:scale-95 group relative overflow-hidden border border-white/10"
+              >
                 <MessageSquare size={20} className="text-white" />
                 <span className="text-white font-black text-xs md:text-sm uppercase tracking-widest leading-tight text-left">Connect <br /> with PI</span>
               </button>
@@ -491,6 +548,21 @@ const ProjectDetail: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
         <div className="lg:col-span-8 space-y-12">
+          {!currentUserProfile && (
+            <div className="p-8 rounded-[2.5rem] bg-indigo-50 border border-indigo-100 flex items-start gap-4 shadow-sm animate-fade-in">
+              <span className="p-3 bg-indigo-600 text-white rounded-2xl shrink-0">
+                <Lock size={20} />
+              </span>
+              <div>
+                <h4 className="font-black text-indigo-900 text-sm uppercase tracking-wider">Public Visitor Mode</h4>
+                <p className="text-gray-600 text-xs font-medium leading-relaxed mt-1">
+                  Sensitive technical specs, full blueprints, laboratory logs, and direct expression of interest actions on this research project are restricted to verified institutional members. 
+                  <span className="font-bold text-indigo-900 ml-1">Please log in to your account to request authorized disclosure or connect with the PI.</span>
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Executive Summary */}
           <section className="bg-white p-12 rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden">
             <h2 className="text-2xl font-black text-ug-navy mb-6 flex items-center gap-3"><FileText className="text-ug-teal" /> Executive Summary</h2>
