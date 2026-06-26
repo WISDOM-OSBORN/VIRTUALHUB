@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, SlidersHorizontal, ArrowRight, Loader2, Bookmark } from 'lucide-react';
+import { Search, Filter, SlidersHorizontal, ArrowRight, Loader2, Bookmark, X, ChevronDown, RotateCcw } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { StorageService } from '../services/storageService';
 import { Project, ProjectStatus, ResearchArea } from '../types';
@@ -15,6 +15,7 @@ const Projects: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [showFilters, setShowFilters] = useState(false);
   const itemsPerPage = 6;
   const navigate = useNavigate();
 
@@ -135,68 +136,134 @@ const Projects: React.FC = () => {
         </div>
 
         {/* Filters & Search */}
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-12">
-          <div className="flex flex-col xl:flex-row gap-6 items-center justify-between">
-            <div className="relative w-full xl:w-96">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <input 
-                type="text" 
-                placeholder="Search projects..." 
-                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-ug-teal focus:border-transparent transition-all font-bold"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            
-            <div className="flex flex-wrap gap-4 w-full xl:w-auto">
-              <div className="relative flex-1 md:flex-none">
-                 <select 
-                    className="appearance-none w-full bg-gray-50 border border-gray-200 text-gray-700 py-3 px-6 pr-12 rounded-2xl font-black text-sm leading-tight focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
-                    value={selectedArea}
-                    onChange={(e) => setSelectedArea(e.target.value)}
-                 >
-                    <option value="All">All Research Tracks</option>
-                    {Object.values(ResearchArea).map(area => (
-                       <option key={area} value={area}>{area}</option>
-                    ))}
-                 </select>
-                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
-                    <Filter size={18} />
-                 </div>
-              </div>
-
-              <div className="relative flex-1 md:flex-none">
-                 <select 
-                    className="appearance-none w-full bg-gray-50 border border-gray-200 text-gray-700 py-3 px-6 pr-12 rounded-2xl font-black text-sm leading-tight focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                 >
-                    <option value="All">All Statuses</option>
-                    {Object.values(ProjectStatus).map(status => (
-                       <option key={status} value={status}>{status}</option>
-                    ))}
-                 </select>
-                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
-                    <SlidersHorizontal size={18} />
-                 </div>
-              </div>
-
-              <div className="relative flex-1 md:flex-none">
-                 <select 
-                    className="appearance-none w-full bg-gray-50 border border-gray-200 text-gray-700 py-3 px-6 pr-12 rounded-2xl font-black text-sm leading-tight focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                 >
-                    <option value="newest">Newest First</option>
-                    <option value="oldest">Oldest First</option>
-                    <option value="budget-desc">Budget (High to Low)</option>
-                 </select>
-                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
-                    <SlidersHorizontal size={18} />
-                 </div>
-              </div>
-            </div>
+        <div className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-gray-100 mb-12 relative">
+          <div className="relative w-full">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input 
+              type="text" 
+              placeholder="Search projects..." 
+              className="w-full pl-12 pr-28 sm:pr-36 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-ug-teal focus:border-transparent transition-all font-bold text-gray-900 placeholder:text-gray-400"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className={`absolute right-2 top-1/2 transform -translate-y-1/2 py-2 px-3 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 ${
+                showFilters || selectedArea !== 'All' || selectedStatus !== 'All' || sortBy !== 'newest'
+                  ? 'bg-ug-teal text-white shadow-sm'
+                  : 'bg-ug-navy hover:bg-ug-teal text-white'
+              }`}
+            >
+              <Filter size={14} className={showFilters ? 'scale-110' : ''} />
+              <span className="hidden sm:inline">Filters</span>
+              {(selectedArea !== 'All' || selectedStatus !== 'All' || sortBy !== 'newest') && (
+                <span className="w-4 h-4 bg-white text-ug-navy rounded-full flex items-center justify-center text-[9px] font-black leading-none shrink-0">
+                  { [selectedArea !== 'All', selectedStatus !== 'All', sortBy !== 'newest'].filter(Boolean).length }
+                </span>
+              )}
+            </button>
           </div>
+
+          {/* Floating Dropdown Filter Panel */}
+          {showFilters && (
+            <div className="absolute right-4 md:right-6 top-full mt-3 w-[calc(100%-2rem)] sm:w-[450px] bg-white rounded-2xl shadow-xl border border-gray-200 p-5 z-50 transition-all duration-200">
+              <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-100">
+                <span className="text-xs font-black uppercase tracking-widest text-ug-navy">Filter Research Pipeline</span>
+                <div className="flex items-center gap-2">
+                  {(selectedArea !== 'All' || selectedStatus !== 'All' || sortBy !== 'newest') && (
+                    <button 
+                      onClick={() => {
+                        setSelectedArea('All');
+                        setSelectedStatus('All');
+                        setSortBy('newest');
+                      }}
+                      className="text-[10px] font-bold text-gray-400 hover:text-red-500 uppercase tracking-wider flex items-center gap-1 transition-colors"
+                    >
+                      <RotateCcw size={10} />
+                      Reset
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => setShowFilters(false)}
+                    className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {/* Research track */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Research Track</label>
+                  <div className="relative">
+                    <select 
+                      className="appearance-none w-full bg-gray-50 border border-gray-200 text-gray-700 py-2.5 px-4 pr-10 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
+                      value={selectedArea}
+                      onChange={(e) => setSelectedArea(e.target.value)}
+                    >
+                      <option value="All">All Research Tracks</option>
+                      {Object.values(ResearchArea).map(area => (
+                        <option key={area} value={area}>{area}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+                      <ChevronDown size={14} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Development stage */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Development Stage</label>
+                  <div className="relative">
+                    <select 
+                      className="appearance-none w-full bg-gray-50 border border-gray-200 text-gray-700 py-2.5 px-4 pr-10 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
+                      value={selectedStatus}
+                      onChange={(e) => setSelectedStatus(e.target.value)}
+                    >
+                      <option value="All">All Statuses</option>
+                      {Object.values(ProjectStatus).map(status => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+                      <ChevronDown size={14} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sort order */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Sort Projects</label>
+                  <div className="relative">
+                    <select 
+                      className="appearance-none w-full bg-gray-50 border border-gray-200 text-gray-700 py-2.5 px-4 pr-10 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                    >
+                      <option value="newest">Newest First</option>
+                      <option value="oldest">Oldest First</option>
+                      <option value="budget-desc">Budget (High to Low)</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+                      <ChevronDown size={14} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 pt-3 border-t border-gray-100">
+                <button 
+                  onClick={() => setShowFilters(false)}
+                  className="w-full bg-ug-navy hover:bg-ug-teal text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-colors shadow-sm"
+                >
+                  Apply Filters
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Loading State */}

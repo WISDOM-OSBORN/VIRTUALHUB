@@ -1519,60 +1519,103 @@ Instructions:
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="space-y-6 text-left"
+              className="space-y-8 text-left"
             >
-              <div>
-                <h3 className="text-xl font-black text-ug-navy">Governance & Exchange Audit Trail</h3>
-                <p className="text-[10px] font-black text-ug-teal uppercase tracking-widest mt-1">Symmetric Match-Making Disks Activity Record</p>
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-black text-ug-navy">Administrative Audit Logs</h3>
+                  <p className="text-[10px] font-black text-ug-teal uppercase tracking-widest mt-1">Outreach & Exchange Request History</p>
+                </div>
+                <div className="flex items-center gap-2 bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full border border-slate-200/60 self-start sm:self-center">
+                  <Lock size={12} className="text-slate-500" />
+                  <span className="text-[9px] font-black uppercase tracking-wider">RESTRICTED ADMIN ACCESS</span>
+                </div>
+              </div>
+
+              {/* Data Privacy & Compliance Safeguard Banner */}
+              <div className="bg-slate-50/60 border border-slate-100 rounded-3xl p-5 sm:p-6 flex flex-col md:flex-row items-start gap-4 shadow-sm">
+                <div className="w-10 h-10 rounded-2xl bg-slate-100 border border-slate-200/50 flex items-center justify-center shrink-0">
+                  <Lock size={18} className="text-slate-600" />
+                </div>
+                <div className="space-y-1.5">
+                  <h4 className="text-xs font-black text-ug-navy uppercase tracking-wider">Data Confidentiality & Governance Safeguard</h4>
+                  <p className="text-[11px] text-gray-500 font-medium leading-relaxed">
+                    This audit trail registers outreach requests, contact exchanges, and matchmaking handshakes within the portal. To enforce privacy guidelines and intellectual property protection, message contents are audited exclusively for quality control, compliance audits, and security monitoring. Full user identities and contact channels are heavily encrypted, and access is permitted only under strict administrative authority.
+                  </p>
+                </div>
+              </div>
+
+              {/* Audit Summary Statistics Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm space-y-1">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-wider">Total Request Volume</p>
+                  <p className="text-2xl font-black text-ug-navy">{eois.length}</p>
+                  <p className="text-[9px] text-gray-400 font-medium">Logged system outreaches</p>
+                </div>
+                <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm space-y-1">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-wider">Pending Exchanges</p>
+                  <p className="text-2xl font-black text-amber-500">
+                    {eois.filter(e => !e.status || e.status === 'pending').length}
+                  </p>
+                  <p className="text-[9px] text-gray-400 font-medium">Awaiting participant response</p>
+                </div>
+                <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm space-y-1">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-wider">Successful Handshakes</p>
+                  <p className="text-2xl font-black text-ug-teal">
+                    {eois.filter(e => e.status === 'accepted').length}
+                  </p>
+                  <p className="text-[9px] text-gray-400 font-medium">Authorized connection matches</p>
+                </div>
               </div>
 
               {/* Interaction Logs listing */}
-              <div className="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-sm">
+              <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-black tracking-widest text-gray-400 uppercase">
-                        <th className="p-6">Origin Host (Sender)</th>
-                        <th className="p-6">Associated Project Asset</th>
-                        <th className="p-6">Transmission Date</th>
-                        <th className="p-6">Communication Message Payload</th>
-                        <th className="p-6 text-right">Verification</th>
+                      <tr className="bg-gray-50/50 border-b border-gray-100 text-[9px] font-black tracking-widest text-gray-400 uppercase">
+                        <th className="p-5 pl-6">Sender</th>
+                        <th className="p-5">Associated Project</th>
+                        <th className="p-5">Date & Time</th>
+                        <th className="p-5">Message Excerpt</th>
+                        <th className="p-5 pr-6 text-right">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {eois.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="p-12 text-center text-xs font-black uppercase text-gray-400 tracking-widest">
-                            No hub transactions recorded in the audit trail.
+                            No outreach transactions recorded in the audit logs.
                           </td>
                         </tr>
                       ) : (
                         eois.map((e) => (
-                          <tr key={e.id} className="hover:bg-gray-50/50 transition">
-                            <td className="p-6">
+                          <tr key={e.id} className="hover:bg-gray-50/30 transition duration-150">
+                            <td className="p-5 pl-6">
                               <div>
-                                <span className="font-black text-xs text-ug-navy">{e.user_name}</span>
+                                <span className="font-extrabold text-xs text-ug-navy block">{e.user_name}</span>
                                 <span className="text-[9px] font-mono text-gray-400 block mt-0.5">UID: {e.sender_id?.substring(0, 8)}...</span>
                               </div>
                             </td>
-                            <td className="p-6">
+                            <td className="p-5">
                               <span className="font-extrabold text-xs text-ug-navy block max-w-xs truncate" title={e.projects?.title}>
-                                {e.projects?.title || 'Ecosystem Outreach (No Project Specified)'}
+                                {e.projects?.title || 'Ecosystem Outreach'}
                               </span>
                             </td>
-                            <td className="p-6">
-                              <div className="flex items-center gap-1.5 text-gray-400 font-mono text-[10px]">
-                                <Clock size={12} />
-                                {new Date(e.created_at).toLocaleString()}
+                            <td className="p-5">
+                              <div className="flex items-center gap-1.5 text-gray-400 font-mono text-[9px]">
+                                <Clock size={11} />
+                                {new Date(e.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                               </div>
                             </td>
-                            <td className="p-6">
-                              <p className="text-xs text-gray-500 max-w-sm line-clamp-2 leading-relaxed" title={e.message}>
-                                {e.message}
+                            <td className="p-5">
+                              <p className="text-xs text-gray-500 max-w-xs sm:max-w-md line-clamp-1 leading-relaxed italic" title={e.message}>
+                                "{e.message}"
                               </p>
                             </td>
-                            <td className="p-6 text-right">
-                              <span className={`text-[8px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full border ${
+                            <td className="p-5 pr-6 text-right">
+                              <span className={`text-[8px] font-black tracking-wider uppercase px-2.5 py-1 rounded-full border ${
                                 e.status === 'accepted' ? 'text-ug-success bg-ug-success/5 border-ug-success/10' :
                                 e.status === 'ignored' ? 'text-gray-400 bg-gray-50 border-gray-200' :
                                 'text-amber-500 bg-amber-50 border-amber-200'

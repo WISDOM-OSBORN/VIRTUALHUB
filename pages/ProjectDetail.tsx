@@ -564,32 +564,34 @@ const ProjectDetail: React.FC = () => {
           )}
 
           {/* Executive Summary */}
-          <section className="bg-white p-12 rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden">
+          <section className="bg-white p-5 md:p-10 lg:p-12 rounded-2xl md:rounded-[2.5rem] lg:rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden">
             <h2 className="text-2xl font-black text-ug-navy mb-6 flex items-center gap-3"><FileText className="text-ug-teal" /> Executive Summary</h2>
-            <p className="text-gray-600 leading-relaxed text-xl font-normal" style={{ fontFamily: "'Times New Roman', Times, serif" }}>"{project.description}"</p>
+            <p className="text-gray-600 leading-relaxed text-lg md:text-xl font-normal text-left sm:text-justify" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
+              {project.description?.replace(/[\u00ad\u200b\u200c\u200d\ufeff]/g, '')}
+            </p>
           </section>
 
           {images[1] && (
-            <section className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
+            <section className="bg-white p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] lg:rounded-[3rem] border border-gray-100 shadow-sm">
               <h2 className="text-2xl font-black text-ug-navy mb-6 flex items-center gap-3"><ImageIcon className="text-ug-teal" /> Visual Disclosure</h2>
-              <img src={images[1]} alt="Evidence" className="w-full rounded-[2rem] shadow-lg" />
+              <img src={images[1]} alt="Evidence" className="w-full rounded-xl md:rounded-[2rem] shadow-lg" />
             </section>
           )}
 
           {project.achievements && project.achievements.length > 0 && (
-            <section className="bg-white p-12 rounded-[3rem] border border-gray-100 shadow-sm">
-              <h2 className="text-2xl font-black text-ug-navy mb-8 flex items-center gap-4">
-                <CheckCircle2 className="text-ug-success" size={28} /> Key Milestones & Achievements
+            <section className="bg-white p-5 md:p-10 lg:p-12 rounded-2xl md:rounded-[2.5rem] lg:rounded-[3rem] border border-gray-100 shadow-sm">
+              <h2 className="text-xl md:text-2xl font-black text-ug-navy mb-6 md:mb-8 flex items-center gap-3 md:gap-4">
+                <CheckCircle2 className="text-ug-success" size={24} /> Key Milestones & Achievements
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 {project.achievements.map((item, i) => {
                   const cleanedItem = item.replace(/^(\s*[•\-\*]|\s*\d+\.)\s*/, '');
                   return (
-                    <div key={i} className="flex items-start gap-5 p-6 bg-gray-50 rounded-3xl border border-gray-100 group hover:border-ug-teal/20 hover:bg-white transition-all duration-300">
-                      <div className="w-8 h-8 rounded-full bg-ug-teal/10 text-ug-teal font-black text-xs flex items-center justify-center shrink-0 group-hover:bg-ug-teal group-hover:text-white transition-all duration-300">
+                    <div key={i} className="flex items-start gap-4 md:gap-5 p-4 md:p-6 bg-gray-50 rounded-2xl md:rounded-3xl border border-gray-100 group hover:border-ug-teal/20 hover:bg-white transition-all duration-300">
+                      <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-ug-teal/10 text-ug-teal font-black text-xs flex items-center justify-center shrink-0 group-hover:bg-ug-teal group-hover:text-white transition-all duration-300">
                         {i + 1}
                       </div>
-                      <p className="text-gray-600 font-bold leading-relaxed">{cleanedItem}</p>
+                      <p className="text-gray-600 font-bold leading-relaxed text-xs md:text-sm">{cleanedItem}</p>
                     </div>
                   );
                 })}
@@ -601,59 +603,59 @@ const ProjectDetail: React.FC = () => {
         {/* Sidebar */}
         <div className="lg:col-span-4 space-y-8">
           {/* PI CARD */}
-          <section className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm">
-            <h3 className="text-lg font-black text-ug-navy mb-6 flex items-center gap-2"><UserIcon size={20} className="text-ug-teal" /> Lead Investigator</h3>
+          <section className="bg-white p-5 md:p-8 lg:p-10 rounded-2xl md:rounded-[2.5rem] lg:rounded-[3rem] border border-gray-100 shadow-sm">
+            <h3 className="text-base md:text-lg font-black text-ug-navy mb-4 md:mb-6 flex items-center gap-2"><UserIcon size={18} className="text-ug-teal" /> Lead Investigator</h3>
             {ownerProfile ? (
-              <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-ug-teal/20 shadow-sm"><img src={ownerProfile.avatar_url} className="w-full h-full object-cover" /></div>
+              <div className="space-y-4 md:space-y-6">
+                <div className="flex items-center gap-3 md:gap-4">
+                  <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl overflow-hidden border-2 border-ug-teal/20 shadow-sm"><img src={ownerProfile.avatar_url} className="w-full h-full object-cover" /></div>
                   <div>
-                    <h4 className="font-black text-ug-navy text-lg leading-tight">{ownerProfile.name}</h4>
-                    <p className="text-[10px] font-black text-ug-teal uppercase tracking-widest mt-1">{ownerProfile.role}</p>
+                    <h4 className="font-black text-ug-navy text-base md:text-lg leading-tight">{ownerProfile.name}</h4>
+                    <p className="text-[9px] md:text-[10px] font-black text-ug-teal uppercase tracking-widest mt-1">{ownerProfile.role}</p>
                   </div>
                 </div>
-                <Link to={`/researcher/${ownerProfile.id}`} className="w-full py-4 bg-ug-navy text-white font-black text-[10px] uppercase tracking-[0.3em] rounded-2xl flex items-center justify-center gap-2 hover:bg-ug-teal transition-all shadow-xl">Access Full Portfolio <ExternalLink size={14} /></Link>
+                <Link to={`/researcher/${ownerProfile.id}`} className="w-full py-3 md:py-4 bg-ug-navy text-white font-black text-[9px] md:text-[10px] uppercase tracking-[0.25em] md:tracking-[0.3em] rounded-xl md:rounded-2xl flex items-center justify-center gap-2 hover:bg-ug-teal transition-all shadow-lg text-center">Access Full Portfolio <ExternalLink size={12} /></Link>
               </div>
-            ) : <div className="text-center py-6 text-gray-400 font-bold">Bio Loading...</div>}
+            ) : <div className="text-center py-4 md:py-6 text-gray-400 font-bold text-xs">Bio Loading...</div>}
           </section>
 
           {/* DEDICATED DOWNLOAD BLOCK - If Available */}
           {project.technical_details_url && (
-            <section className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-lg animate-fade-in-up relative overflow-hidden group">
+            <section className="bg-white p-5 md:p-6 lg:p-8 rounded-2xl md:rounded-[2.5rem] border border-gray-100 shadow-lg animate-fade-in-up relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-24 h-24 bg-ug-navy/5 rounded-full blur-2xl group-hover:bg-ug-navy/10 transition-colors"></div>
               <div className="relative z-10">
-                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <h3 className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 md:mb-4 flex items-center gap-2">
                   <FileCode size={14} className="text-ug-navy" /> Technical Brief
                 </h3>
 
                 {(currentUserProfile?.id === project.owner_id || revealCleared) ? (
-                  <div className="p-6 bg-ug-teal/5 rounded-3xl border border-ug-teal/20 flex flex-col items-center text-center">
+                  <div className="p-4 md:p-6 bg-ug-teal/5 rounded-2xl md:rounded-3xl border border-ug-teal/15 flex flex-col items-center text-center">
                     {remainingMinutes !== null && (
-                      <span className="mb-4 flex items-center gap-1.5 text-pink-700 text-[9px] font-black uppercase tracking-wider bg-pink-50 px-3 py-1.5 rounded-xl border border-pink-200/50">
-                        <Clock size={12} className="animate-pulse animate-duration-1000" /> Decrypted Access: {remainingMinutes} min remaining
+                      <span className="mb-3 md:mb-4 flex items-center gap-1.5 text-pink-700 text-[9px] md:text-xs font-extrabold uppercase tracking-wider bg-pink-50 px-2.5 py-1 rounded-lg md:rounded-xl border border-pink-150">
+                        <Clock size={11} className="animate-pulse animate-duration-1000 shrink-0" /> Decrypted Access: {remainingMinutes} min remaining
                       </span>
                     )}
-                    <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-ug-teal mb-4 group-hover:scale-110 transition-transform">
-                      {downloadingBrief ? <Loader2 className="animate-spin text-ug-navy" size={32} /> : <Download size={32} />}
+                    <div className="w-12 h-12 md:w-16 md:h-16 bg-white rounded-xl md:rounded-2xl shadow-sm flex items-center justify-center text-ug-teal mb-3 md:mb-4 group-hover:scale-105 transition-transform">
+                      {downloadingBrief ? <Loader2 className="animate-spin text-ug-navy" size={24} /> : <Download size={24} />}
                     </div>
-                    <h4 className="font-black text-ug-navy text-sm mb-1">{downloadingBrief ? "Authenticating Session..." : "Technical Disclosure"}</h4>
-                    <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-6">PDF Document • {project.research_area}</p>
+                    <h4 className="font-bold text-ug-navy text-xs md:text-sm mb-0.5">{downloadingBrief ? "Authenticating Session..." : "Technical Disclosure"}</h4>
+                    <p className="text-[8px] md:text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-4 md:mb-6">PDF Document • {project.research_area}</p>
                     <button 
                       onClick={handleDownloadBrief}
                       disabled={downloadingBrief}
-                      className="w-full py-4 bg-ug-teal text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-xl shadow-ug-teal/20 hover:bg-ug-navy transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="w-full py-2.5 md:py-3 px-4 bg-ug-teal text-white rounded-xl md:rounded-2xl font-bold text-xs md:text-sm uppercase tracking-wider hover:bg-ug-navy transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
-                      {downloadingBrief ? "Generating Watermarked Item..." : "Download Document"}
+                      {downloadingBrief ? "Generating Document..." : "Download Document"}
                     </button>
                   </div>
                 ) : (
-                  <div className="p-6 bg-gray-50 rounded-3xl border border-gray-200 flex flex-col items-center text-center relative overflow-hidden min-h-[180px]">
-                    <div className="absolute inset-0 z-20 bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center p-4">
-                      <div className="w-12 h-12 bg-ug-navy text-white rounded-full flex items-center justify-center shadow-lg mb-3">
-                        <Lock size={18} />
+                  <div className="p-4 md:p-6 bg-gray-50 rounded-2xl md:rounded-3xl border border-gray-200 flex flex-col items-center text-center relative overflow-hidden min-h-[160px] md:min-h-[180px]">
+                    <div className="absolute inset-0 z-20 bg-white/80 backdrop-blur-[2px] flex flex-col items-center justify-center p-3 md:p-4">
+                      <div className="w-10 h-10 md:w-12 md:h-12 bg-ug-navy text-white rounded-full flex items-center justify-center shadow-lg mb-2.5">
+                        <Lock size={16} />
                       </div>
-                      <h4 className="font-black text-ug-navy text-xs mb-1 uppercase tracking-wider">🔒 Disclosure Locked</h4>
-                      <p className="text-[8px] text-gray-400 font-black uppercase tracking-widest text-center px-4 leading-relaxed mb-4 font-bold">
+                      <h4 className="font-bold text-ug-navy text-xs md:text-sm mb-0.5 uppercase tracking-wide">🔒 Disclosure Locked</h4>
+                      <p className="text-[8px] md:text-[9px] text-gray-500 font-medium uppercase tracking-wider text-center px-2 md:px-4 leading-relaxed mb-3 md:mb-4">
                         Requires Lead Investigator Approval & Privacy Agreement Clearance.
                       </p>
                       <button 
@@ -661,7 +663,7 @@ const ProjectDetail: React.FC = () => {
                           setRevealReason('Interested in collaboration and potential funding discussion.');
                           setIsRevealModalOpen(true);
                         }}
-                        className="bg-ug-navy hover:bg-pink-600 text-white px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition shadow-md hover:scale-105 active:scale-95"
+                        className="bg-ug-navy hover:bg-pink-600 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-lg md:rounded-xl text-[9px] md:text-xs font-bold uppercase tracking-wider transition shadow-md hover:scale-[1.02] active:scale-95 cursor-pointer"
                       >
                         Request Reveal
                       </button>
@@ -679,18 +681,18 @@ const ProjectDetail: React.FC = () => {
           )}
 
           {/* COMPACT SUBMISSION OF INTEREST BLOCK */}
-          <section className="bg-ug-navy p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden text-white border border-white/10">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-ug-teal/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          <section className="bg-ug-navy p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] shadow-xl relative overflow-hidden text-white border border-white/10">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-ug-teal/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
             <div className="relative z-10">
-              <h2 className="text-sm font-black mb-1 flex items-center gap-2">
-                <Briefcase className="text-ug-teal" size={18} /> 
+              <h2 className="text-xs md:text-sm font-black mb-0.5 flex items-center gap-1.5">
+                <Briefcase className="text-ug-teal" size={16} /> 
                 {currentUserProfile?.role === 'Student' ? 'Student Application' : 'Submission of Interest'}
               </h2>
-              <p className="text-gray-400 text-[8px] mb-6 font-bold uppercase tracking-widest">
+              <p className="text-gray-400 text-[7.5px] md:text-[8px] mb-4 md:mb-5 font-bold uppercase tracking-widest">
                 {currentUserProfile?.role === 'Student' ? 'Academic Opportunities Track' : 'Formal partnership track'}
               </p>
               
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2 md:gap-2.5">
                 {(currentUserProfile?.role === 'Student' ? [
                   { label: "Research Assistantship", icon: GraduationCap, color: "hover:bg-ug-teal" },
                   { label: "Scholarship Application", icon: DollarSign, color: "hover:bg-ug-success" },
@@ -708,23 +710,23 @@ const ProjectDetail: React.FC = () => {
                     key={action.label}
                     disabled={!!submittingEOI}
                     onClick={() => submitFormalInterest(action.label)}
-                    className={`flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-2xl transition-all group ${action.color} disabled:opacity-50 text-left`}
+                    className={`flex items-center gap-2.5 md:gap-3.5 p-2.5 md:p-3 bg-white/5 border border-white/5 rounded-xl md:rounded-2xl transition-all group ${action.color} disabled:opacity-50 text-left cursor-pointer`}
                   >
-                    <div className="p-2 rounded-xl bg-white/10 text-ug-teal group-hover:text-white transition-colors flex-shrink-0">
-                      {submittingEOI === action.label ? <Loader2 className="animate-spin" size={16} /> : <action.icon size={18} />}
+                    <div className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-white/10 text-ug-teal group-hover:text-white transition-colors flex-shrink-0">
+                      {submittingEOI === action.label ? <Loader2 className="animate-spin" size={14} /> : <action.icon size={15} />}
                     </div>
-                    <span className="text-[10px] md:text-xs font-black uppercase tracking-widest">{action.label}</span>
+                    <span className="text-[9px] md:text-xs font-black uppercase tracking-widest">{action.label}</span>
                   </button>
                 ))}
               </div>
-              <p className="mt-6 text-[10px] text-gray-500 font-bold uppercase tracking-widest text-center">Instant portal notification triggered on click.</p>
+              <p className="mt-4 md:mt-5 text-[8px] md:text-[9px] text-gray-500 font-bold uppercase tracking-widest text-center">Instant portal notification triggered on click.</p>
             </div>
           </section>
 
           {/* IMPACT SCORING */}
-          <section className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm">
-             <h3 className="text-sm font-black text-ug-navy mb-6 uppercase tracking-widest flex items-center gap-2">
-                <TrendingUp size={16} className="text-ug-teal" /> Ecosystem Impact
+          <section className="bg-white p-5 md:p-6 lg:p-8 rounded-2xl md:rounded-[2.5rem] border border-gray-100 shadow-sm">
+             <h3 className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <TrendingUp size={14} className="text-ug-teal" /> Ecosystem Impact
              </h3>
              
              {/* COMPOSITE SCORE MODULE */}
@@ -750,24 +752,26 @@ const ProjectDetail: React.FC = () => {
                 }
 
                 return (
-                  <div className="space-y-6">
-                    {/* Big Score Header */}
-                    <div className="bg-gradient-to-br from-ug-navy to-slate-900 text-white rounded-[2rem] p-6 text-center shadow-md relative overflow-hidden">
+                  <div className="space-y-4">
+                    {/* Compact Score Header */}
+                    <div className="bg-gradient-to-br from-ug-navy to-slate-900 text-white rounded-xl p-3.5 shadow-md relative overflow-hidden flex items-center justify-between gap-3">
                       <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#0092B0_1px,transparent_1px)] [background-size:16px_16px]"></div>
-                      <span className="text-[9px] font-black text-ug-teal uppercase tracking-widest block mb-1">Ecosystem Impact Index</span>
-                      <span className="text-4xl font-extrabold tracking-tight block text-white drop-shadow-sm">{dynamicIndex}</span>
-                      <span className={`inline-block mt-3 px-3.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${rankColor} shrink-0`}>
-                        {tractionRank}
-                      </span>
+                      <div className="relative z-10 flex flex-col items-start">
+                        <span className="text-[8px] md:text-[9px] font-bold text-ug-teal uppercase tracking-wider block mb-0.5">Ecosystem Impact Index</span>
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[7.5px] md:text-[8px] font-bold uppercase tracking-wider border ${rankColor}`}>
+                          {tractionRank}
+                        </span>
+                      </div>
+                      <span className="text-2xl md:text-3xl font-extrabold tracking-tight text-white drop-shadow-sm relative z-10 pr-1">{dynamicIndex}</span>
                     </div>
 
                     {/* Progress Bar of Traction */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center text-[8px] font-black text-gray-400 uppercase tracking-widest">
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-[8px] md:text-[9px] font-bold text-gray-400 uppercase tracking-wider">
                         <span>Milestone Progress</span>
                         <span>{Math.round(progressPercentage)}%</span>
                       </div>
-                      <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
+                      <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
                         <div 
                           className="bg-gradient-to-r from-ug-teal to-blue-500 h-full rounded-full transition-all duration-1000 ease-out"
                           style={{ width: `${progressPercentage}%` }}
@@ -776,37 +780,31 @@ const ProjectDetail: React.FC = () => {
                     </div>
 
                     {/* Breakdown of real numbers */}
-                    <div className="space-y-3.5 pt-2">
-                       <span className="text-xs font-black text-gray-400 uppercase tracking-widest block">Traction Breakdown</span>
+                    <div className="space-y-2 pt-0.5">
+                       <span className="text-[8px] md:text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Traction Breakdown</span>
                        
-                       <div className="flex justify-between items-center p-3.5 bg-gray-50 rounded-2xl border border-gray-100/50 hover:bg-gray-100/30 transition-colors">
-                          <div className="flex flex-col">
-                             <span className="text-xs font-black text-gray-900 uppercase tracking-widest">Hub Views</span>
-                             <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">+1 Pt per view</span>
-                          </div>
-                          <span className="text-base font-black text-ug-navy">{viewsCount}</span>
-                       </div>
-                       
-                       <div className="flex justify-between items-center p-3.5 bg-gray-50 rounded-2xl border border-gray-100/50 hover:bg-gray-100/30 transition-colors">
-                          <div className="flex flex-col">
-                             <span className="text-xs font-black text-gray-900 uppercase tracking-widest">Expressions of Interest</span>
-                             <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">+8 Pts per partnership EOI</span>
-                          </div>
-                          <span className="text-base font-black text-ug-navy">{eoiCount}</span>
-                       </div>
-                       
-                       <div className="flex justify-between items-center p-3.5 bg-gray-50 rounded-2xl border border-gray-100/50 hover:bg-gray-100/30 transition-colors">
-                          <div className="flex flex-col">
-                             <span className="text-xs font-black text-gray-900 uppercase tracking-widest">Formal Requests</span>
-                             <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">+15 Pts per disclose / applications</span>
-                          </div>
-                          <span className="text-base font-black text-ug-navy">{requestsCount}</span>
+                       <div className="grid grid-cols-3 gap-1.5 md:gap-2">
+                         <div className="p-2 bg-gray-50 rounded-xl border border-gray-100/50 text-center flex flex-col justify-between min-h-[56px] hover:bg-gray-100/30 transition-colors">
+                           <span className="text-[8px] md:text-[9px] font-bold text-gray-400 uppercase tracking-wider truncate">Views</span>
+                           <span className="text-xs md:text-sm font-black text-ug-navy my-0.5">{viewsCount}</span>
+                           <span className="text-[7px] text-gray-400 font-semibold uppercase tracking-wide shrink-0">+1 Pt</span>
+                         </div>
+                         <div className="p-2 bg-gray-50 rounded-xl border border-gray-100/50 text-center flex flex-col justify-between min-h-[56px] hover:bg-gray-100/30 transition-colors">
+                           <span className="text-[8px] md:text-[9px] font-bold text-gray-400 uppercase tracking-wider truncate">EOIs</span>
+                           <span className="text-xs md:text-sm font-black text-ug-navy my-0.5">{eoiCount}</span>
+                           <span className="text-[7px] text-gray-400 font-semibold uppercase tracking-wide shrink-0">+8 Pts</span>
+                         </div>
+                         <div className="p-2 bg-gray-50 rounded-xl border border-gray-100/50 text-center flex flex-col justify-between min-h-[56px] hover:bg-gray-100/30 transition-colors">
+                           <span className="text-[8px] md:text-[9px] font-bold text-gray-400 uppercase tracking-wider truncate">Requests</span>
+                           <span className="text-xs md:text-sm font-black text-ug-navy my-0.5">{requestsCount}</span>
+                           <span className="text-[7px] text-gray-400 font-semibold uppercase tracking-wide shrink-0">+15 Pts</span>
+                         </div>
                        </div>
 
                        {!project.technical_details_url && (
-                         <div className="p-3 bg-red-50/50 rounded-2xl flex items-center gap-3 border border-red-100/50">
-                           <AlertCircle size={14} className="text-red-400 shrink-0" />
-                           <span className="text-[8px] font-black text-red-700 uppercase tracking-widest leading-relaxed">
+                         <div className="p-2 bg-red-50/50 rounded-xl flex items-center gap-2 border border-red-100/30">
+                           <AlertCircle size={12} className="text-red-400 shrink-0" />
+                           <span className="text-[7.5px] md:text-[8px] font-bold text-red-700 uppercase tracking-wider leading-relaxed">
                              Technical Brief is restricted for non-owners
                            </span>
                          </div>

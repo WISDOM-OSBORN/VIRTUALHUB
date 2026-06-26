@@ -58,26 +58,26 @@ export const AdminLogin: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden text-white font-sans select-none">
+    <div className="min-h-screen bg-gray-950 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-y-auto text-white font-sans select-none">
       {/* Background Graphic Accents */}
       <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-ug-teal/10 to-transparent pointer-events-none"></div>
       <div className="absolute -top-40 -right-40 w-96 h-96 bg-ug-teal/10 blur-3xl rounded-full pointer-events-none animate-pulse"></div>
       
       {/* Container */}
-      <div className="w-full max-w-md space-y-8 z-10">
-        <div className="text-center">
+      <div className="w-full max-w-md space-y-8 z-10 py-4">
+        <div className="text-center space-y-2">
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex p-4 rounded-3xl bg-ug-teal/10 border border-ug-teal/20 mb-6 text-ug-teal"
+            className="inline-flex p-4 rounded-3xl bg-ug-teal/10 border border-ug-teal/20 mb-4 text-ug-teal"
           >
             <ShieldAlert size={36} />
           </motion.div>
-          <h2 className="text-3xl font-black tracking-tight text-white uppercase">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase leading-tight block">
             Administrative Access
           </h2>
-          <p className="mt-2 text-xs text-gray-400 max-w-sm mx-auto leading-relaxed uppercase tracking-wider font-bold">
+          <p className="text-[10px] sm:text-xs text-gray-400 max-w-sm mx-auto leading-relaxed uppercase tracking-wider font-bold pt-1">
             Authorized Personnel Only. Please verify credentials to access directories and security metrics.
           </p>
         </div>

@@ -1773,6 +1773,7 @@ interface DashboardsProps extends DashboardProps {
 
 const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, onThreadHandled, onLogout, onProfileUpdate }) => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<'overview' | 'matches' | 'messages' | 'profile'>('overview');
   const [adminSubTab, setAdminSubTab] = useState<'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs'>('metrics');
@@ -1782,6 +1783,27 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [localInitialThreadId, setLocalInitialThreadId] = useState<string | null>(null);
+
+  const getWelcomeName = (fullName: string): string => {
+    if (!fullName) return '';
+    const words = fullName.trim().split(/\s+/);
+    if (words.length === 0) return '';
+    if (words.length === 1) return words[0];
+
+    const titles = ['dr', 'dr.', 'prof', 'prof.', 'professor', 'mr', 'mr.', 'mrs', 'mrs.', 'ms', 'ms.', 'rev', 'rev.', 'sir', 'madam', 'dean', 'provost', 'assoc.', 'asst.'];
+    const firstWordLower = words[0].toLowerCase();
+    
+    if (titles.includes(firstWordLower)) {
+      const title = words[0];
+      const surname = words[words.length - 1];
+      if (words.length > 2 && words[1].toLowerCase().startsWith('(') && words[1].toLowerCase().endsWith(')')) {
+        return `${title} ${words[1]} ${surname}`;
+      }
+      return `${title} ${surname}`;
+    }
+    
+    return words[words.length - 1];
+  };
 
   // Synchronize URL search params with active tab state
   useEffect(() => {
@@ -1849,6 +1871,37 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
     }
   };
 
+  const handleToggleVisibility = async () => {
+    if (!localUser) return;
+    const currentStatus = localUser.ai_profile?.portfolio_visible !== false;
+    const newStatus = !currentStatus;
+    
+    const updatedAiProfile = {
+      ...(localUser.ai_profile || {}),
+      portfolio_visible: newStatus
+    };
+    
+    try {
+      const updatedUser = {
+        ...localUser,
+        ai_profile: updatedAiProfile
+      };
+      setLocalUser(updatedUser);
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ ai_profile: updatedAiProfile })
+        .eq('id', localUser.id);
+        
+      if (error) throw error;
+      
+      showToast(`Directory visibility set to ${newStatus ? 'Visible' : 'Hidden'}`, "success");
+    } catch (err: any) {
+      showToast(`Failed to update visibility: ${err.message}`, "error");
+      refreshProfile();
+    }
+  };
+
   const handleLogout = () => {
     if (onLogout) {
       onLogout();
@@ -1893,7 +1946,7 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
           {(localUser?.name || user?.name) && (
             <div className="hidden md:flex items-center gap-2.5 px-4 py-2 bg-white/5 rounded-full border border-white/10 text-xs shadow-inner">
               <span className="font-light text-white/50">Welcome,</span>
-              <span className="font-extrabold text-ug-teal">{(localUser?.name || user?.name).split(' ')[0]}</span>
+              <span className="font-extrabold text-ug-teal">{getWelcomeName(localUser?.name || user?.name || '')}</span>
               <span className="animate-bounce inline-block">👋</span>
               <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse ml-0.5"></span>
             </div>
@@ -2068,47 +2121,56 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
                         <ProfileInsight profile={localUser?.ai_profile} />
                       </div>
                       <div className="lg:col-span-4 shrink-0 space-y-6">
-                        <div className="bg-[#12073d] text-white p-5 md:p-6 rounded-[2rem] shadow-xl relative overflow-hidden group">
-                          <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition duration-1000">
-                            <Target size={100} />
+                        <div className="bg-gradient-to-br from-[#12073d] to-[#1a0b59] text-white p-4 xs:p-5 rounded-2xl shadow-xl relative overflow-hidden group border border-white/5">
+                          <div className="absolute -top-2 -right-2 p-6 opacity-5 group-hover:opacity-10 transition duration-500">
+                            <Target size={80} />
                           </div>
-                          <div className="relative z-10 space-y-5">
+                          <div className="relative z-10 space-y-4">
                             <div>
-                              <h4 className="text-[9px] font-black text-ug-teal uppercase tracking-widest mb-1">Ecosystem Compliance</h4>
-                              <h3 className="text-lg font-black tracking-tight uppercase leading-tight">Neural Sync Status</h3>
+                              <h4 className="text-[8px] font-black text-ug-teal/80 uppercase tracking-widest mb-0.5">Ecosystem Compliance</h4>
+                              <h3 className="text-sm font-black tracking-wide uppercase leading-tight text-white">AI Profile Sync</h3>
                             </div>
-                            <p className="text-[10px] font-medium leading-relaxed opacity-70 italic font-sans animate-pulse">
-                              "AI insights are dynamically synthesized from your verified academic records. Significant changes to your biography may take up to 24 hours to re-index in the Neural Stream."
+                            <p className="text-[9.5px] font-medium leading-relaxed text-white/70 italic font-sans">
+                              "Insights are compiled from your verified academic records. Re-indexing occurs automatically within 24 hours of profile edits."
                             </p>
-                            <div className="pt-4 border-t border-white/10 space-y-3">
-                               <div className="flex items-center gap-3">
-                                  <div className="w-9 h-9 bg-ug-teal text-ug-navy rounded-xl flex items-center justify-center shadow-lg"><Zap size={16} /></div>
-                                  <div>
-                                    <p className="text-[8px] font-black text-ug-teal uppercase tracking-widest animate-pulse">Matching Fidelity</p>
-                                    <p className="text-xs font-black text-white">98.4% Accuracy</p>
-                                  </div>
-                               </div>
+                            <div className="flex items-center justify-between p-2.5 bg-white/5 rounded-xl border border-white/5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 bg-ug-teal/20 text-ug-teal rounded-lg flex items-center justify-center"><Zap size={12} className="animate-pulse" /></div>
+                                <span className="text-[9px] font-bold text-white/90 uppercase tracking-wider">Matching Fidelity</span>
+                              </div>
+                              <span className="text-[10px] font-black text-ug-teal">98.4% Accuracy</span>
                             </div>
                             {localUser?.ai_profile && (
                               <button
                                 onClick={() => setIsRerunningOnboarding(true)}
-                                className="w-full bg-ug-teal text-ug-navy hover:bg-white text-center cursor-pointer font-black hover:scale-[1.02] transition duration-150 py-2.5 rounded-xl text-[9px] uppercase tracking-widest"
+                                className="w-full bg-ug-teal text-ug-navy hover:bg-white text-center cursor-pointer font-black transition duration-150 py-2 rounded-lg text-[8px] uppercase tracking-widest shadow-md hover:shadow-ug-teal/10"
                               >
-                                Update Mapping Analysis
+                                Sync Profile Engine
                               </button>
                             )}
                           </div>
                         </div>
                         
-                        <div className="bg-white p-5 rounded-[1.5rem] border border-gray-100 shadow-sm space-y-3">
-                           <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Public Visibility</h4>
-                           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                              <span className="text-[9px] font-black text-ug-navy uppercase tracking-widest">Portfolio Visible</span>
-                              <div className="w-7 h-3.5 bg-ug-teal rounded-full relative">
-                                 <div className="absolute right-0.5 top-0.5 w-2.5 h-2.5 bg-white rounded-full"></div>
+                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-2">
+                           <div className="flex items-center justify-between">
+                              <div>
+                                 <h4 className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Directory Visibility</h4>
+                                 <span className="text-[10px] font-black text-ug-navy uppercase tracking-tight">
+                                    {localUser?.ai_profile?.portfolio_visible !== false ? 'Public Discovery' : 'Hidden / Private'}
+                                 </span>
                               </div>
+                              <button 
+                                 onClick={handleToggleVisibility}
+                                 className={`w-8 h-4.5 rounded-full relative p-0.5 transition-colors duration-300 focus:outline-none cursor-pointer shrink-0 ${localUser?.ai_profile?.portfolio_visible !== false ? 'bg-ug-teal' : 'bg-gray-300'}`}
+                              >
+                                 <div className={`w-3.5 h-3.5 bg-white rounded-full shadow-sm transform transition-transform duration-300 ${localUser?.ai_profile?.portfolio_visible !== false ? 'translate-x-3.5' : 'translate-x-0'}`} />
+                              </button>
                            </div>
-                           <p className="text-[9px] text-gray-400 font-medium italic">Your profile is currently discoverable to verified technical partners and industry delegates.</p>
+                           <p className="text-[8.5px] text-gray-400 font-medium leading-normal italic">
+                              {localUser?.ai_profile?.portfolio_visible !== false 
+                                 ? "Your profile is discoverable to verified technical partners and industry delegates."
+                                 : "Your profile is hidden from the public directories and matching engine."}
+                           </p>
                         </div>
                       </div>
                     </div>
@@ -2942,7 +3004,7 @@ const ActiveProjectHero = ({ project }: { project: Project }) => (
 
 const ProfileInsight = ({ profile, onRefresh }: { profile: AIProfile | null, onRefresh?: () => void }) => {
   if (!profile) return (
-    <div className="bg-ug-navy/5 border border-dashed border-ug-navy/20 p-10 rounded-[3rem] text-center">
+    <div className="bg-ug-navy/5 border border-dashed border-ug-navy/20 p-6 sm:p-8 md:p-10 rounded-[2rem] md:rounded-[3rem] text-center">
       <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-gray-100">
         <Sparkles size={32} className="text-ug-teal/50" />
       </div>
@@ -2954,7 +3016,7 @@ const ProfileInsight = ({ profile, onRefresh }: { profile: AIProfile | null, onR
   return (
     <div className="space-y-8 animate-fade-in group/insight">
       {/* Narrative Section */}
-      <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden group">
+      <div className="bg-white p-6 sm:p-8 md:p-10 rounded-[2rem] md:rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:opacity-10 transition-opacity">
           <Target size={180} />
         </div>
@@ -2975,7 +3037,7 @@ const ProfileInsight = ({ profile, onRefresh }: { profile: AIProfile | null, onR
           </button>
         </div>
 
-        <p className="text-sm md:text-base font-medium text-gray-600 leading-relaxed italic relative z-10">
+        <p className="text-sm md:text-base font-medium text-gray-600 leading-relaxed italic relative z-10 text-justify">
           "{profile.semantic_summary}"
         </p>
         
@@ -3001,7 +3063,7 @@ const ProfileInsight = ({ profile, onRefresh }: { profile: AIProfile | null, onR
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Skills Stack */}
-        <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm flex flex-col">
+        <div className="bg-white p-6 sm:p-8 md:p-10 rounded-[2rem] md:rounded-[3rem] border border-gray-100 shadow-sm flex flex-col">
           <div className="flex items-center gap-3 mb-8">
              <div className="w-10 h-10 bg-ug-navy text-white rounded-xl flex items-center justify-center shadow-lg"><FileCode size={20} /></div>
              <div>
@@ -3023,7 +3085,7 @@ const ProfileInsight = ({ profile, onRefresh }: { profile: AIProfile | null, onR
         </div>
 
         {/* Education Stack */}
-        <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm">
+        <div className="bg-white p-6 sm:p-8 md:p-10 rounded-[2rem] md:rounded-[3rem] border border-gray-100 shadow-sm">
           <div className="flex items-center gap-3 mb-8">
              <div className="w-10 h-10 bg-ug-teal text-white rounded-xl flex items-center justify-center shadow-lg"><Award size={20} /></div>
              <div>
@@ -3054,7 +3116,7 @@ const ProfileInsight = ({ profile, onRefresh }: { profile: AIProfile | null, onR
 
       {/* Initiatives Feed */}
       {(profile.projects?.length || 0) > 0 && (
-        <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden group/projects">
+        <div className="bg-white p-6 sm:p-8 md:p-10 rounded-[2rem] md:rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden group/projects">
            <div className="flex items-center gap-3 mb-10">
              <div className="w-10 h-10 bg-ug-teal/10 text-ug-teal rounded-xl flex items-center justify-center"><Rocket size={20} /></div>
              <div>
@@ -4581,7 +4643,7 @@ const ProfileSettings: React.FC<{
 
       <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
         <div className="lg:col-span-8 space-y-6 md:space-y-8">
-          <div className="bg-white p-5 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm space-y-8 md:space-y-10">
+          <div className="bg-white p-5 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm space-y-6 md:space-y-8">
             {/* Biography Section */}
             <div className="space-y-6">
               <div className="flex items-center gap-3">
@@ -4592,15 +4654,34 @@ const ProfileSettings: React.FC<{
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black text-gray-500 tracking-widest ml-1">Short Bio</label>
-                  <textarea 
-                    rows={6} 
-                    value={bio || ''} 
-                    onChange={e => setBio(e.target.value)} 
-                    className="w-full bg-gray-50/50 border border-gray-200 rounded-xl p-4 font-medium text-gray-600 focus:bg-white focus:border-ug-teal outline-none resize-none leading-relaxed text-sm shadow-inner" 
-                    placeholder="Tell us about your expertise, research interests, and goals..." 
+                  <label className="text-[9px] font-black text-gray-500 tracking-widest ml-1">Full Name / Display Name</label>
+                  <input 
+                    type="text" 
+                    value={name} 
+                    onChange={e => setName(e.target.value)} 
+                    className="w-full bg-gray-50/50 border border-gray-200 rounded-xl p-4 font-bold text-ug-navy focus:bg-white focus:border-ug-teal focus:ring-4 focus:ring-ug-teal/5 outline-none transition-all shadow-inner text-xs" 
+                    placeholder="Your display name..."
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-gray-500 tracking-widest ml-1">Email Address</label>
+                  <input 
+                    type="email" 
+                    value={user?.email || ''} 
+                    disabled 
+                    className="w-full bg-gray-100 border border-gray-200 rounded-xl p-4 font-bold text-gray-400 outline-none cursor-not-allowed text-xs shadow-inner" 
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-[9px] font-black text-gray-500 tracking-widest ml-1">Verified Portal Role</label>
+                  <input 
+                    type="text" 
+                    value={user?.role || 'Researcher'} 
+                    disabled 
+                    className="w-full bg-gray-100 border border-gray-200 rounded-xl p-4 font-bold text-gray-400 outline-none cursor-not-allowed text-xs shadow-inner uppercase tracking-wider" 
                   />
                 </div>
               </div>
@@ -4719,117 +4800,80 @@ const ProfileSettings: React.FC<{
         </div>
 
         <div className="lg:col-span-4 space-y-6">
-          <div className="bg-[#12073d] text-white p-5 md:p-6 rounded-[2rem] shadow-xl relative overflow-hidden group/secure">
-            <div className="absolute -bottom-10 -right-10 opacity-5 group-hover/secure:opacity-10 transition-all duration-1000 rotate-12">
-              <ShieldCheck size={200} />
-            </div>
-            
-            <div className="relative z-10 space-y-6">
-              <div>
-                <h4 className="text-[9px] font-black text-ug-teal uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                  <ShieldCheck size={12} /> Security Hub
-                </h4>
-                <h3 className="text-xl font-black tracking-tight uppercase">Privacy Controls</h3>
-              </div>
-              
-              <div className="space-y-3">
-                {isResettingPassword ? (
-                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3.5 animate-fade-in relative z-20">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-ug-teal">Change Password</span>
-                      <button 
-                        type="button" 
-                        onClick={() => {
-                          setIsResettingPassword(false);
-                          setNewPassword('');
-                          setConfirmPassword('');
-                        }}
-                        className="text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <input 
-                        type="password"
-                        placeholder="New Password"
-                        value={newPassword}
-                        onChange={e => setNewPassword(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-white/35 focus:border-ug-teal/50 outline-none"
-                      />
-                      <input 
-                        type="password"
-                        placeholder="Confirm Password"
-                        value={confirmPassword}
-                        onChange={e => setConfirmPassword(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-white/35 focus:border-ug-teal/50 outline-none"
-                      />
-                    </div>
-                    
-                    <button 
-                      type="button"
-                      disabled={updatingPassword}
-                      onClick={handleResetPassword}
-                      className="w-full bg-ug-teal hover:bg-white text-ug-navy py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50"
-                    >
-                      {updatingPassword ? 'Updating...' : 'Update Password'}
-                    </button>
-                  </div>
-                ) : (
-                  <button 
-                    type="button" 
-                    onClick={() => setIsResettingPassword(true)}
-                    className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition group text-left cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 bg-[#1c0f56] text-ug-teal rounded-xl"><Lock size={16} /></div>
-                      <span className="text-[9px] font-black uppercase tracking-widest">Reset Password</span>
-                    </div>
-                    <ChevronRight size={14} className="text-white/20 group-hover:text-ug-teal group-hover:translate-x-0.5 transition" />
-                  </button>
-                )}
-                
-                <button 
-                  type="button" 
-                  className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition group text-left cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-[#1c0f56] text-blue-400 rounded-xl"><Eye size={16} /></div>
-                    <span className="text-[9px] font-black uppercase tracking-widest">Visibility Mode</span>
-                  </div>
-                  <ChevronRight size={14} className="text-white/20 group-hover:text-blue-400 group-hover:translate-x-0.5 transition" />
-                </button>
-              </div>
-
-              <div className="bg-white/5 p-4 rounded-2xl border border-white/5 space-y-3">
-                 <p className="text-[9px] font-medium text-white/50 leading-relaxed italic">
-                   "Your data is used specifically for matchmaking and is never shared with third-party advertisers."
-                 </p>
-                 <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-ug-teal rounded-full animate-pulse"></span>
-                    <span className="text-[8px] font-black uppercase tracking-widest text-ug-teal">Encrypted & Secure</span>
-                 </div>
-              </div>
-            </div>
-          </div>
-
           <div className="bg-white p-5 rounded-[1.5rem] border border-gray-100 shadow-sm space-y-4">
             <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-1">Account Management</h4>
             <div className="space-y-1">
+              {isResettingPassword ? (
+                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-2.5 animate-fade-in mb-1">
+                  <div className="flex justify-between items-center px-1">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-ug-navy">Change Password</span>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setIsResettingPassword(false);
+                        setNewPassword('');
+                        setConfirmPassword('');
+                      }}
+                      className="text-[8px] font-black uppercase tracking-widest text-gray-400 hover:text-red-500 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-1.5">
+                    <input 
+                      type="password"
+                      placeholder="New Password"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-ug-navy placeholder-gray-400 focus:border-ug-teal outline-none"
+                    />
+                    <input 
+                      type="password"
+                      placeholder="Confirm Password"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-ug-navy placeholder-gray-400 focus:border-ug-teal outline-none"
+                    />
+                  </div>
+                  
+                  <button 
+                    type="button"
+                    disabled={updatingPassword}
+                    onClick={handleResetPassword}
+                    className="w-full bg-ug-navy hover:bg-ug-teal text-white py-2 rounded-lg font-black text-[9px] uppercase tracking-widest transition flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50 cursor-pointer"
+                  >
+                    {updatingPassword ? 'Updating...' : 'Update Password'}
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  type="button" 
+                  onClick={() => setIsResettingPassword(true)}
+                  className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition group text-left border border-transparent hover:border-gray-100 cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <Lock size={16} className="text-gray-400 group-hover:text-ug-navy transition" />
+                    <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Reset Password</span>
+                  </div>
+                  <ChevronRight size={14} className="text-gray-300 group-hover:text-ug-navy group-hover:translate-x-0.5 transition" />
+                </button>
+              )}
+
               <button 
                 type="button" 
                 onClick={handleDownloadData}
                 className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition group text-left border border-transparent hover:border-gray-100 cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <Download size={16} className="text-gray-300 group-hover:text-ug-navy transition" />
+                  <Download size={16} className="text-gray-400 group-hover:text-ug-navy transition" />
                   <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Download Data</span>
                 </div>
               </button>
+              
               <button type="button" className="w-full flex items-center justify-between p-3 hover:bg-red-50 rounded-xl transition group text-left border border-transparent hover:border-red-100 cursor-pointer">
                 <div className="flex items-center gap-3">
-                  <Trash2 size={16} className="text-gray-300 group-hover:text-red-500 transition" />
+                  <Trash2 size={16} className="text-gray-400 group-hover:text-red-500 transition" />
                   <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest group-hover:text-red-600 transition">Delete Account</span>
                 </div>
               </button>
@@ -4837,6 +4881,17 @@ const ProfileSettings: React.FC<{
           </div>
         </div>
       </form>
+
+      {/* Privacy Disclaimer */}
+      <div className="pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+        <p className="text-[10px] md:text-xs text-gray-400 font-medium leading-relaxed max-w-2xl">
+          "Your data is used specifically for matchmaking and is never shared with third-party advertisers."
+        </p>
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-ug-teal/5 rounded-full border border-ug-teal/10 shrink-0">
+          <span className="w-1.5 h-1.5 bg-ug-teal rounded-full animate-pulse"></span>
+          <span className="text-[9px] font-black uppercase tracking-widest text-ug-teal">Encrypted & Secure</span>
+        </div>
+      </div>
 
       {/* Edit Profile Modal */}
       {isEditModalOpen && (
