@@ -1281,6 +1281,12 @@ export const StorageService = {
             finalProjects = finalProjects.filter((p: any) => {
               const row = visMap.get(p.id);
               if (!row) return false;
+              
+              // Enrich matched project object with its owner_id, visibility, and status
+              p.owner_id = row.owner_id;
+              p.visibility = row.visibility;
+              p.disclosure_status = row.disclosure_status;
+
               if (isAdmin) return true;
               if (userId && row.owner_id === userId) return true;
 
@@ -1352,7 +1358,8 @@ export const StorageService = {
             description: p.description,
             image_url: p.image_url,
             research_area: p.research_area || 'General Innovation',
-            similarity: 0.75
+            similarity: 0.75,
+            owner_id: p.owner_id
           }))
         };
       } catch (dbError) {

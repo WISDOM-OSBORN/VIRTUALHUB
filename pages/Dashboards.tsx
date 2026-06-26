@@ -3315,9 +3315,21 @@ ${senderName}`
         ? selectedMatch?.id 
         : (selectedProject?.id || null);
         
-      const recipientId = proposalType === 'interest'
+      let recipientId = proposalType === 'interest'
         ? selectedMatch?.owner_id
         : selectedMatch?.id;
+
+      if (!recipientId && proposalType === 'interest' && selectedMatch?.id) {
+        // Fallback: Fetch project owner_id directly from Supabase if missing from match vectors
+        const { data: projData } = await supabase
+          .from('projects')
+          .select('owner_id')
+          .eq('id', selectedMatch.id)
+          .maybeSingle();
+        if (projData?.owner_id) {
+          recipientId = projData.owner_id;
+        }
+      }
 
       if (!recipientId) {
         throw new Error("Recipient Error: No target identification found.");
@@ -4282,32 +4294,34 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
                      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                   >
                      {/* Drawer Header */}
-                     <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-ug-navy text-white">
+                     <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between bg-ug-navy text-white sticky top-0 z-20">
                         <div>
                            <span className="text-[8px] font-black text-ug-teal uppercase tracking-widest block mb-1">Academic Request Portal</span>
-                           <h3 className="text-xl font-black">Submit Inquiry & Application</h3>
+                           <h3 className="text-lg sm:text-xl font-black">Submit Inquiry & Application</h3>
                         </div>
                         <button 
+                           type="button"
                            onClick={() => setDrawerOpen(false)}
-                           className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition cursor-pointer"
+                           className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition cursor-pointer flex items-center gap-1 border border-white/10 px-3 py-1.5"
                         >
-                           <X size={20} />
+                           <X size={16} />
+                           <span className="text-[9px] font-black uppercase tracking-wider">Close</span>
                         </button>
                      </div>
 
                      {/* Drawer Body */}
-                     <form onSubmit={handleSubmitApplication} className="p-6 flex-1 space-y-6">
+                     <form onSubmit={handleSubmitApplication} className="p-4 sm:p-6 flex-1 space-y-4 sm:space-y-5">
                         {/* Target Project Info */}
-                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <div className="p-3 sm:p-4 bg-gray-50 rounded-2xl border border-gray-100">
                            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Associated Project</span>
-                           <h4 className="font-black text-ug-navy text-sm mt-1">{selectedProjectForApp.title}</h4>
+                           <h4 className="font-black text-ug-navy text-xs sm:text-sm mt-1">{selectedProjectForApp.title}</h4>
                            <p className="text-[9px] font-bold text-ug-teal uppercase tracking-wider mt-0.5">{selectedProjectForApp.department}</p>
                         </div>
 
                         {/* Request Type Selector */}
-                        <div className="space-y-2">
+                        <div className="space-y-1.5 sm:space-y-2">
                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Request Category</label>
-                           <div className="grid grid-cols-1 gap-3">
+                           <div className="grid grid-cols-1 gap-2.5 sm:gap-3">
                               {[
                                  { id: 'Research Assistantship', label: 'Research Assistantship', desc: 'Apply for a student assistant role inside this laboratory.' },
                                  { id: 'Scholarship Application', label: 'Scholarship / Fellowship', desc: 'Inquire about available funding or stipends.' },
@@ -4316,7 +4330,7 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
                                  <div 
                                     key={t.id}
                                     onClick={() => setAppType(t.id as any)}
-                                    className={`p-4 border rounded-2xl cursor-pointer transition text-left select-none ${appType === t.id ? 'border-ug-teal bg-ug-teal/5 text-ug-navy' : 'border-gray-100 hover:border-gray-200 text-gray-600'}`}
+                                    className={`p-3 sm:p-4 border rounded-2xl cursor-pointer transition text-left select-none ${appType === t.id ? 'border-ug-teal bg-ug-teal/5 text-ug-navy' : 'border-gray-100 hover:border-gray-200 text-gray-600'}`}
                                  >
                                     <h5 className="font-black text-xs">{t.label}</h5>
                                     <p className="text-[10px] text-gray-400 mt-1">{t.desc}</p>
@@ -4326,15 +4340,15 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
                         </div>
 
                         {/* Student Profile Info Verification */}
-                        <div className="space-y-4 pt-4 border-t border-gray-50">
+                        <div className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-gray-50">
                            <span className="text-[10px] font-black text-ug-teal uppercase tracking-widest block">Verify Credentials (Saved to Profile)</span>
                            
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                               <div>
                                  <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Education Level</label>
                                  <input 
                                     type="text" 
-                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-ug-teal" 
+                                    className="w-full px-3.5 py-2 sm:px-4 sm:py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-ug-teal" 
                                     placeholder="e.g. MPhil, PhD, BSc Senior"
                                     value={eduLevel}
                                     onChange={(e) => setEduLevel(e.target.value)}
@@ -4345,7 +4359,7 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
                                  <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Program / Course</label>
                                  <input 
                                     type="text" 
-                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-ug-teal" 
+                                    className="w-full px-3.5 py-2 sm:px-4 sm:py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-ug-teal" 
                                     placeholder="e.g. Biochemistry"
                                     value={program}
                                     onChange={(e) => setProgram(e.target.value)}
@@ -4354,12 +4368,12 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
                               </div>
                            </div>
 
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                               <div>
                                  <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Availability</label>
                                  <input 
                                     type="text" 
-                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-ug-teal" 
+                                    className="w-full px-3.5 py-2 sm:px-4 sm:py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-ug-teal" 
                                     placeholder="e.g. 15 hrs/week, Full-time"
                                     value={availability}
                                     onChange={(e) => setAvailability(e.target.value)}
@@ -4370,7 +4384,7 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
                                  <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Interests / Focus</label>
                                  <input 
                                     type="text" 
-                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-ug-teal" 
+                                    className="w-full px-3.5 py-2 sm:px-4 sm:py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-ug-teal" 
                                     placeholder="e.g. Immunology, Vaccines"
                                     value={interests}
                                     onChange={(e) => setInterests(e.target.value)}
@@ -4381,11 +4395,11 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
                         </div>
 
                         {/* Custom Cover Message */}
-                        <div className="space-y-2 pt-4 border-t border-gray-50">
+                        <div className="space-y-2 pt-3 sm:pt-4 border-t border-gray-50">
                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Custom Cover Message / Personal Statement</label>
                            <textarea 
-                              rows={5}
-                              className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-medium text-gray-700 focus:outline-none focus:ring-1 focus:ring-ug-teal"
+                              rows={4}
+                              className="w-full p-3 sm:p-4 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-medium text-gray-700 focus:outline-none focus:ring-1 focus:ring-ug-teal"
                               placeholder="Describe your qualifications, goals, and why you should be chosen..."
                               value={message}
                               onChange={(e) => setMessage(e.target.value)}
@@ -4394,16 +4408,23 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
                         </div>
 
                         {/* Submit Actions */}
-                        <div className="pt-6 border-t border-gray-100">
+                        <div className="pt-4 sm:pt-6 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
+                           <button 
+                              type="button"
+                              onClick={() => setDrawerOpen(false)}
+                              className="w-full sm:w-1/3 border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-500 hover:text-gray-700 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all cursor-pointer text-center"
+                           >
+                              Close
+                           </button>
                            <button 
                               type="submit"
                               disabled={submitting}
-                              className="w-full flex items-center justify-center gap-2 bg-ug-navy hover:bg-ug-teal text-white py-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all disabled:opacity-50 cursor-pointer"
+                              className="w-full sm:w-2/3 flex items-center justify-center gap-2 bg-ug-navy hover:bg-ug-teal text-white py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all disabled:opacity-50 cursor-pointer"
                            >
                               {submitting ? (
                                 <>
                                    <Loader2 className="animate-spin" size={16} />
-                                   <span>Transmitting Request...</span>
+                                   <span>Transmitting...</span>
                                 </>
                               ) : (
                                 <span>Transmit Secure Application</span>
