@@ -18,6 +18,8 @@ import { useToast } from '../App';
 import { Onboarding } from './Onboarding';
 import { AdminDashboard } from '../components/AdminDashboard';
 import { supabase } from '../lib/supabase';
+import { AIProfileService } from '../services/aiProfileService';
+import { EmbeddingService } from '../services/embeddingService';
 
 interface DashboardProps {
   role: UserRole;
@@ -2013,6 +2015,8 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
                     setIsProjectModalOpen(true);
                   }}
                   refreshTrigger={refreshTrigger}
+                  setActiveTab={setActiveTab}
+                  setLocalInitialThreadId={setLocalInitialThreadId}
                 />
               )}
               {role === UserRole.Student && <StudentDashboard user={localUser} />}
@@ -2033,6 +2037,7 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
                user={localUser} 
                setActiveTab={setActiveTab} 
                setLocalInitialThreadId={setLocalInitialThreadId} 
+               onProfileUpdate={refreshProfile}
              />
           )}
 
@@ -2201,7 +2206,21 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
 
 // --- SUB-DASHBOARDS ---
 
-const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { user: User | null; onUpdate: () => void; onOpenModal: (p: Project | null) => void; refreshTrigger: number }) => {
+const ResearcherDashboard = ({ 
+  user, 
+  onUpdate, 
+  onOpenModal, 
+  refreshTrigger,
+  setActiveTab,
+  setLocalInitialThreadId
+}: { 
+  user: User | null; 
+  onUpdate: () => void; 
+  onOpenModal: (p: Project | null) => void; 
+  refreshTrigger: number;
+  setActiveTab?: (tab: 'overview' | 'matches' | 'messages' | 'profile') => void;
+  setLocalInitialThreadId?: (id: string | null) => void;
+}) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [eois, setEois] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2612,7 +2631,14 @@ const ResearcherDashboard = ({ user, onUpdate, onOpenModal, refreshTrigger }: { 
                           
                           {/* Message partner link */}
                           <button
-                            onClick={() => navigate('/dashboard?tab=messages')}
+                            onClick={() => {
+                              if (setLocalInitialThreadId && setActiveTab) {
+                                setLocalInitialThreadId(p.id);
+                                setActiveTab('messages');
+                              } else {
+                                navigate('/dashboard?tab=messages');
+                              }
+                            }}
                             className="text-[9px] font-extrabold text-ug-teal tracking-wider uppercase hover:underline shrink-0 text-left"
                           >
                             Open Message Thread →
@@ -3146,11 +3172,13 @@ const ProfileInsight = ({ profile, onRefresh }: { profile: AIProfile | null, onR
 const MatchesView = ({ 
   user, 
   setActiveTab, 
-  setLocalInitialThreadId 
+  setLocalInitialThreadId,
+  onProfileUpdate
 }: { 
   user: User | null; 
   setActiveTab?: (tab: 'overview' | 'matches' | 'messages' | 'profile') => void; 
   setLocalInitialThreadId?: (id: string | null) => void; 
+  onProfileUpdate?: () => void;
 }) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -3159,6 +3187,7 @@ const MatchesView = ({
   const [projectMatches, setProjectMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isRerunning, setIsRerunning] = useState(false);
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [showAllProfiles, setShowAllProfiles] = useState(false);
 
@@ -3364,6 +3393,69 @@ ${senderName}`
     }
   };
 
+  const handleRerunMatching = async () => {
+    if (!user?.id) {
+      showToast("Authentication required to rerun matching.", "error");
+      return;
+    }
+    
+    setIsRerunning(true);
+    showToast("Analyzing profile and regenerating neural vectors...", "info");
+    
+    try {
+      let freshProfile: AIProfile;
+      const answers = user.answers || {};
+      const userType = user.user_type || (user.role === UserRole.Student || user.role === UserRole.Researcher ? 'individual' : 'entity');
+      
+      if (userType === 'entity') {
+        freshProfile = await AIProfileService.processEntityProfile(answers);
+      } else {
+        const cvText = user.semantic_summary || user.bio || user.ai_profile?.semantic_summary || user.ai_profile?.summary || "";
+        freshProfile = await AIProfileService.processProfile(cvText, {
+          ...answers,
+          role: user.role,
+          user_name: user.name
+        });
+      }
+      
+      // Generate Embedding for matching
+      let embedding: number[] | undefined;
+      try {
+        if (freshProfile.embedding_text) {
+          embedding = await EmbeddingService.getEmbedding(freshProfile.embedding_text);
+        } else if (freshProfile.semantic_summary) {
+          embedding = await EmbeddingService.getEmbedding(freshProfile.semantic_summary);
+        }
+      } catch (err: any) {
+        console.error("Embedding generation failed during rerun:", err);
+      }
+
+      // Save to Database
+      await StorageService.updateProfile({
+        id: user.id,
+        ai_profile: freshProfile,
+        bio: freshProfile.semantic_summary || user.bio,
+        ...(embedding ? { embedding } : {}),
+        semantic_summary: freshProfile.semantic_summary || user.semantic_summary
+      });
+      
+      showToast("Neural matching vector regenerated successfully!", "success");
+      
+      // If we have parent profile refresh, invoke it
+      if (onProfileUpdate) {
+        await onProfileUpdate();
+      }
+      
+      // Trigger fetch matches
+      await fetchMatches();
+    } catch (error: any) {
+      console.error("Failed to rerun matching:", error);
+      showToast(error.message || "Ecosystem re-index failed. Please try again.", "error");
+    } finally {
+      setIsRerunning(false);
+    }
+  };
+
   useEffect(() => {
     const checkAndFetch = async () => {
       if (!user?.id) return;
@@ -3401,38 +3493,57 @@ ${senderName}`
 
   return (
     <div className="space-y-6 md:space-y-10 font-sans">
-      <div className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden">
+      <div className="bg-white p-4 sm:p-6 md:p-8 lg:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10">
           <Sparkles size={120} className="text-ug-teal" />
         </div>
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 relative z-10">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-8 gap-4 relative z-10 border-b border-gray-100 pb-6">
           <div className="flex items-center gap-3">
-            <Target size={24} className="text-ug-teal" />
+            <div className="p-3 bg-ug-teal/10 rounded-2xl text-ug-teal">
+              <Target size={24} />
+            </div>
             <div>
-              <h2 className="text-xl md:text-2xl font-black text-ug-navy uppercase">Neural Matching Hub</h2>
-              <p className="text-[10px] font-black text-ug-teal uppercase tracking-[0.25em] mt-1">Intelligent Research Alignment</p>
+              <h2 className="text-xl md:text-2xl font-black text-ug-navy uppercase">Intelligent Research Alignment</h2>
             </div>
           </div>
-          <div className="flex items-center gap-2 bg-ug-teal/10 px-4 py-2 rounded-full border border-ug-teal/10">
-             <span className={`${isProcessing ? 'animate-bounce' : 'animate-pulse'} w-2 h-2 bg-ug-teal rounded-full`}></span>
-             <span className="text-[9px] font-black text-ug-teal uppercase tracking-widest">
-               {isProcessing ? 'AI Agent Reasoning...' : 'Neural Stream Active'}
-             </span>
+          
+          {/* Controls: Rerun Matching and Status */}
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleRerunMatching}
+              disabled={isRerunning || isProcessing}
+              className={`group flex items-center gap-2.5 px-6 py-3 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all duration-300 shadow-sm ${
+                isRerunning
+                  ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-white border-ug-teal text-ug-teal hover:bg-ug-teal hover:text-white hover:shadow-md hover:shadow-ug-teal/15 active:scale-95 cursor-pointer'
+              }`}
+            >
+              {isRerunning ? (
+                <>
+                  <Loader2 size={13} className="animate-spin text-gray-400" />
+                  Rerunning Match Vector...
+                </>
+              ) : (
+                <>
+                  <Zap size={13} className="fill-current text-ug-teal group-hover:text-white transition-colors duration-200" />
+                  Rerun AI Matching
+                </>
+              )}
+            </button>
+            <div className="flex items-center gap-2 bg-ug-teal/5 border border-ug-teal/20 px-5 py-3 rounded-full shadow-sm">
+              <span className={`w-2 h-2 bg-ug-teal rounded-full ${isProcessing || isRerunning ? 'animate-ping' : 'animate-pulse'}`}></span>
+              <span className="text-[9px] font-black text-ug-teal uppercase tracking-widest">
+                {isRerunning ? 'Regenerating...' : (isProcessing ? 'AI Agent Reasoning...' : 'Neural Stream Active')}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="p-6 bg-gray-50/50 rounded-[2rem] border border-gray-100 mb-8 relative z-10">
-          <p className="text-[10px] text-gray-400 font-bold leading-relaxed uppercase tracking-[0.1em]">
-            {profileMatches.length + projectMatches.length === 0 ? 
-              "No high-fidelity matches found. Try expanding your research profile or industry interests." :
-              `Cross-referencing your profile against the ecosystem. Found ${projectMatches.length} strategic projects and ${profileMatches.length} high-alignment collaborators.`
-            }
-          </p>
-        </div>
+
 
         <div className="space-y-4">
           {(showAllProjects ? projectMatches : projectMatches.slice(0, 5)).map((proj, i) => (
-            <div key={proj.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 md:p-6 border border-gray-100 rounded-[2rem] bg-gray-50/30 hover:bg-white hover:border-ug-teal/20 hover:shadow-xl transition-all cursor-pointer group gap-4 text-left">
+            <div key={proj.id} className="flex flex-col lg:flex-row lg:items-center justify-between p-5 md:p-6 border border-gray-100 rounded-[2rem] bg-gray-50/30 hover:bg-white hover:border-ug-teal/20 hover:shadow-xl transition-all cursor-pointer group gap-4 text-left">
               <div className="flex items-center gap-4 md:gap-6 flex-1 min-w-0">
                 <div className="w-12 h-12 md:w-16 md:h-16 bg-ug-navy/5 rounded-2xl flex items-center justify-center text-ug-navy group-hover:bg-ug-teal group-hover:text-white transition shrink-0 overflow-hidden">
                   {proj.image_url && proj.image_url.trim() !== '' ? 
@@ -3460,7 +3571,7 @@ ${senderName}`
                   <p className="text-xs md:text-sm text-gray-500 font-medium line-clamp-2 mt-1 italic">"{proj.ai_reasoning || proj.description}"</p>
                 </div>
               </div>
-              <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-4 sm:pt-0 border-gray-100 flex-wrap">
+              <div className="flex items-center justify-between lg:justify-end gap-4 border-t lg:border-t-0 pt-4 lg:pt-0 border-gray-100 flex-wrap">
                  <div className="text-left sm:text-right mr-2">
                     <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">AI Match Score</p>
                     <p className="text-lg md:text-xl font-black text-ug-teal">
@@ -3471,21 +3582,6 @@ ${senderName}`
                     </p>
                  </div>
                  <div className="flex gap-2">
-                   <button 
-                     type="button"
-                     onClick={(e) => {
-                       e.stopPropagation();
-                       if (setLocalInitialThreadId && setActiveTab) {
-                         setLocalInitialThreadId(proj.id);
-                         setActiveTab('messages');
-                       }
-                     }} 
-                     className="bg-white border border-gray-200 text-ug-navy hover:text-ug-teal hover:border-ug-teal px-4 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition flex items-center gap-1 shrink-0"
-                     title="Direct Message Project Team"
-                   >
-                     <MessageSquare size={12} />
-                     Direct Message
-                   </button>
                    <button onClick={(e) => { e.stopPropagation(); handleExpressInterestClick(proj); }} className="bg-ug-navy text-white px-5 md:px-6 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition shadow-lg shrink-0">Express Interest</button>
                  </div>
               </div>
@@ -3520,80 +3616,76 @@ ${senderName}`
         </div>
       </div>
 
-      <div className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-gray-100 shadow-sm">
+      <div className="bg-white p-4 sm:p-6 md:p-8 lg:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-gray-100 shadow-sm">
         <div className="flex items-center gap-3 mb-6 md:mb-8">
           <Users size={20} className="text-ug-teal" />
           <h2 className="text-lg md:text-xl font-black text-ug-navy">Strategic Research Collaborators</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+        <div className="space-y-4">
            {(showAllProfiles ? profileMatches : profileMatches.slice(0, 5)).map((collab, i) => (
-             <div key={collab.id} className="bg-gray-50/30 border border-gray-50 rounded-[2.5rem] p-6 md:p-8 text-center hover:bg-white hover:shadow-2xl transition-all h-full flex flex-col justify-between group relative overflow-hidden backdrop-blur-sm">
-                <div className="absolute top-0 right-0 p-4">
-                  <div className="text-[9px] font-black text-ug-teal bg-ug-teal/10 px-3 py-1 rounded-full uppercase tracking-widest">
-                    {collab.ai_label || 'High Alignment'}
-                  </div>
-                </div>
-                <div>
-                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl mx-auto mb-4 md:mb-6 shadow-xl border-4 border-white overflow-hidden bg-ug-navy relative group-hover:scale-105 transition-transform duration-500">
-                    {collab.avatar_url || collab.image_url ? 
-                      <img src={collab.avatar_url || collab.image_url} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt="" /> :
-                      <UserIcon className="w-full h-full p-6 text-white/20" />
-                    }
-                  </div>
-                  <h4 className="font-black text-ug-navy text-sm mb-1">{collab.name || 'UG Science Partner'}</h4>
-                  <p className="text-[10px] font-bold text-ug-teal uppercase tracking-widest mb-4">{collab.role}</p>
-                  
-                  <div className="p-4 bg-white/50 rounded-2xl border border-gray-100 mb-6 text-left shadow-sm">
-                    <p className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                      <Sparkles size={11} className="stroke-[2.5]" /> Reason for Match
-                    </p>
-                    <p className="text-xs md:text-sm text-gray-700 font-medium leading-relaxed italic">
-                      "{collab.ai_reasoning || collab.semantic_summary || 'Semantic profile match detected.'}"
-                    </p>
-                  </div>
+             <div key={collab.id} className="flex flex-col lg:flex-row lg:items-center justify-between p-5 md:p-6 border border-gray-100 rounded-[2rem] bg-gray-50/30 hover:bg-white hover:border-ug-teal/20 hover:shadow-xl transition-all cursor-pointer group gap-6 text-left">
+               <div className="flex items-center gap-4 md:gap-6 flex-1 min-w-0 flex-col sm:flex-row text-center sm:text-left">
+                 <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl shadow-md border-2 border-white overflow-hidden bg-ug-navy shrink-0 relative group-hover:scale-105 transition-transform duration-500">
+                   {collab.avatar_url || collab.image_url ? 
+                     <img src={collab.avatar_url || collab.image_url} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt="" /> :
+                     <UserIcon className="w-full h-full p-5 text-white/20" />
+                   }
+                 </div>
+                 <div className="min-w-0 flex-1">
+                   <div className="flex flex-wrap justify-center sm:justify-start items-center gap-2 mb-1.5">
+                     <span className="text-[8px] font-black text-ug-teal bg-ug-teal/10 px-2.5 py-1 rounded-full uppercase tracking-widest">{collab.ai_label || 'High Alignment'}</span>
+                     <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Rank #{i + 1}</span>
+                   </div>
+                   <h4 className="font-black text-ug-navy text-sm md:text-base uppercase tracking-tight mb-1 truncate">{collab.name || 'UG Science Partner'}</h4>
+                   <p className="text-[10px] font-bold text-ug-teal uppercase tracking-widest">{collab.role}</p>
+                 </div>
+               </div>
 
-                  <div className="inline-block px-4 py-2 bg-white border border-gray-100 rounded-full shadow-sm mb-6 md:mb-8">
-                    <div className="flex items-center gap-4">
-                      <div className="text-left">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Compatibility</p>
-                        <p className="text-xs font-black text-ug-navy">
-                          {collab.ai_score !== undefined && collab.ai_score !== null && !isNaN(Number(collab.ai_score)) 
-                            ? `${Math.round(Number(collab.ai_score))}%` 
-                            : '80%'
-                          }
-                        </p>
-                      </div>
-                      <div className="w-px h-6 bg-gray-100"></div>
-                      <div className="text-left">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Rank</p>
-                        <p className="text-xs font-black text-ug-teal">#{i + 1}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 w-full">
-                  <button 
-                    onClick={() => handleInitiateCollaborationClick(collab)} 
-                    className="border border-ug-navy text-ug-navy py-3.5 px-2 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-wider hover:bg-ug-navy hover:text-white transition-all shadow-sm active:scale-95 truncate font-bold"
-                    title="Send formal strategic research proposal"
-                  >
-                    Initiate Proposal
-                  </button>
-                  <button 
-                    onClick={() => {
-                      if (setLocalInitialThreadId && setActiveTab) {
-                        setLocalInitialThreadId(collab.id);
-                        setActiveTab('messages');
+               {/* Reason for match block */}
+               <div className="p-4 bg-white/50 rounded-2xl border border-gray-100 mb-0 text-left shadow-sm max-w-full lg:max-w-md xl:max-w-lg w-full flex-1">
+                 <p className="text-[9px] font-black text-ug-teal uppercase tracking-widest mb-1 flex items-center gap-1">
+                   <Sparkles size={11} className="stroke-[2.5]" /> Reason for Match
+                 </p>
+                 <p className="text-xs text-gray-700 font-medium leading-relaxed italic">
+                   "{collab.ai_reasoning || collab.semantic_summary || 'Semantic profile match detected.'}"
+                 </p>
+               </div>
+
+               {/* Right side compatibility & buttons */}
+               <div className="flex items-center justify-between lg:justify-end gap-6 border-t lg:border-t-0 pt-4 lg:pt-0 border-gray-100 flex-wrap">
+                 <div className="text-left sm:text-right mr-2 shrink-0">
+                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Compatibility</p>
+                    <p className="text-lg md:text-xl font-black text-ug-teal">
+                      {collab.ai_score !== undefined && collab.ai_score !== null && !isNaN(Number(collab.ai_score)) 
+                        ? `${Math.round(Number(collab.ai_score))}%` 
+                        : '80%'
                       }
-                    }} 
-                    className="bg-ug-navy border border-transparent text-white py-3.5 px-2 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-wider hover:bg-ug-teal transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5 font-bold truncate"
-                    title="Open instant direct chat"
-                  >
-                    <MessageSquare size={11} />
-                    Quick Chat
-                  </button>
-                </div>
+                    </p>
+                 </div>
+                 <div className="flex gap-2 shrink-0">
+                   <button 
+                     onClick={(e) => { e.stopPropagation(); handleInitiateCollaborationClick(collab); }} 
+                     className="bg-ug-navy text-white px-5 md:px-6 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-ug-teal transition shadow-lg shrink-0"
+                   >
+                     Initiate Proposal
+                   </button>
+                   <button 
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       if (setLocalInitialThreadId && setActiveTab) {
+                         setLocalInitialThreadId(collab.id);
+                         setActiveTab('messages');
+                       }
+                     }} 
+                     className="bg-white border border-gray-200 text-ug-navy hover:text-ug-teal hover:border-ug-teal px-4 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition flex items-center gap-1 shrink-0"
+                     title="Open instant direct chat"
+                   >
+                     <MessageSquare size={12} />
+                     Quick Chat
+                   </button>
+                 </div>
+               </div>
              </div>
            ))}
            
