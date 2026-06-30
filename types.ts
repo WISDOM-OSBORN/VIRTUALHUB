@@ -222,4 +222,6 @@ export interface NewsItem {
   external_url?: string;
   is_ai_generated?: boolean;
   source_name?: string;
+  status?: 'Draft' | 'Published';
+  reference_links?: string[];
 }

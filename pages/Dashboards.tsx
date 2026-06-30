@@ -604,16 +604,17 @@ const ProjectFormModal: React.FC<{
 
               <div className="p-6 bg-white rounded-[2rem] border border-gray-100 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="collab" className="text-[10px] font-black text-ug-navy uppercase tracking-widest cursor-pointer">Open to Collaboration</label>
-                  <div className="relative inline-flex items-center h-6 rounded-full w-11 cursor-pointer">
+                  <label htmlFor="collab" className="text-[10px] font-black text-ug-navy uppercase tracking-widest cursor-pointer select-none">Open to Collaboration</label>
+                  <label htmlFor="collab" className="relative inline-flex items-center h-6 rounded-full w-11 cursor-pointer select-none">
                     <input 
-                      type="checkbox" id="collab" 
-                      checked={formData.open_to_collaboration} 
+                      type="checkbox" 
+                      id="collab" 
+                      checked={!!formData.open_to_collaboration} 
                       onChange={e => setFormData({...formData, open_to_collaboration: e.target.checked})} 
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-ug-teal"></div>
-                  </div>
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-ug-teal after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                  </label>
                 </div>
                 <p className="text-[8px] font-medium text-gray-400 leading-normal">Enabling this makes your research discoverable to verified industry partners and technical investors.</p>
               </div>

@@ -375,4 +375,28 @@ FOR DELETE TO authenticated USING (
   auth.uid() = user_id
 );
 
+-- --- NEWS TABLE SCHEMA UPGRADE ---
+CREATE TABLE IF NOT EXISTS public.news (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  category TEXT,
+  published_at DATE DEFAULT CURRENT_DATE NOT NULL,
+  summary TEXT,
+  image_url TEXT,
+  external_url TEXT DEFAULT '',
+  is_ai_generated BOOLEAN DEFAULT false,
+  source_name TEXT DEFAULT 'UG ORID Directorates',
+  status TEXT DEFAULT 'Published', -- 'Draft' or 'Published'
+  reference_links TEXT[] DEFAULT '{}', -- Up to 4 reference links
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Ensure columns exist if the table was created previously without them:
+ALTER TABLE public.news ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Published';
+ALTER TABLE public.news ADD COLUMN IF NOT EXISTS reference_links TEXT[] DEFAULT '{}';
+ALTER TABLE public.news ADD COLUMN IF NOT EXISTS external_url TEXT DEFAULT '';
+ALTER TABLE public.news ADD COLUMN IF NOT EXISTS is_ai_generated BOOLEAN DEFAULT false;
+ALTER TABLE public.news ADD COLUMN IF NOT EXISTS source_name TEXT DEFAULT 'UG ORID Directorates';
+
+
 

@@ -5,7 +5,7 @@ import {
   Trash2, Plus, Edit, RefreshCw, Layers, CheckCircle2, 
   MapPin, Clock, Search, ExternalLink, Filter, HelpCircle, 
   TrendingUp, BarChart3, Radio, FileSpreadsheet, Lock, Sparkles,
-  MessageSquare, Download, Eye, AlertTriangle, ThumbsUp, Check, Loader2, ChevronDown, ChevronUp, X
+  MessageSquare, Download, Eye, AlertTriangle, ThumbsUp, Check, Loader2, ChevronDown, ChevronUp, X, Link2, Upload
 } from 'lucide-react';
 import { User, Project, NewsItem, UserRole, ProjectStatus, Visibility, ResearchArea, DisclosureStatus } from '../types';
 import { StorageService } from '../services/storageService';
@@ -57,6 +57,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isSavingNews, setIsSavingNews] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [isScoutingNews, setIsScoutingNews] = useState(false);
+  const [newsStatus, setNewsStatus] = useState<'Draft' | 'Published'>('Published');
+  const [newsReferenceLinks, setNewsReferenceLinks] = useState<string[]>(['', '', '', '']);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiKeywords, setAiKeywords] = useState('');
+  const [showAIWriteModal, setShowAIWriteModal] = useState(false);
 
   // Admin Disclosure Workflows states
   const [selectedDisclosureId, setSelectedDisclosureId] = useState<string | null>(null);
@@ -271,7 +277,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       const [allProfiles, allProjects, allNews, allEOIs] = await Promise.all([
         StorageService.adminGetAllProfiles(),
         StorageService.getProjects(),
-        StorageService.getNews(),
+        StorageService.getNews(true),
         StorageService.adminGetAllEOIs()
       ]);
       
@@ -371,26 +377,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleGenerateAIPressRelease = async () => {
-    if (!newsTitle) {
-      showToast("Please enter a title first to guide the AI news writer.", "error");
+    if (!aiTopic) {
+      showToast("Please enter a topic first to guide the AI news writer.", "error");
       return;
     }
     setIsGeneratingAI(true);
-    showToast("AI Agent: Writing descriptive copy summary...", "info");
+    showToast("AI Agent: Writing descriptive press release headline and content...", "info");
     try {
-      const prompt = `Write a professional, engaging academic announcement or press release summary based on the following:
-Title: "${newsTitle}"
+      const prompt = `Act as an elite Academic Public Relations Officer at the University of Ghana.
+Write a professional, highly engaging press release based on:
+Topic: "${aiTopic}"
+Keywords: "${aiKeywords}"
 Category: "${newsCategory}"
 
-Instructions:
-1. The tone should be authoritative yet exciting.
-2. Highlight the impact on University of Ghana research, strategic ecosystem funding, or public interest.
-3. Keep the summary under 120 words.
-4. Output ONLY the written copy summary, do not include markdown formatting or meta tags.`;
+You MUST output exactly in the following JSON format:
+{
+  "title": "A highly professional, captivating academic headline",
+  "summary": "An authoritative, well-written article summary (around 120-150 words) highlighting the research breakthrough, strategic ecosystem funding, or institutional partnership."
+}
+
+Do NOT include any extra text or markdown codeblocks in your response. Just return the raw JSON object.`;
 
       const responseText = await getGeminiResponse(prompt, []);
-      setNewsSummary(responseText.trim());
-      showToast("AI Agent: Draft generated successfully!", "success");
+      try {
+        const jsonText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        const result = JSON.parse(jsonText);
+        if (result.title) setNewsTitle(result.title);
+        if (result.summary) setNewsSummary(result.summary);
+        showToast("AI Agent: Draft generated successfully!", "success");
+        setAiTopic('');
+        setAiKeywords('');
+        setShowAIWriteModal(false);
+      } catch (jsonErr) {
+        setNewsSummary(responseText.trim());
+        showToast("AI Agent: Generated draft (text only).", "success");
+        setShowAIWriteModal(false);
+      }
     } catch (err: any) {
       showToast("Failed to draft with Gemini", "error");
     } finally {
@@ -415,7 +437,9 @@ Instructions:
         summary: newsSummary,
         image_url: newsImageUrl,
         external_url: newsExternalUrl,
-        published_at: editingNews?.published_at || new Date().toISOString()
+        published_at: editingNews?.published_at || new Date().toISOString(),
+        status: newsStatus,
+        reference_links: newsReferenceLinks.map(link => link.trim())
       };
 
       await StorageService.adminSaveNewsItem(payload);
@@ -427,6 +451,8 @@ Instructions:
       setNewsSummary('');
       setNewsImageUrl('');
       setNewsExternalUrl('');
+      setNewsStatus('Published');
+      setNewsReferenceLinks(['', '', '', '']);
       loadAdminData();
     } catch (err) {
       showToast("Failed saving hub news", "error");
@@ -442,6 +468,24 @@ Instructions:
     setNewsSummary(item.summary);
     setNewsImageUrl(item.image_url || '');
     setNewsExternalUrl(item.external_url || '');
+    setNewsStatus(item.status || 'Published');
+    setNewsReferenceLinks(item.reference_links && item.reference_links.length > 0 ? [...item.reference_links, '', '', '', ''].slice(0, 4) : ['', '', '', '']);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingImage(true);
+    showToast("Uploading image...", "info");
+    try {
+      const url = await StorageService.uploadFile(file, 'projects');
+      setNewsImageUrl(url);
+      showToast("Image uploaded successfully!", "success");
+    } catch (err: any) {
+      showToast(`Upload failed: ${err.message || err}`, "error");
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   const handleDeleteNews = async (newsId: string) => {
@@ -1320,124 +1364,235 @@ Instructions:
               exit={{ opacity: 0, y: -10 }}
               className="grid grid-cols-1 lg:grid-cols-3 gap-8"
             >
-              {/* Left Column: Create or Edit News */}
+              {/* Left Column: Create, Edit or AI Write News */}
               <div className="lg:col-span-1 bg-white rounded-[2.5rem] border border-gray-100 p-8 space-y-6 h-fit sticky top-24">
-                <div>
-                  <h3 className="text-xl font-black text-ug-navy tracking-tight">
-                    {editingNews ? "Edit Announcement" : "Create Announcement"}
-                  </h3>
-                  <p className="text-[10px] font-black text-ug-teal uppercase tracking-widest mt-1">Broadcast directly to News Portal</p>
-                </div>
-
-                <form onSubmit={handleSaveNews} className="space-y-5 text-left">
-                  {/* Title */}
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Title</label>
-                    <input 
-                      type="text" 
-                      value={newsTitle}
-                      onChange={(e) => setNewsTitle(e.target.value)}
-                      placeholder="E.g., UG secures 5M USD Innovation Grant"
-                      className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
-                      required
-                    />
-                  </div>
-
-                  {/* Summary */}
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between items-center ml-1">
-                      <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Short Summary</label>
-                      <button
-                        type="button"
-                        onClick={handleGenerateAIPressRelease}
-                        disabled={isGeneratingAI}
-                        className="text-[9px] font-black uppercase text-purple-600 hover:text-purple-700 tracking-wider flex items-center gap-1 transition disabled:opacity-50"
-                      >
-                        {isGeneratingAI ? (
-                          <>
-                            <Loader2 size={10} className="animate-spin" /> Drafting...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles size={10} /> Write with AI
-                          </>
-                        )}
-                      </button>
+                {showAIWriteModal ? (
+                  <div className="space-y-5 text-left">
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-black text-ug-navy tracking-tight flex items-center gap-2">
+                          <Sparkles className="text-purple-600 animate-pulse animate-duration-1000" size={18} />
+                          Write with AI
+                        </h3>
+                        <button 
+                          onClick={() => setShowAIWriteModal(false)}
+                          className="text-xs font-black text-gray-400 uppercase hover:text-gray-600 transition tracking-wider"
+                        >
+                          Back to Form
+                        </button>
+                      </div>
+                      <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest mt-1">Generate a structured release</p>
                     </div>
-                    <textarea 
-                      value={newsSummary}
-                      onChange={(e) => setNewsSummary(e.target.value)}
-                      placeholder="Write brief descriptive copy outlining the announcement details..."
-                      rows={4}
-                      className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition resize-none leading-relaxed"
-                      required
-                    />
-                  </div>
 
-                  {/* Category */}
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Category</label>
-                    <select 
-                      value={newsCategory}
-                      onChange={(e) => setNewsCategory(e.target.value)}
-                      className="w-full bg-gray-50 border border-transparent rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none cursor-pointer"
-                    >
-                      {['Announcement', 'Grant Opportunity', 'Strategic Partnership', 'Research Release', 'Ecosystem Updates'].map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </div>
+                    {/* AI Topic */}
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">What is the topic?</label>
+                      <input 
+                        type="text" 
+                        value={aiTopic}
+                        onChange={(e) => setAiTopic(e.target.value)}
+                        placeholder="E.g., Rosemary's new malaria diagnostic dataset"
+                        className="w-full bg-gray-50 border border-transparent focus:border-purple-500 focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
+                      />
+                    </div>
 
-                  {/* Image URL */}
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Image URL (Optional)</label>
-                    <input 
-                      type="url" 
-                      value={newsImageUrl}
-                      onChange={(e) => setNewsImageUrl(e.target.value)}
-                      placeholder="https://images.unsplash.com/photo-..."
-                      className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
-                    />
-                  </div>
+                    {/* AI Keywords */}
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Keywords (Optional, comma separated)</label>
+                      <input 
+                        type="text" 
+                        value={aiKeywords}
+                        onChange={(e) => setAiKeywords(e.target.value)}
+                        placeholder="E.g., malaria, dataset, machine learning"
+                        className="w-full bg-gray-50 border border-transparent focus:border-purple-500 focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
+                      />
+                    </div>
 
-                  {/* External Link */}
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">External PDF / Link (Optional)</label>
-                    <input 
-                      type="url" 
-                      value={newsExternalUrl}
-                      onChange={(e) => setNewsExternalUrl(e.target.value)}
-                      placeholder="https://orid.ug.edu.gh/resource-file"
-                      className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
-                    />
-                  </div>
-
-                  <div className="flex gap-3 pt-4">
-                    {editingNews && (
+                    <div className="flex gap-3 pt-2">
                       <button
                         type="button"
-                        onClick={() => {
-                          setEditingNews(null);
-                          setNewsTitle('');
-                          setNewsCategory('Announcement');
-                          setNewsSummary('');
-                          setNewsImageUrl('');
-                          setNewsExternalUrl('');
-                        }}
+                        onClick={() => setShowAIWriteModal(false)}
                         className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-2xl py-4 font-black text-[9px] uppercase tracking-widest transition"
                       >
                         Cancel
                       </button>
-                    )}
-                    <button
-                      type="submit"
-                      disabled={isSavingNews}
-                      className="flex-1 bg-ug-navy hover:bg-ug-teal text-white rounded-2xl py-4 font-black text-[9px] uppercase tracking-widest shadow-xl shadow-ug-navy/10 transition disabled:opacity-50"
-                    >
-                      {isSavingNews ? 'Saving...' : (editingNews ? 'Save Changes' : 'Broadcast News')}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={handleGenerateAIPressRelease}
+                        disabled={isGeneratingAI || !aiTopic}
+                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl py-4 font-black text-[9px] uppercase tracking-widest shadow-xl shadow-purple-600/10 transition disabled:opacity-50"
+                      >
+                        {isGeneratingAI ? 'Drafting...' : 'Generate Draft'}
+                      </button>
+                    </div>
                   </div>
-                </form>
+                ) : (
+                  <div className="space-y-5">
+                    <div>
+                      <h3 className="text-xl font-black text-ug-navy tracking-tight">
+                        {editingNews ? "Edit Announcement" : "Create Announcement"}
+                      </h3>
+                      <p className="text-[10px] font-black text-ug-teal uppercase tracking-widest mt-1">Broadcast directly to News Portal</p>
+                    </div>
+
+                    <form onSubmit={handleSaveNews} className="space-y-5 text-left">
+                      {/* Title */}
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Title</label>
+                        <input 
+                          type="text" 
+                          value={newsTitle}
+                          onChange={(e) => setNewsTitle(e.target.value)}
+                          placeholder="E.g., UG secures 5M USD Innovation Grant"
+                          className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
+                          required
+                        />
+                      </div>
+
+                      {/* Summary */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center ml-1">
+                          <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Short Summary</label>
+                          <button
+                            type="button"
+                            onClick={() => setShowAIWriteModal(true)}
+                            className="text-[9px] font-black uppercase text-purple-600 hover:text-purple-700 tracking-wider flex items-center gap-1 transition"
+                          >
+                            <Sparkles size={10} /> Write with AI
+                          </button>
+                        </div>
+                        <textarea 
+                          value={newsSummary}
+                          onChange={(e) => setNewsSummary(e.target.value)}
+                          placeholder="Write brief descriptive copy outlining the announcement details..."
+                          rows={4}
+                          className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition resize-none leading-relaxed"
+                          required
+                        />
+                      </div>
+
+                      {/* Category and Status Grid */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Category</label>
+                          <select 
+                            value={newsCategory}
+                            onChange={(e) => setNewsCategory(e.target.value)}
+                            className="w-full bg-gray-50 border border-transparent rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none cursor-pointer"
+                          >
+                            {['Announcement', 'Grant Opportunity', 'Strategic Partnership', 'Research Release', 'Ecosystem Updates'].map(c => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Status</label>
+                          <select 
+                            value={newsStatus}
+                            onChange={(e) => setNewsStatus(e.target.value as 'Draft' | 'Published')}
+                            className="w-full bg-gray-50 border border-transparent rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none cursor-pointer"
+                          >
+                            <option value="Published">Published</option>
+                            <option value="Draft">Draft</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Image Source Selection */}
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Image URL (Optional)</label>
+                          <input 
+                            type="url" 
+                            value={newsImageUrl}
+                            onChange={(e) => setNewsImageUrl(e.target.value)}
+                            placeholder="https://images.unsplash.com/photo-..."
+                            className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Or Upload Image File</label>
+                          <label className="flex flex-col items-center justify-center border border-dashed border-gray-200 hover:border-ug-teal/50 bg-gray-50 hover:bg-white rounded-2xl py-4 px-4 cursor-pointer transition">
+                            <Upload size={16} className="text-gray-400 mb-1" />
+                            <span className="text-[9px] font-bold text-gray-500">
+                              {isUploadingImage ? "Uploading file..." : "Choose image..."}
+                            </span>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={handleImageUpload} 
+                              disabled={isUploadingImage} 
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Reference Links (Up to 4) */}
+                      <div className="space-y-2 border-t border-gray-50 pt-4">
+                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1 block">Reference Links (Max 4)</label>
+                        {newsReferenceLinks.map((link, idx) => (
+                          <div key={idx} className="flex gap-2 items-center">
+                            <Link2 size={12} className="text-gray-400 shrink-0" />
+                            <input 
+                              type="text"
+                              value={link}
+                              onChange={(e) => {
+                                const copy = [...newsReferenceLinks];
+                                copy[idx] = e.target.value;
+                                setNewsReferenceLinks(copy);
+                              }}
+                              placeholder={`Reference Link ${idx + 1}`}
+                              className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-xl p-2.5 text-[11px] font-bold text-ug-navy outline-none transition"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* External Link */}
+                      <div className="space-y-1.5 border-t border-gray-50 pt-4">
+                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Main External / PDF Link</label>
+                        <input 
+                          type="url" 
+                          value={newsExternalUrl}
+                          onChange={(e) => setNewsExternalUrl(e.target.value)}
+                          placeholder="https://orid.ug.edu.gh/resource-file"
+                          className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
+                        />
+                      </div>
+
+                      <div className="flex gap-3 pt-4">
+                        {editingNews && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingNews(null);
+                              setNewsTitle('');
+                              setNewsCategory('Announcement');
+                              setNewsSummary('');
+                              setNewsImageUrl('');
+                              setNewsExternalUrl('');
+                              setNewsStatus('Published');
+                              setNewsReferenceLinks(['', '', '', '']);
+                            }}
+                            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-2xl py-4 font-black text-[9px] uppercase tracking-widest transition"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                        <button
+                          type="submit"
+                          disabled={isSavingNews}
+                          className="flex-1 bg-ug-navy hover:bg-ug-teal text-white rounded-2xl py-4 font-black text-[9px] uppercase tracking-widest shadow-xl shadow-ug-navy/10 transition disabled:opacity-50"
+                        >
+                          {isSavingNews ? 'Saving...' : (editingNews ? 'Save Changes' : 'Broadcast News')}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
               </div>
 
               {/* Right Column: News History Feed List */}
@@ -1484,6 +1639,12 @@ Instructions:
                                 <span>•</span>
                                 <span className="bg-purple-50 text-purple-600 border border-purple-100 px-1.5 rounded">AI SCOUT</span>
                               </>
+                            )}
+                            <span>•</span>
+                            {item.status === 'Draft' ? (
+                              <span className="bg-amber-50 text-amber-600 border border-amber-100 px-1.5 rounded font-black uppercase">DRAFT</span>
+                            ) : (
+                              <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 px-1.5 rounded font-black uppercase text-[8px]">PUBLISHED</span>
                             )}
                           </div>
                           <h4 className="font-black text-xs text-ug-navy leading-snug line-clamp-1">{item.title}</h4>

@@ -734,8 +734,12 @@ export const StorageService = {
   },
 
   // News
-  getNews: async (): Promise<NewsItem[]> => {
-    const { data } = await supabase.from('news').select('*').order('published_at', { ascending: false });
+  getNews: async (includeDrafts: boolean = false): Promise<NewsItem[]> => {
+    let query = supabase.from('news').select('*');
+    if (!includeDrafts) {
+      query = query.or('status.eq.Published,status.is.null');
+    }
+    const { data } = await query.order('published_at', { ascending: false });
     return data || [];
   },
 
@@ -1493,7 +1497,9 @@ export const StorageService = {
         published_at: newsItem.published_at || new Date().toISOString(),
         external_url: newsItem.external_url || '',
         is_ai_generated: newsItem.is_ai_generated || false,
-        source_name: newsItem.source_name || 'UG ORID Directorates'
+        source_name: newsItem.source_name || 'UG ORID Directorates',
+        status: newsItem.status || 'Published',
+        reference_links: newsItem.reference_links || []
       };
 
       if (newsItem.id) {

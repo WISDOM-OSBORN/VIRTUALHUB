@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Tag, ChevronRight, Newspaper, Sparkles, Loader2, ExternalLink, Globe, Zap, RefreshCw, Microscope, Clock, Search, Filter } from 'lucide-react';
+import { Calendar, Tag, ChevronRight, Newspaper, Sparkles, Loader2, ExternalLink, Globe, Zap, RefreshCw, Microscope, Clock, Search, Filter, Link2 } from 'lucide-react';
 import { StorageService } from '../services/storageService';
 import { AIScoutService } from '../services/aiScoutService';
 import { NewsItem } from '../types';
@@ -132,10 +132,10 @@ const News: React.FC = () => {
              >
                 <option value="All">All Categories</option>
                 <option value="Announcement">Announcement</option>
-                <option value="Breakthrough">Breakthrough</option>
-                <option value="Insight">Insight</option>
-                <option value="Milestone">Milestone</option>
-                <option value="Research">Research</option>
+                <option value="Grant Opportunity">Grant Opportunity</option>
+                <option value="Strategic Partnership">Strategic Partnership</option>
+                <option value="Research Release">Research Release</option>
+                <option value="Ecosystem Updates">Ecosystem Updates</option>
              </select>
              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
                 <Filter size={18} />
@@ -209,6 +209,26 @@ const News: React.FC = () => {
                 <p className="text-gray-500 font-medium text-xl leading-relaxed mb-10 line-clamp-3 max-w-4xl whitespace-pre-line">
                   {item.summary}
                 </p>
+                
+                {item.reference_links && item.reference_links.filter(Boolean).length > 0 && (
+                  <div className="mb-8" onClick={e => e.stopPropagation()}>
+                    <h4 className="text-[10px] font-black uppercase text-ug-navy tracking-widest mb-3">Reference Links:</h4>
+                    <div className="flex flex-wrap gap-3">
+                      {item.reference_links.filter(Boolean).slice(0, 4).map((link, lIdx) => (
+                        <a 
+                          key={lIdx}
+                          href={link.startsWith('http') ? link : `https://${link}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-2 bg-gray-100 hover:bg-ug-teal hover:text-white rounded-xl text-xs font-bold text-gray-600 transition-all flex items-center gap-2 border border-gray-200/50"
+                        >
+                          <Link2 size={12} />
+                          <span>Link {lIdx + 1}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
                 <div className="flex items-center gap-4 text-ug-navy font-black text-sm uppercase tracking-widest group-hover:text-ug-teal transition-all group-hover:translate-x-4">
                   Explore Full Discovery <ChevronRight size={24} className="group-hover:translate-x-2 transition-transform" />

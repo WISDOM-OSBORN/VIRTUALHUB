@@ -681,7 +681,8 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
                 summary: item.summary,
                 external_url: item.external_url || '',
                 is_ai_generated: true,
-                source_name: item.source_name || 'Global News Feed'
+                source_name: item.source_name || 'Global News Feed',
+                status: 'Draft'
               });
             } catch (imgErr) {
               console.error("Server Scout Image Error:", imgErr);
@@ -693,7 +694,8 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
                 summary: item.summary,
                 external_url: item.external_url || '',
                 is_ai_generated: true,
-                source_name: item.source_name || 'Global News Feed'
+                source_name: item.source_name || 'Global News Feed',
+                status: 'Draft'
               });
             }
           }
@@ -715,7 +717,8 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
           summary: item.summary,
           external_url: item.external_url || '',
           is_ai_generated: true,
-          source_name: item.source_name || 'UG Intelligence Feed'
+          source_name: item.source_name || 'UG Intelligence Feed',
+          status: 'Draft'
         });
       });
     }
@@ -731,13 +734,14 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
         projectsData.forEach((p: any) => {
           finalizedItems.push({
             title: `UG Milestone: ${p.title} Ready for Adoption`,
-            category: 'Market-Ready',
+            category: 'Ecosystem Updates',
             published_at: p.start_date || today,
             image_url: p.image_url?.split('|')[0] || 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80',
             summary: `University of Ghana announces that the ${p.research_area || 'research focus'} innovation from ${p.department || 'the University'} has been commercially validated and is ready for licensing.`,
             external_url: `#/projects/${p.id}`,
             is_ai_generated: false,
-            source_name: 'UG Industry Hub'
+            source_name: 'UG Industry Hub',
+            status: 'Draft'
           });
         });
       }
