@@ -8,7 +8,6 @@ const News: React.FC = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [isScouting, setIsScouting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lastSync, setLastSync] = useState<Date | null>(null);
 
@@ -29,16 +28,6 @@ const News: React.FC = () => {
       if (didUpdate) fetchNews();
     });
   }, []);
-
-  const handleManualScout = async () => {
-    setIsScouting(true);
-    try {
-      const didUpdate = await AIScoutService.autoSyncNews(true); // force = true
-      if (didUpdate) await fetchNews();
-    } finally {
-      setIsScouting(false);
-    }
-  };
 
   const handleNewsClick = (item: NewsItem) => {
     if (item.external_url) {
@@ -90,25 +79,6 @@ const News: React.FC = () => {
               </div>
             )}
           </div>
-
-          <button 
-            onClick={handleManualScout}
-            disabled={isScouting}
-            className={`flex items-center gap-3 px-8 py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl
-              ${isScouting ? 'bg-ug-navy text-white cursor-wait' : 'bg-ug-navy text-white hover:bg-ug-teal hover:scale-[1.02] active:scale-[0.98]'}`}
-          >
-            {isScouting ? (
-              <>
-                <Loader2 className="animate-spin text-ug-teal" size={20} />
-                <span>Running Deep Scout...</span>
-              </>
-            ) : (
-              <>
-                <RefreshCw size={20} className="text-ug-teal" />
-                <span>Manual Override</span>
-              </>
-            )}
-          </button>
         </div>
 
         {/* Search and Category Filters */}
@@ -144,7 +114,7 @@ const News: React.FC = () => {
         </div>
 
         {/* Loading State */}
-        {loading && !isScouting && (
+        {loading && (
            <div className="flex flex-col items-center justify-center py-40">
               <Loader2 className="animate-spin text-ug-teal mb-6" size={56} />
               <p className="text-gray-400 font-black uppercase text-[10px] tracking-[0.4em]">Aggregating Intelligence...</p>

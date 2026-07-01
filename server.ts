@@ -750,12 +750,49 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
     }
 
     if (finalizedItems.length > 0) {
-      const { error: upsertError } = await supabaseServer
-        .from('news')
-        .upsert(finalizedItems, { onConflict: 'title' });
+      try {
+        const { error: upsertError } = await supabaseServer
+          .from('news')
+          .upsert(finalizedItems, { onConflict: 'title' });
 
-      if (upsertError) throw upsertError;
-      return res.json({ didUpdate: true, count: finalizedItems.length });
+        if (upsertError) throw upsertError;
+        return res.json({ didUpdate: true, count: finalizedItems.length });
+      } catch (upsertErr: any) {
+        console.warn("Server News: Upsert failed, executing single-row fallback inserts...", upsertErr?.message || upsertErr);
+        let insertCount = 0;
+        for (const item of finalizedItems) {
+          try {
+            // Check if title already exists
+            const { data: existing } = await supabaseServer
+              .from('news')
+              .select('id')
+              .eq('title', item.title)
+              .maybeSingle();
+
+            if (existing) {
+              // Update core fields of existing news item to preserve sync
+              await supabaseServer
+                .from('news')
+                .update({
+                  summary: item.summary,
+                  image_url: item.image_url,
+                  external_url: item.external_url,
+                  category: item.category
+                })
+                .eq('id', existing.id);
+            } else {
+              // Try to insert
+              const { error: insertErr } = await supabaseServer
+                .from('news')
+                .insert([item]);
+              if (!insertErr) insertCount++;
+            }
+          } catch (itemErr) {
+            console.warn(`Failed syncing individual item "${item.title}":`, itemErr);
+          }
+        }
+        return res.json({ didUpdate: insertCount > 0, count: finalizedItems.length, fallbackUsed: true });
+      }
     }
 
     res.json({ didUpdate: false, message: 'No items synchronized.' });

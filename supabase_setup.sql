@@ -398,5 +398,28 @@ ALTER TABLE public.news ADD COLUMN IF NOT EXISTS external_url TEXT DEFAULT '';
 ALTER TABLE public.news ADD COLUMN IF NOT EXISTS is_ai_generated BOOLEAN DEFAULT false;
 ALTER TABLE public.news ADD COLUMN IF NOT EXISTS source_name TEXT DEFAULT 'UG ORID Directorates';
 
+-- Ensure title is unique to support clean upserts
+ALTER TABLE public.news DROP CONSTRAINT IF EXISTS news_title_unique;
+ALTER TABLE public.news ADD CONSTRAINT news_title_unique UNIQUE (title);
+
+-- Enable Row Level Security on public.news
+ALTER TABLE public.news ENABLE ROW LEVEL SECURITY;
+
+-- Allow anyone (including anonymous visitors) to view published news
+DROP POLICY IF EXISTS "Anyone can view published news" ON public.news;
+CREATE POLICY "Anyone can view published news" ON public.news
+FOR SELECT TO public USING (
+  status = 'Published' OR status IS NULL
+);
+
+-- Allow admins to fully manage all news items
+DROP POLICY IF EXISTS "Admins can manage all news" ON public.news;
+CREATE POLICY "Admins can manage all news" ON public.news
+FOR ALL TO authenticated USING (
+  public.is_admin()
+) WITH CHECK (
+  public.is_admin()
+);
+
 
 

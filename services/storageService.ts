@@ -735,12 +735,29 @@ export const StorageService = {
 
   // News
   getNews: async (includeDrafts: boolean = false): Promise<NewsItem[]> => {
-    let query = supabase.from('news').select('*');
-    if (!includeDrafts) {
-      query = query.or('status.eq.Published,status.is.null');
+    try {
+      let query = supabase.from('news').select('*');
+      if (!includeDrafts) {
+        query = query.or('status.eq.Published,status.is.null');
+      }
+      const { data, error } = await query.order('published_at', { ascending: false });
+      if (error) {
+        // Fallback to basic query if status column doesn't exist yet
+        console.warn("getNews filtered query failed, falling back to basic query:", error);
+        const { data: basicData } = await supabase.from('news').select('*').order('published_at', { ascending: false });
+        return basicData || [];
+      }
+      return data || [];
+    } catch (err) {
+      console.error("Failed to retrieve news:", err);
+      // Last resort fallback
+      try {
+        const { data } = await supabase.from('news').select('*');
+        return data || [];
+      } catch (innerErr) {
+        return [];
+      }
     }
-    const { data } = await query.order('published_at', { ascending: false });
-    return data || [];
   },
 
   // Expression of Interest (EOI) / Messaging System (Full Duplex)
@@ -1489,7 +1506,7 @@ export const StorageService = {
       const isAdmin = await StorageService.verifyAdmin();
       if (!isAdmin) throw new Error("Unauthorized access. Admin privileges required.");
 
-      const payload = {
+      const payload: any = {
         title: newsItem.title,
         category: newsItem.category,
         summary: newsItem.summary,
@@ -1509,7 +1526,25 @@ export const StorageService = {
           .eq('id', newsItem.id)
           .select()
           .single();
-        if (error) throw error;
+        if (error) {
+          console.warn("Update news item failed, retrying with core columns:", error.message);
+          const corePayload = {
+            title: payload.title,
+            category: payload.category,
+            summary: payload.summary,
+            image_url: payload.image_url,
+            published_at: payload.published_at,
+            external_url: payload.external_url
+          };
+          const { data: retryData, error: retryError } = await supabase
+            .from('news')
+            .update(corePayload)
+            .eq('id', newsItem.id)
+            .select()
+            .single();
+          if (retryError) throw retryError;
+          return retryData;
+        }
         return data;
       } else {
         const { data, error } = await supabase
@@ -1517,7 +1552,24 @@ export const StorageService = {
           .insert([payload])
           .select()
           .single();
-        if (error) throw error;
+        if (error) {
+          console.warn("Insert news item failed, retrying with core columns:", error.message);
+          const corePayload = {
+            title: payload.title,
+            category: payload.category,
+            summary: payload.summary,
+            image_url: payload.image_url,
+            published_at: payload.published_at,
+            external_url: payload.external_url
+          };
+          const { data: retryData, error: retryError } = await supabase
+            .from('news')
+            .insert([corePayload])
+            .select()
+            .single();
+          if (retryError) throw retryError;
+          return retryData;
+        }
         return data;
       }
     } catch (err) {
