@@ -554,23 +554,6 @@ app.post('/api/ai-scout/sync', authenticateUser, throttleLimit(5, 60 * 1000), as
   const today = new Date().toISOString().split('T')[0];
 
   try {
-    // Cooldown verification (24 Hours)
-    if (!force) {
-      const { data: latestItems, error: fetchError } = await supabaseServer
-        .from('news')
-        .select('created_at')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (!fetchError && latestItems && latestItems.length > 0) {
-        const lastSyncTime = new Date(latestItems[0].created_at).getTime();
-        const syncInterval = 24 * 60 * 60 * 1000;
-        if (Date.now() - lastSyncTime < syncInterval) {
-          return res.json({ didUpdate: false, message: 'Sync within 24hr cooldown window.' });
-        }
-      }
-    }
-
     const finalizedItems: any[] = [];
 
     if (isValidKey(apiKey)) {
@@ -634,6 +617,7 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
         if (researchResponse.text) {
           const rawScoutedData = JSON.parse(researchResponse.text.trim());
           
+          let skipImageGeneration = false;
           // Generate images for each breakthrough
           for (let i = 0; i < Math.min(rawScoutedData.length, 4); i++) {
             const item = rawScoutedData[i];
@@ -642,25 +626,35 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
             try {
               let imageResponse;
               let imgGenError;
-              const imageModels = ['gemini-2.5-flash-image', 'gemini-3.1-flash-image'];
-              for (const imgModel of imageModels) {
-                try {
-                  imageResponse = await ai.models.generateContent({
-                    model: imgModel,
-                    contents: {
-                      parts: [{ 
-                        text: `Professional, cinematic, high-quality medical illustration for: ${item.visual_prompt}. Style: Hyper-realistic 3D render, clean white laboratory background, blue and teal lighting, shallow depth of field, 8k resolution.` 
-                      }]
-                    },
-                    config: {
-                      imageConfig: { aspectRatio: "16:9" }
+              
+              if (!skipImageGeneration) {
+                const imageModels = ['gemini-3.1-flash-lite-image', 'gemini-3.1-flash-image', 'gemini-2.5-flash-image'];
+                for (const imgModel of imageModels) {
+                  try {
+                    imageResponse = await ai.models.generateContent({
+                      model: imgModel,
+                      contents: {
+                        parts: [{ 
+                          text: `Professional, cinematic, high-quality medical illustration for: ${item.visual_prompt}. Style: Hyper-realistic 3D render, clean white laboratory background, blue and teal lighting, shallow depth of field, 8k resolution.` 
+                        }]
+                      },
+                      config: {
+                        imageConfig: { aspectRatio: "16:9" }
+                      }
+                    });
+                    if (imageResponse) break;
+                  } catch (err: any) {
+                    imgGenError = err;
+                    const errStr = (err?.message || "").toLowerCase();
+                    console.warn(`Image generation model ${imgModel} failed:`, err?.message || err);
+                    if (errStr.includes("quota") || errStr.includes("429") || errStr.includes("limit") || errStr.includes("exhausted")) {
+                      console.log("Image generation quota/limit reached. Skipping subsequent image API calls to prevent rate-limiting and slowness.");
+                      skipImageGeneration = true;
                     }
-                  });
-                  if (imageResponse) break;
-                } catch (err: any) {
-                  imgGenError = err;
-                  console.warn(`Image generation model ${imgModel} failed:`, err?.message || err);
+                  }
                 }
+              } else {
+                console.log(`Server Scout: Skipping image API call for "${item.title}" due to active rate-limit/quota-exhaustion flag.`);
               }
 
               let base64Image = '';
@@ -682,7 +676,7 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
                 external_url: item.external_url || '',
                 is_ai_generated: true,
                 source_name: item.source_name || 'Global News Feed',
-                status: 'Draft'
+                status: 'Published'
               });
             } catch (imgErr) {
               console.error("Server Scout Image Error:", imgErr);
@@ -695,7 +689,7 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
                 external_url: item.external_url || '',
                 is_ai_generated: true,
                 source_name: item.source_name || 'Global News Feed',
-                status: 'Draft'
+                status: 'Published'
               });
             }
           }
@@ -718,7 +712,7 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
           external_url: item.external_url || '',
           is_ai_generated: true,
           source_name: item.source_name || 'UG Intelligence Feed',
-          status: 'Draft'
+          status: 'Published'
         });
       });
     }
@@ -741,7 +735,7 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
             external_url: `#/projects/${p.id}`,
             is_ai_generated: false,
             source_name: 'UG Industry Hub',
-            status: 'Draft'
+            status: 'Published'
           });
         });
       }

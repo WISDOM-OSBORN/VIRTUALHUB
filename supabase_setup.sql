@@ -38,18 +38,33 @@ ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS requested_documents JSONB D
 ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS disclosure_timeline JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS ai_verification JSONB DEFAULT '{}'::jsonb;
 
+-- Helper function to query the user's role securely without triggering RLS recursion
+CREATE OR REPLACE FUNCTION public.get_user_role(p_user_id UUID)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER -- Runs with database owner privileges to bypass RLS checks
+STABLE -- Mark as stable to allow caching per query execution
+AS $$
+DECLARE
+  v_role text;
+BEGIN
+  IF p_user_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+  SELECT role INTO v_role FROM public.profiles WHERE id = p_user_id;
+  RETURN v_role;
+END;
+$$;
+
 -- Helper function to check if user is admin
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER -- Essential: runs with database owner privileges, bypassing RLS checks
+STABLE -- Mark as stable to allow caching per query execution, avoiding O(N) database subqueries
 AS $$
 BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = auth.uid()
-    AND role = 'Admin'
-  );
+  RETURN public.get_user_role(auth.uid()) = 'Admin';
 END;
 $$;
 
@@ -420,6 +435,10 @@ FOR ALL TO authenticated USING (
 ) WITH CHECK (
   public.is_admin()
 );
+
+-- Performance Optimization Indexes
+CREATE INDEX IF NOT EXISTS news_published_at_idx ON public.news (published_at DESC);
+CREATE INDEX IF NOT EXISTS news_status_idx ON public.news (status);
 
 
 

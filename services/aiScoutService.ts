@@ -23,18 +23,6 @@ export const AIScoutService = {
    */
   autoSyncNews: async (force: boolean = false): Promise<boolean> => {
     try {
-      // Client-side 24-hour cooldown check to prevent unnecessary API & rate-limit hits
-      if (!force) {
-        const lastSync = await AIScoutService.getLastSyncTime();
-        if (lastSync) {
-          const syncInterval = 24 * 60 * 60 * 1000;
-          if (Date.now() - lastSync.getTime() < syncInterval) {
-            console.log("AI Scout client: Sync within 24hr cooldown window. Skipping fetch.");
-            return false;
-          }
-        }
-      }
-
       console.log(`AI Scout client: requesting secure server side news sync (force: ${force})...`);
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;

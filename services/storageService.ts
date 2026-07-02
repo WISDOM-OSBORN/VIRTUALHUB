@@ -738,7 +738,7 @@ export const StorageService = {
     try {
       let query = supabase.from('news').select('*');
       if (!includeDrafts) {
-        query = query.or('status.eq.Published,status.is.null');
+        query = query.eq('status', 'Published');
       }
       const { data, error } = await query.order('published_at', { ascending: false });
       if (error) {

@@ -20,13 +20,8 @@ const News: React.FC = () => {
   };
 
   useEffect(() => {
-    // Initial fetch
+    // Initial fetch of news directly from database
     fetchNews();
-
-    // Silent background sync check
-    AIScoutService.autoSyncNews().then(didUpdate => {
-      if (didUpdate) fetchNews();
-    });
   }, []);
 
   const handleNewsClick = (item: NewsItem) => {
