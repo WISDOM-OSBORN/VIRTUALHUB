@@ -403,6 +403,9 @@ CREATE TABLE IF NOT EXISTS public.news (
   source_name TEXT DEFAULT 'UG ORID Directorates',
   status TEXT DEFAULT 'Published', -- 'Draft' or 'Published'
   reference_links TEXT[] DEFAULT '{}', -- Up to 4 reference links
+  tags TEXT[] DEFAULT '{}',
+  relevance_score INTEGER DEFAULT 0,
+  source_verification_notes TEXT DEFAULT '',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -412,6 +415,9 @@ ALTER TABLE public.news ADD COLUMN IF NOT EXISTS reference_links TEXT[] DEFAULT 
 ALTER TABLE public.news ADD COLUMN IF NOT EXISTS external_url TEXT DEFAULT '';
 ALTER TABLE public.news ADD COLUMN IF NOT EXISTS is_ai_generated BOOLEAN DEFAULT false;
 ALTER TABLE public.news ADD COLUMN IF NOT EXISTS source_name TEXT DEFAULT 'UG ORID Directorates';
+ALTER TABLE public.news ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';
+ALTER TABLE public.news ADD COLUMN IF NOT EXISTS relevance_score INTEGER DEFAULT 0;
+ALTER TABLE public.news ADD COLUMN IF NOT EXISTS source_verification_notes TEXT DEFAULT '';
 
 -- Ensure title is unique to support clean upserts
 ALTER TABLE public.news DROP CONSTRAINT IF EXISTS news_title_unique;
@@ -439,6 +445,17 @@ FOR ALL TO authenticated USING (
 -- Performance Optimization Indexes
 CREATE INDEX IF NOT EXISTS news_published_at_idx ON public.news (published_at DESC);
 CREATE INDEX IF NOT EXISTS news_status_idx ON public.news (status);
+CREATE INDEX IF NOT EXISTS news_category_idx ON public.news (category);
+CREATE INDEX IF NOT EXISTS news_created_at_idx ON public.news (created_at DESC);
+CREATE INDEX IF NOT EXISTS news_status_published_at_idx ON public.news (status, published_at DESC);
+
+-- Generated Column for full-text search optimization
+ALTER TABLE public.news ADD COLUMN IF NOT EXISTS fts_doc tsvector GENERATED ALWAYS AS (
+  to_tsvector('english', coalesce(title, '') || ' ' || coalesce(summary, ''))
+) STORED;
+
+-- GIN index for rapid full-text search without expensive ILIKE text scans
+CREATE INDEX IF NOT EXISTS news_fts_doc_idx ON public.news USING gin (fts_doc);
 
 
 

@@ -63,6 +63,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [aiTopic, setAiTopic] = useState('');
   const [aiKeywords, setAiKeywords] = useState('');
   const [showAIWriteModal, setShowAIWriteModal] = useState(false);
+  const [newsTags, setNewsTags] = useState('');
+  const [newsRelevanceScore, setNewsRelevanceScore] = useState<number>(0);
+  const [newsSourceVerificationNotes, setNewsSourceVerificationNotes] = useState('');
 
   // Admin Disclosure Workflows states
   const [selectedDisclosureId, setSelectedDisclosureId] = useState<string | null>(null);
@@ -428,6 +431,12 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
       return;
     }
 
+    // MANDATORY IMAGE VALIDATION BEFORE PUBLISHING
+    if (newsStatus === 'Published' && (!newsImageUrl || newsImageUrl.trim() === '')) {
+      showToast("An image is required before publishing. Please upload a JPG, PNG, or WEBP image first.", "error");
+      return;
+    }
+
     try {
       setIsSavingNews(true);
       const payload: Partial<NewsItem> = {
@@ -439,7 +448,10 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
         external_url: newsExternalUrl,
         published_at: editingNews?.published_at || new Date().toISOString(),
         status: newsStatus,
-        reference_links: newsReferenceLinks.map(link => link.trim())
+        reference_links: newsReferenceLinks.map(link => link.trim()),
+        tags: newsTags.split(',').map(t => t.trim()).filter(Boolean),
+        relevance_score: Number(newsRelevanceScore) || 0,
+        source_verification_notes: newsSourceVerificationNotes
       };
 
       await StorageService.adminSaveNewsItem(payload);
@@ -453,6 +465,9 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
       setNewsExternalUrl('');
       setNewsStatus('Published');
       setNewsReferenceLinks(['', '', '', '']);
+      setNewsTags('');
+      setNewsRelevanceScore(0);
+      setNewsSourceVerificationNotes('');
       loadAdminData();
     } catch (err) {
       showToast("Failed saving hub news", "error");
@@ -470,11 +485,29 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
     setNewsExternalUrl(item.external_url || '');
     setNewsStatus(item.status || 'Published');
     setNewsReferenceLinks(item.reference_links && item.reference_links.length > 0 ? [...item.reference_links, '', '', '', ''].slice(0, 4) : ['', '', '', '']);
+    setNewsTags(item.tags ? item.tags.join(', ') : '');
+    setNewsRelevanceScore(item.relevance_score || 0);
+    setNewsSourceVerificationNotes(item.source_verification_notes || '');
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      showToast("Invalid file type. Only JPG, PNG, or WEBP images are allowed.", "error");
+      return;
+    }
+
+    // Validate file size (5MB max)
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      showToast("File is too large. Maximum allowed size is 5MB.", "error");
+      return;
+    }
+
     setIsUploadingImage(true);
     showToast("Uploading image...", "info");
     try {
@@ -494,6 +527,18 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
       await StorageService.adminDeleteNewsItem(newsId);
       showToast("Announcement deleted successfully", "success");
       setNews(prev => prev.filter(n => n.id !== newsId));
+      if (editingNews?.id === newsId) {
+        setEditingNews(null);
+        setNewsTitle('');
+        setNewsSummary('');
+        setNewsImageUrl('');
+        setNewsExternalUrl('');
+        setNewsStatus('Published');
+        setNewsReferenceLinks(['', '', '', '']);
+        setNewsTags('');
+        setNewsRelevanceScore(0);
+        setNewsSourceVerificationNotes('');
+      }
     } catch (err) {
       showToast("Failed deleting announcement", "error");
     }
@@ -1451,16 +1496,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
 
                       {/* Summary */}
                       <div className="space-y-1.5">
-                        <div className="flex justify-between items-center ml-1">
-                          <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Short Summary</label>
-                          <button
-                            type="button"
-                            onClick={() => setShowAIWriteModal(true)}
-                            className="text-[9px] font-black uppercase text-purple-600 hover:text-purple-700 tracking-wider flex items-center gap-1 transition"
-                          >
-                            <Sparkles size={10} /> Write with AI
-                          </button>
-                        </div>
+                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Short Summary</label>
                         <textarea 
                           value={newsSummary}
                           onChange={(e) => setNewsSummary(e.target.value)}
@@ -1499,39 +1535,123 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                         </div>
                       </div>
 
-                      {/* Image Source Selection */}
-                      <div className="space-y-3">
-                        <div className="space-y-1.5">
-                          <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Image URL (Optional)</label>
-                          <input 
-                            type="url" 
-                            value={newsImageUrl}
-                            onChange={(e) => setNewsImageUrl(e.target.value)}
-                            placeholder="https://images.unsplash.com/photo-..."
-                            className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
-                          />
+                      {/* AI Scout Intelligence Insights Metadata Fields */}
+                      <div className="space-y-4 border-t border-gray-100/60 pt-4">
+                        <h4 className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                          <Radio size={12} className="text-ug-teal shrink-0 animate-pulse" /> AI Scout Intelligence Insights
+                        </h4>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="md:col-span-2 space-y-1.5">
+                            <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Tags (Comma-separated)</label>
+                            <input
+                              type="text"
+                              value={newsTags}
+                              onChange={(e) => setNewsTags(e.target.value)}
+                              placeholder="E.g., Diagnostics, Malaria, Genetics"
+                              className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
+                            />
+                          </div>
+                          
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Relevance Score (1-100)</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={newsRelevanceScore || ''}
+                              onChange={(e) => setNewsRelevanceScore(parseInt(e.target.value) || 0)}
+                              placeholder="95"
+                              className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
+                            />
+                          </div>
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Or Upload Image File</label>
-                          <label className="flex flex-col items-center justify-center border border-dashed border-gray-200 hover:border-ug-teal/50 bg-gray-50 hover:bg-white rounded-2xl py-4 px-4 cursor-pointer transition">
-                            <Upload size={16} className="text-gray-400 mb-1" />
-                            <span className="text-[9px] font-bold text-gray-500">
-                              {isUploadingImage ? "Uploading file..." : "Choose image..."}
-                            </span>
-                            <input 
-                              type="file" 
-                              accept="image/*" 
-                              className="hidden" 
-                              onChange={handleImageUpload} 
-                              disabled={isUploadingImage} 
-                            />
-                          </label>
+                          <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Source Verification & Credibility Notes</label>
+                          <textarea
+                            rows={3}
+                            value={newsSourceVerificationNotes}
+                            onChange={(e) => setNewsSourceVerificationNotes(e.target.value)}
+                            placeholder="Add verification background or citations..."
+                            className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition resize-none leading-relaxed"
+                          />
                         </div>
                       </div>
 
+                      {/* Manual Image Upload with Validation and Preview */}
+                      <div className="space-y-3 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest block ml-1">
+                          Featured Visual Asset <span className="text-red-500 font-black">* REQUIRED FOR PUBLISHING</span>
+                        </label>
+                        
+                        {newsImageUrl ? (
+                          <div className="space-y-3">
+                            <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-gray-200 bg-gray-100 group">
+                              <img 
+                                src={newsImageUrl} 
+                                className="w-full h-full object-cover" 
+                                alt="News featured asset" 
+                              />
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition duration-200 flex items-center justify-center gap-2">
+                                <label className="cursor-pointer bg-white text-ug-navy hover:bg-gray-100 font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow-md">
+                                  <Upload size={12} /> Replace
+                                  <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={handleImageUpload} className="hidden" disabled={isUploadingImage} />
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => setNewsImageUrl('')}
+                                  className="bg-red-600 text-white hover:bg-red-700 font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow-md"
+                                >
+                                  <Trash2 size={12} /> Remove
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center px-1">
+                              <span className="text-[10px] text-gray-500 font-bold truncate max-w-[150px]">
+                                {newsImageUrl.startsWith('data:') ? 'Local file uploaded' : 'Uploaded Image'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setNewsImageUrl('')}
+                                className="text-[10px] font-black uppercase text-red-500 hover:text-red-400 tracking-wider"
+                              >
+                                Remove Image
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center border border-dashed border-gray-200 hover:border-ug-teal/50 bg-gray-50 hover:bg-white rounded-2xl py-6 px-4 cursor-pointer transition text-center min-h-[140px]">
+                            {isUploadingImage ? (
+                              <div className="space-y-2 flex flex-col items-center">
+                                <Loader2 size={24} className="animate-spin text-ug-teal" />
+                                <span className="text-[10px] font-bold text-gray-400">Uploading image...</span>
+                              </div>
+                            ) : (
+                              <div className="space-y-1 flex flex-col items-center">
+                                <Upload size={24} className="text-gray-400" />
+                                <span className="text-xs font-black text-gray-700">Upload Featured Image</span>
+                                <span className="text-[9px] font-medium text-gray-400">JPG, PNG or WEBP. Max 5MB.</span>
+                              </div>
+                            )}
+                            <input 
+                              type="file" 
+                              accept="image/jpeg,image/jpg,image/png,image/webp" 
+                              onChange={handleImageUpload} 
+                              className="hidden" 
+                              disabled={isUploadingImage} 
+                            />
+                          </label>
+                        )}
+                        {newsStatus === 'Published' && !newsImageUrl && (
+                          <p className="text-[10px] text-red-500 font-bold mt-1 animate-pulse">
+                            ⚠️ An image must be uploaded before this item can be published.
+                          </p>
+                        )}
+                      </div>
+
                       {/* Reference Links (Up to 4) */}
-                      <div className="space-y-2 border-t border-gray-50 pt-4">
+                      <div className="space-y-2 border-t border-gray-100 pt-4">
                         <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1 block">Reference Links (Max 4)</label>
                         {newsReferenceLinks.map((link, idx) => (
                           <div key={idx} className="flex gap-2 items-center">
@@ -1552,7 +1672,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                       </div>
 
                       {/* External Link */}
-                      <div className="space-y-1.5 border-t border-gray-50 pt-4">
+                      <div className="space-y-1.5 border-t border-gray-100 pt-4">
                         <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Main External / PDF Link</label>
                         <input 
                           type="url" 
@@ -1576,6 +1696,9 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                               setNewsExternalUrl('');
                               setNewsStatus('Published');
                               setNewsReferenceLinks(['', '', '', '']);
+                              setNewsTags('');
+                              setNewsRelevanceScore(0);
+                              setNewsSourceVerificationNotes('');
                             }}
                             className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-2xl py-4 font-black text-[9px] uppercase tracking-widest transition"
                           >
@@ -1633,7 +1756,9 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                           <div className="flex items-center gap-2 mb-1 text-[8px] font-black uppercase tracking-wider text-ug-teal">
                             <span>{item.category}</span>
                             <span>•</span>
-                            <span className="text-gray-400">{new Date(item.published_at).toLocaleDateString()}</span>
+                            <span className="text-gray-400">
+                              {item.published_at ? (isNaN(new Date(item.published_at).getTime()) ? item.published_at : new Date(item.published_at).toLocaleDateString()) : 'Recent'}
+                            </span>
                             {item.is_ai_generated && (
                               <>
                                 <span>•</span>

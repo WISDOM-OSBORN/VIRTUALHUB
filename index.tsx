@@ -7,8 +7,16 @@ import './index.css';
 if (typeof window !== 'undefined') {
   const isWsError = (err: any): boolean => {
     if (!err) return false;
-    const msg = String(err.message || err.reason || err).toLowerCase();
-    return msg.includes('websocket') || msg.includes('ws://') || msg.includes('wss://');
+    const msg = String(err.message || err.reason || err.description || err).toLowerCase();
+    const stack = err.stack ? String(err.stack).toLowerCase() : '';
+    return (
+      msg.includes('websocket') || 
+      msg.includes('ws://') || 
+      msg.includes('wss://') || 
+      msg.includes('closed without opened') ||
+      msg.includes('connection reset') ||
+      stack.includes('websocket')
+    );
   };
 
   window.addEventListener('unhandledrejection', (event) => {

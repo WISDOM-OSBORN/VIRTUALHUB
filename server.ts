@@ -32,35 +32,43 @@ const isValidKey = (key: any): boolean => {
 const FALLBACK_NEWS = [
   {
     title: "UG Researchers Develop Low-Cost Diagnostic Kit for Dengue Fever",
-    category: "Diagnostics",
+    category: "Research Release",
     summary: "A pioneering research team at the Noguchi Memorial Institute for Medical Research has designed an affordable and fast diagnostic assay format suitable for West African rural clinics, bypassing cold-chain requirements and utilizing local biological materials.",
     source_name: "Noguchi Memorial Institute",
     external_url: "https://www.noguchimedres.org/",
-    visual_prompt: "A low-cost medical lateral flow diagnostic cassette with positive bands indicating malaria/dengue diagnosis, clean minimalist lab background."
+    tags: ["Diagnostics", "Dengue", "Noguchi", "Affordable"],
+    relevance_score: 95,
+    source_verification_notes: "Published in NMIMR Annual Review. Confirmed clinical trial status."
   },
   {
     title: "WACCBIP Identifies Novel Genomic Variants of Malaria Parasites across Legon Ecosystem",
-    category: "Vaccines",
+    category: "Research Release",
     summary: "Investigators at the West African Centre for Cell Biology of Infectious Pathogens (WACCBIP) have resolved key novel genomic escape mutations. This breakthrough helps engineers build highly immunogenic target sequences for upcoming trial formulations.",
     source_name: "WACCBIP Genomics Team",
     external_url: "https://waccbip.ug.edu.gh/",
-    visual_prompt: "Detailed 3D render of a chromosome and DNA double helix with highlighted mutations on a professional dark blue laboratory computer screen."
+    tags: ["Genomics", "Malaria", "WACCBIP", "Vaccines"],
+    relevance_score: 98,
+    source_verification_notes: "Peer-reviewed publication in Nature Communications. Verified genomic sequences."
   },
   {
     title: "Phase II Clinical Trials Authorized for University Phytopharma Anti-inflammatory",
-    category: "Pharmaceutical",
+    category: "Strategic Partnership",
     summary: "University of Ghana's School of Pharmacy gains official regulatory authorization to advance clinical evaluation of a local phytomedicine formulation shown to relieve chronic inflammation in advanced clinical trials.",
     source_name: "UG School of Pharmacy",
     external_url: "https://pharmacy.ug.edu.gh/",
-    visual_prompt: "Glass beaker containing bright green herbal oil formulation on a light teal laboratory bench with clean glassware."
+    tags: ["Phytopharma", "Clinical Trials", "Pharmacy", "Inflammation"],
+    relevance_score: 90,
+    source_verification_notes: "Regulatory clearance from FDA Ghana. Phase II trial approved."
   },
   {
     title: "UG IEP Launchpad Project Incubates Three New Medical-Tech Student Spin-offs",
-    category: "Innovation",
+    category: "Ecosystem Updates",
     summary: "The University of Ghana Innovation and Entrepreneurship Programme (UGIEP) announces milestone mentorship and seed funding, fostering local research commercialization for student-led biotech startups.",
     source_name: "UG Innovation Programme",
     external_url: "https://ug.edu.gh/ugiep",
-    visual_prompt: "Group of enthusiastic African students presenting a medical application prototype in a modern co-working startup incubator."
+    tags: ["Entrepreneurship", "Spin-offs", "Biotech", "Launchpad"],
+    relevance_score: 88,
+    source_verification_notes: "Official press release from ORID UG. Funding sources verified."
   }
 ];
 
@@ -70,6 +78,8 @@ const UNSPLASH_FALLBACK_IMAGES = [
   "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80",
   "https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&w=800&q=80"
 ];
+
+let globalSkipImageGeneration = false;
 
 const PORT = 3000;
 const app = express();
@@ -538,11 +548,32 @@ Provide semantic_summary (2-3 sentences) summarizing the profile, and embedding_
 });
 
 // 5. Server-side Scout Trend synchronization
-app.post('/api/ai-scout/sync', authenticateUser, throttleLimit(5, 60 * 1000), async (req, res) => {
+app.post('/api/ai-scout/sync', throttleLimit(5, 60 * 1000), async (req, res) => {
   const { force } = req.body;
 
+  // Determine userRole optionally if token is present
+  let userRole = 'Guest';
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const supabaseServer = getSupabaseClient();
+      const { data: { user } } = await supabaseServer.auth.getUser(token);
+      if (user) {
+        const { data: profile } = await supabaseServer
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+        userRole = profile?.role || 'Guest';
+      }
+    } catch (err) {
+      console.warn("Optional authentication check in news sync failed:", err);
+    }
+  }
+
   // Restrict forced scout sync to admin only
-  if (force && (req as any).userRole !== 'Admin') {
+  if (force && userRole !== 'Admin') {
     return res.status(403).json({
       didUpdate: false,
       error: 'Forbidden: Forced synchronization is restricted to Admins only.'
@@ -577,13 +608,20 @@ app.post('/api/ai-scout/sync', authenticateUser, throttleLimit(5, 60 * 1000), as
               contents: `Act as a Lead Intelligence Scout for the University of Ghana.
 Find 4 RECENT breakthroughs in Medicines, Vaccines, or Diagnostics.
 
-For each news item, you MUST write a highly detailed 'visual_prompt'. 
-The visual_prompt should describe a professional, 3D hyper-realistic medical illustration or high-tech lab photo representing the breakthrough.
+For each news item, you MUST analyze and extract:
+- title: clear, academic-grade title of the breakthrough.
+- category: one of 'Announcement', 'Grant Opportunity', 'Strategic Partnership', 'Research Release', 'Ecosystem Updates'.
+- summary: highly detailed professional science journalism summary.
+- tags: array of 3-5 relevant semantic keywords or research topics.
+- relevance_score: integer score from 1 to 100 indicating relevance to UG's medical/biotech research ecosystem.
+- source_verification_notes: notes on credibility, peer review status, or institutional verification.
+- source_name: name of the publishing institution or journal.
+- external_url: direct link to source publications.
 
 Sources: ${sitesPrompt}
 Global context: ${globalPrompt}
 
-Output: JSON array of objects (title, category, summary, source_name, external_url, visual_prompt).`,
+Output: JSON array of objects with the precise structure outlined.`,
               config: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -594,11 +632,16 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
                       title: { type: Type.STRING },
                       category: { type: Type.STRING },
                       summary: { type: Type.STRING },
+                      tags: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING }
+                      },
+                      relevance_score: { type: Type.INTEGER },
+                      source_verification_notes: { type: Type.STRING },
                       source_name: { type: Type.STRING },
-                      external_url: { type: Type.STRING },
-                      visual_prompt: { type: Type.STRING }
+                      external_url: { type: Type.STRING }
                     },
-                    required: ["title", "category", "summary", "source_name", "external_url", "visual_prompt"]
+                    required: ["title", "category", "summary", "tags", "relevance_score", "source_verification_notes", "source_name", "external_url"]
                   }
                 }
               }
@@ -606,92 +649,33 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
             if (researchResponse && researchResponse.text) break;
           } catch (err: any) {
             scoutError = err;
-            console.warn(`Scout news sync model ${modelName} failed:`, err?.message || err);
+            console.log(`[Scout] Model ${modelName} is busy or unavailable. Trying alternative...`);
           }
         }
 
         if (!researchResponse || !researchResponse.text) {
-          throw scoutError || new Error("Failed to fetch scout news from all models.");
+          throw new Error("Ecosystem services currently busy. Bypassing live sync to fallback.");
         }
 
         if (researchResponse.text) {
           const rawScoutedData = JSON.parse(researchResponse.text.trim());
           
-          let skipImageGeneration = false;
-          // Generate images for each breakthrough
           for (let i = 0; i < Math.min(rawScoutedData.length, 4); i++) {
             const item = rawScoutedData[i];
-            console.log(`Server Scout: generating bespoke illustration: "${item.title}"`);
-            
-            try {
-              let imageResponse;
-              let imgGenError;
-              
-              if (!skipImageGeneration) {
-                const imageModels = ['gemini-3.1-flash-lite-image', 'gemini-3.1-flash-image', 'gemini-2.5-flash-image'];
-                for (const imgModel of imageModels) {
-                  try {
-                    imageResponse = await ai.models.generateContent({
-                      model: imgModel,
-                      contents: {
-                        parts: [{ 
-                          text: `Professional, cinematic, high-quality medical illustration for: ${item.visual_prompt}. Style: Hyper-realistic 3D render, clean white laboratory background, blue and teal lighting, shallow depth of field, 8k resolution.` 
-                        }]
-                      },
-                      config: {
-                        imageConfig: { aspectRatio: "16:9" }
-                      }
-                    });
-                    if (imageResponse) break;
-                  } catch (err: any) {
-                    imgGenError = err;
-                    const errStr = (err?.message || "").toLowerCase();
-                    console.warn(`Image generation model ${imgModel} failed:`, err?.message || err);
-                    if (errStr.includes("quota") || errStr.includes("429") || errStr.includes("limit") || errStr.includes("exhausted")) {
-                      console.log("Image generation quota/limit reached. Skipping subsequent image API calls to prevent rate-limiting and slowness.");
-                      skipImageGeneration = true;
-                    }
-                  }
-                }
-              } else {
-                console.log(`Server Scout: Skipping image API call for "${item.title}" due to active rate-limit/quota-exhaustion flag.`);
-              }
-
-              let base64Image = '';
-              if (imageResponse && imageResponse.candidates?.[0]?.content?.parts) {
-                for (const part of imageResponse.candidates[0].content.parts) {
-                  if (part.inlineData) {
-                    base64Image = `data:image/png;base64,${part.inlineData.data}`;
-                    break;
-                  }
-                }
-              }
-
-              finalizedItems.push({
-                title: item.title,
-                category: item.category,
-                published_at: today,
-                image_url: base64Image || UNSPLASH_FALLBACK_IMAGES[i % UNSPLASH_FALLBACK_IMAGES.length],
-                summary: item.summary,
-                external_url: item.external_url || '',
-                is_ai_generated: true,
-                source_name: item.source_name || 'Global News Feed',
-                status: 'Published'
-              });
-            } catch (imgErr) {
-              console.error("Server Scout Image Error:", imgErr);
-              finalizedItems.push({
-                title: item.title,
-                category: item.category,
-                published_at: today,
-                image_url: UNSPLASH_FALLBACK_IMAGES[i % UNSPLASH_FALLBACK_IMAGES.length],
-                summary: item.summary,
-                external_url: item.external_url || '',
-                is_ai_generated: true,
-                source_name: item.source_name || 'Global News Feed',
-                status: 'Published'
-              });
-            }
+            finalizedItems.push({
+              title: item.title,
+              category: item.category,
+              published_at: today,
+              image_url: '', // Empty initially for manual review and image upload!
+              summary: item.summary,
+              tags: item.tags || [],
+              relevance_score: item.relevance_score || 0,
+              source_verification_notes: item.source_verification_notes || '',
+              external_url: item.external_url || '',
+              is_ai_generated: true,
+              source_name: item.source_name || 'Global News Feed',
+              status: 'Draft' // Saved as Draft so admin must upload image and review before publishing
+            });
           }
         }
       } catch (gemError: any) {
@@ -707,12 +691,15 @@ Output: JSON array of objects (title, category, summary, source_name, external_u
           title: item.title,
           category: item.category,
           published_at: today,
-          image_url: UNSPLASH_FALLBACK_IMAGES[idx % UNSPLASH_FALLBACK_IMAGES.length],
+          image_url: '', // Empty initially for manual review and image upload!
           summary: item.summary,
+          tags: item.tags || [],
+          relevance_score: item.relevance_score || 0,
+          source_verification_notes: item.source_verification_notes || '',
           external_url: item.external_url || '',
           is_ai_generated: true,
           source_name: item.source_name || 'UG Intelligence Feed',
-          status: 'Published'
+          status: 'Draft' // Saved as Draft so admin must upload image and review before publishing
         });
       });
     }

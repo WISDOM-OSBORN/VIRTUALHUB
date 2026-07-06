@@ -224,4 +224,7 @@ export interface NewsItem {
   source_name?: string;
   status?: 'Draft' | 'Published';
   reference_links?: string[];
+  tags?: string[];
+  relevance_score?: number;
+  source_verification_notes?: string;
 }

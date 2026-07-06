@@ -734,26 +734,78 @@ export const StorageService = {
   },
 
   // News
-  getNews: async (includeDrafts: boolean = false): Promise<NewsItem[]> => {
+  getNews: async (
+    includeDrafts: boolean = false,
+    options?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      category?: string;
+    }
+  ): Promise<NewsItem[]> => {
+    const page = options?.page ?? 1;
+    const limit = options?.limit ?? 20;
+    const search = options?.search ?? '';
+    const category = options?.category ?? '';
+
+    const fromRange = (page - 1) * limit;
+    const toRange = fromRange + limit - 1;
+
     try {
-      let query = supabase.from('news').select('*');
+      // 1. Specific field selection rather than '*'
+      const selectFields = 'id, title, category, published_at, image_url, summary, external_url, is_ai_generated, source_name, status, reference_links, tags, relevance_score, source_verification_notes';
+      let query = supabase.from('news').select(selectFields);
+
+      // 2. Draft filtering using status + published_at index
       if (!includeDrafts) {
-        query = query.or('status.eq.Published,status.is.null');
+        query = query.eq('status', 'Published');
       }
-      const { data, error } = await query.order('published_at', { ascending: false });
+
+      // 3. Category filtering using category index
+      if (category && category !== 'All') {
+        query = query.eq('category', category);
+      }
+
+      // 4. Server-side Full-Text Search using 'fts_doc' index
+      if (search && search.trim() !== '') {
+        const sanitizedSearch = search.trim().split(/\s+/).filter(Boolean).map(word => `${word}:*`).join(' & ');
+        if (sanitizedSearch) {
+          query = query.textSearch('fts_doc', sanitizedSearch);
+        }
+      }
+
+      // 5. Paginated ordering & range selection
+      const { data, error } = await query
+        .order('published_at', { ascending: false })
+        .range(fromRange, toRange);
+
       if (error) {
-        // Fallback to basic query if status column doesn't exist yet
-        console.warn("getNews filtered query failed, falling back to basic query:", error);
-        const { data: basicData } = await supabase.from('news').select('*').order('published_at', { ascending: false });
-        return basicData || [];
+        // Keep fallback basic query, but log the failed filter parameters.
+        console.warn("getNews filtered query failed, falling back to basic query. Failed parameters:", {
+          includeDrafts,
+          page,
+          limit,
+          search,
+          category,
+          error
+        });
+        const { data: basicData } = await supabase
+          .from('news')
+          .select('id, title, category, published_at, image_url, summary')
+          .order('published_at', { ascending: false })
+          .range(0, 19);
+        return (basicData || []) as NewsItem[];
       }
-      return data || [];
+      return (data || []) as NewsItem[];
     } catch (err) {
-      console.error("Failed to retrieve news:", err);
+      console.error("Failed to retrieve news:", err, { includeDrafts, page, limit, search, category });
       // Last resort fallback
       try {
-        const { data } = await supabase.from('news').select('*');
-        return data || [];
+        const { data } = await supabase
+          .from('news')
+          .select('id, title, category, published_at, image_url, summary')
+          .limit(20);
+        return (data || []) as NewsItem[];
       } catch (innerErr) {
         return [];
       }
@@ -1520,7 +1572,10 @@ export const StorageService = {
         is_ai_generated: newsItem.is_ai_generated || false,
         source_name: newsItem.source_name || 'UG ORID Directorates',
         status: newsItem.status || 'Published',
-        reference_links: newsItem.reference_links || []
+        reference_links: newsItem.reference_links || [],
+        tags: newsItem.tags || [],
+        relevance_score: newsItem.relevance_score || 0,
+        source_verification_notes: newsItem.source_verification_notes || ''
       };
 
       if (newsItem.id) {
