@@ -738,7 +738,7 @@ export const StorageService = {
     try {
       let query = supabase.from('news').select('*');
       if (!includeDrafts) {
-        query = query.eq('status', 'Published');
+        query = query.or('status.eq.Published,status.is.null');
       }
       const { data, error } = await query.order('published_at', { ascending: false });
       if (error) {
@@ -1506,12 +1506,16 @@ export const StorageService = {
       const isAdmin = await StorageService.verifyAdmin();
       if (!isAdmin) throw new Error("Unauthorized access. Admin privileges required.");
 
+      const formattedDate = newsItem.published_at 
+        ? (newsItem.published_at.includes('T') ? newsItem.published_at.split('T')[0] : newsItem.published_at) 
+        : new Date().toISOString().split('T')[0];
+
       const payload: any = {
         title: newsItem.title,
         category: newsItem.category,
         summary: newsItem.summary,
         image_url: newsItem.image_url || 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=600&auto=format&fit=crop',
-        published_at: newsItem.published_at || new Date().toISOString(),
+        published_at: formattedDate,
         external_url: newsItem.external_url || '',
         is_ai_generated: newsItem.is_ai_generated || false,
         source_name: newsItem.source_name || 'UG ORID Directorates',
@@ -1534,7 +1538,10 @@ export const StorageService = {
             summary: payload.summary,
             image_url: payload.image_url,
             published_at: payload.published_at,
-            external_url: payload.external_url
+            external_url: payload.external_url,
+            status: payload.status,
+            is_ai_generated: payload.is_ai_generated,
+            source_name: payload.source_name
           };
           const { data: retryData, error: retryError } = await supabase
             .from('news')
@@ -1560,7 +1567,10 @@ export const StorageService = {
             summary: payload.summary,
             image_url: payload.image_url,
             published_at: payload.published_at,
-            external_url: payload.external_url
+            external_url: payload.external_url,
+            status: payload.status,
+            is_ai_generated: payload.is_ai_generated,
+            source_name: payload.source_name
           };
           const { data: retryData, error: retryError } = await supabase
             .from('news')

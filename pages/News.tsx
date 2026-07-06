@@ -3,6 +3,7 @@ import { Calendar, Tag, ChevronRight, Newspaper, Sparkles, Loader2, ExternalLink
 import { StorageService } from '../services/storageService';
 import { AIScoutService } from '../services/aiScoutService';
 import { NewsItem } from '../types';
+import { supabase } from '../lib/supabase';
 
 const News: React.FC = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -12,11 +13,32 @@ const News: React.FC = () => {
   const [lastSync, setLastSync] = useState<Date | null>(null);
 
   const fetchNews = async () => {
+    setLoading(true);
     const data = await StorageService.getNews();
     setNews(data);
     const syncTime = await AIScoutService.getLastSyncTime();
     setLastSync(syncTime);
     setLoading(false);
+
+    // Seamless automated background sync if news list is empty or stale (> 2 hours old)
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const isStale = !syncTime || (new Date().getTime() - syncTime.getTime() > 2 * 60 * 60 * 1000);
+        if (data.length === 0 || isStale) {
+          console.log("Discovery Feed: Initiating seamless background news sync...");
+          const didSync = await AIScoutService.autoSyncNews(false);
+          if (didSync) {
+            const freshData = await StorageService.getNews();
+            setNews(freshData);
+            const freshSync = await AIScoutService.getLastSyncTime();
+            setLastSync(freshSync);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Background auto-sync gracefully bypassed:", err);
+    }
   };
 
   useEffect(() => {
@@ -158,7 +180,7 @@ const News: React.FC = () => {
                     {item.category}
                   </span>
                   <span className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                    <Calendar size={18} /> {item.published_at}
+                    <Calendar size={18} /> {new Date(item.published_at).toLocaleDateString([], { dateStyle: 'medium' })}
                   </span>
                   {item.source_name && (
                     <span className="flex items-center gap-2 text-[10px] font-black text-ug-navy uppercase tracking-[0.2em] bg-white px-6 py-2.5 rounded-full border border-gray-100 shadow-sm">
