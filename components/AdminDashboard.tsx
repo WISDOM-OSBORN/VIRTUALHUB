@@ -5,7 +5,7 @@ import {
   Trash2, Plus, Edit, RefreshCw, Layers, CheckCircle2, 
   MapPin, Clock, Search, ExternalLink, Filter, HelpCircle, 
   TrendingUp, BarChart3, Radio, FileSpreadsheet, Lock, Sparkles,
-  MessageSquare, Download, Eye, AlertTriangle, ThumbsUp, Check, Loader2, ChevronDown, ChevronUp, X, Link2, Upload
+  MessageSquare, Download, Eye, AlertTriangle, ThumbsUp, Check, Loader2, ChevronDown, ChevronUp, X, Link2, Upload, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { User, Project, NewsItem, UserRole, ProjectStatus, Visibility, ResearchArea, DisclosureStatus } from '../types';
 import { StorageService } from '../services/storageService';
@@ -68,6 +68,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newsSourceVerificationNotes, setNewsSourceVerificationNotes] = useState('');
 
   // Redesigned Administrative Hub states for news curator
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState<boolean>(true);
+  const [tagInput, setTagInput] = useState<string>('');
   const [activeTab, setActiveTab] = useState<number>(1);
   const [tagList, setTagList] = useState<string[]>([]);
   const [archivePage, setArchivePage] = useState<number>(1);
@@ -477,6 +479,27 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
     setNewsSourceVerificationNotes(item.source_verification_notes || '');
     setNewsPublishedAt(item.published_at ? new Date(item.published_at).toISOString().substring(0, 16) : new Date().toISOString().substring(0, 16));
     setActiveTab(1); // Return to Core Insight tab in Split Workspace
+    setIsWorkspaceOpen(true);
+  };
+
+  // Setup form fields for a new announcement
+  const handleCreateNewClick = () => {
+    setEditingNews(null);
+    setNewsTitle('');
+    setNewsCategory('Announcement');
+    setNewsSummary('');
+    setNewsImageUrl('');
+    setNewsExternalUrl('');
+    setNewsStatus('Published');
+    setNewsReferenceLinks(['', '', '', '']);
+    setNewsTags('');
+    setTagList([]);
+    setNewsRelevanceScore(0);
+    setNewsSourceVerificationNotes('');
+    setNewsPublishedAt(new Date().toISOString().substring(0, 16));
+    setActiveTab(1); // Return to Core Insight tab in Split Workspace
+    setIsWorkspaceOpen(true);
+    showToast("Workspace opened. Enter Core Insights to create a new announcement.", "info");
   };
 
   // Delete news item
@@ -1505,403 +1528,6 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
             </motion.div>
           )}
 
-          {/* 4. GLOBAL ANNOUNCEMENT NEWS CURATOR */}
-          {activeSubTab === 'news' && (
-            <motion.div 
-              key="news"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="grid grid-cols-1 lg:grid-cols-3 gap-8"
-            >
-              {/* Left Column: Create, Edit or AI Write News */}
-              <div className="lg:col-span-1 bg-white rounded-[2.5rem] border border-gray-100 p-8 space-y-6 h-fit sticky top-24">
-                {showAIWriteModal ? (
-                  <div className="space-y-5 text-left">
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-black text-ug-navy tracking-tight flex items-center gap-2">
-                          <Sparkles className="text-purple-600 animate-pulse animate-duration-1000" size={18} />
-                          Write with AI
-                        </h3>
-                        <button 
-                          onClick={() => setShowAIWriteModal(false)}
-                          className="text-xs font-black text-gray-400 uppercase hover:text-gray-600 transition tracking-wider"
-                        >
-                          Back to Form
-                        </button>
-                      </div>
-                      <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest mt-1">Generate a structured release</p>
-                    </div>
-
-                    {/* AI Topic */}
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">What is the topic?</label>
-                      <input 
-                        type="text" 
-                        value={aiTopic}
-                        onChange={(e) => setAiTopic(e.target.value)}
-                        placeholder="E.g., Rosemary's new malaria diagnostic dataset"
-                        className="w-full bg-gray-50 border border-transparent focus:border-purple-500 focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
-                      />
-                    </div>
-
-                    {/* AI Keywords */}
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Keywords (Optional, comma separated)</label>
-                      <input 
-                        type="text" 
-                        value={aiKeywords}
-                        onChange={(e) => setAiKeywords(e.target.value)}
-                        placeholder="E.g., malaria, dataset, machine learning"
-                        className="w-full bg-gray-50 border border-transparent focus:border-purple-500 focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
-                      />
-                    </div>
-
-                    <div className="flex gap-3 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowAIWriteModal(false)}
-                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-2xl py-4 font-black text-[9px] uppercase tracking-widest transition"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleGenerateAIPressRelease}
-                        disabled={isGeneratingAI || !aiTopic}
-                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl py-4 font-black text-[9px] uppercase tracking-widest shadow-xl shadow-purple-600/10 transition disabled:opacity-50"
-                      >
-                        {isGeneratingAI ? 'Drafting...' : 'Generate Draft'}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-5">
-                    <div>
-                      <h3 className="text-xl font-black text-ug-navy tracking-tight">
-                        {editingNews ? "Edit Announcement" : "Create Announcement"}
-                      </h3>
-                      <p className="text-[10px] font-black text-ug-teal uppercase tracking-widest mt-1">Broadcast directly to News Portal</p>
-                    </div>
-
-                    <form onSubmit={handleSaveNews} className="space-y-5 text-left">
-                      {/* Title */}
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Title</label>
-                        <input 
-                          type="text" 
-                          value={newsTitle}
-                          onChange={(e) => setNewsTitle(e.target.value)}
-                          placeholder="E.g., UG secures 5M USD Innovation Grant"
-                          className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
-                          required
-                        />
-                      </div>
-
-                      {/* Summary */}
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Short Summary</label>
-                        <textarea 
-                          value={newsSummary}
-                          onChange={(e) => setNewsSummary(e.target.value)}
-                          placeholder="Write brief descriptive copy outlining the announcement details..."
-                          rows={4}
-                          className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition resize-none leading-relaxed"
-                          required
-                        />
-                      </div>
-
-                      {/* Category and Status Grid */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Category</label>
-                          <select 
-                            value={newsCategory}
-                            onChange={(e) => setNewsCategory(e.target.value)}
-                            className="w-full bg-gray-50 border border-transparent rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none cursor-pointer"
-                          >
-                            {['Announcement', 'Grant Opportunity', 'Strategic Partnership', 'Research Release', 'Ecosystem Updates'].map(c => (
-                              <option key={c} value={c}>{c}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Status</label>
-                          <select 
-                            value={newsStatus}
-                            onChange={(e) => setNewsStatus(e.target.value as 'Draft' | 'Published')}
-                            className="w-full bg-gray-50 border border-transparent rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none cursor-pointer"
-                          >
-                            <option value="Published">Published</option>
-                            <option value="Draft">Draft</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* AI Scout Intelligence Insights Metadata Fields */}
-                      <div className="space-y-4 border-t border-gray-100/60 pt-4">
-                        <h4 className="text-[10px] font-black text-ug-teal uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                          <Radio size={12} className="text-ug-teal shrink-0 animate-pulse" /> AI Scout Intelligence Insights
-                        </h4>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="md:col-span-2 space-y-1.5">
-                            <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Tags (Comma-separated)</label>
-                            <input
-                              type="text"
-                              value={newsTags}
-                              onChange={(e) => setNewsTags(e.target.value)}
-                              placeholder="E.g., Diagnostics, Malaria, Genetics"
-                              className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
-                            />
-                          </div>
-                          
-                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Relevance Score (1-100)</label>
-                            <input
-                              type="number"
-                              min="1"
-                              max="100"
-                              value={newsRelevanceScore || ''}
-                              onChange={(e) => setNewsRelevanceScore(parseInt(e.target.value) || 0)}
-                              placeholder="95"
-                              className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Source Verification & Credibility Notes</label>
-                          <textarea
-                            rows={3}
-                            value={newsSourceVerificationNotes}
-                            onChange={(e) => setNewsSourceVerificationNotes(e.target.value)}
-                            placeholder="Add verification background or citations..."
-                            className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition resize-none leading-relaxed"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Manual Image Upload with Validation and Preview */}
-                      <div className="space-y-3 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest block ml-1">
-                          Featured Visual Asset <span className="text-red-500 font-black">* REQUIRED FOR PUBLISHING</span>
-                        </label>
-                        
-                        {newsImageUrl ? (
-                          <div className="space-y-3">
-                            <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-gray-200 bg-gray-100 group">
-                              <img 
-                                src={newsImageUrl} 
-                                className="w-full h-full object-cover" 
-                                alt="News featured asset" 
-                              />
-                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition duration-200 flex items-center justify-center gap-2">
-                                <label className="cursor-pointer bg-white text-ug-navy hover:bg-gray-100 font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow-md">
-                                  <Upload size={12} /> Replace
-                                  <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={handleImageUpload} className="hidden" disabled={isUploadingImage} />
-                                </label>
-                                <button
-                                  type="button"
-                                  onClick={() => setNewsImageUrl('')}
-                                  className="bg-red-600 text-white hover:bg-red-700 font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow-md"
-                                >
-                                  <Trash2 size={12} /> Remove
-                                </button>
-                              </div>
-                            </div>
-                            <div className="flex justify-between items-center px-1">
-                              <span className="text-[10px] text-gray-500 font-bold truncate max-w-[150px]">
-                                {newsImageUrl.startsWith('data:') ? 'Local file uploaded' : 'Uploaded Image'}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setNewsImageUrl('')}
-                                className="text-[10px] font-black uppercase text-red-500 hover:text-red-400 tracking-wider"
-                              >
-                                Remove Image
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <label className="flex flex-col items-center justify-center border border-dashed border-gray-200 hover:border-ug-teal/50 bg-gray-50 hover:bg-white rounded-2xl py-6 px-4 cursor-pointer transition text-center min-h-[140px]">
-                            {isUploadingImage ? (
-                              <div className="space-y-2 flex flex-col items-center">
-                                <Loader2 size={24} className="animate-spin text-ug-teal" />
-                                <span className="text-[10px] font-bold text-gray-400">Uploading image...</span>
-                              </div>
-                            ) : (
-                              <div className="space-y-1 flex flex-col items-center">
-                                <Upload size={24} className="text-gray-400" />
-                                <span className="text-xs font-black text-gray-700">Upload Featured Image</span>
-                                <span className="text-[9px] font-medium text-gray-400">JPG, PNG or WEBP. Max 5MB.</span>
-                              </div>
-                            )}
-                            <input 
-                              type="file" 
-                              accept="image/jpeg,image/jpg,image/png,image/webp" 
-                              onChange={handleImageUpload} 
-                              className="hidden" 
-                              disabled={isUploadingImage} 
-                            />
-                          </label>
-                        )}
-                        {newsStatus === 'Published' && !newsImageUrl && (
-                          <p className="text-[10px] text-red-500 font-bold mt-1 animate-pulse">
-                            ⚠️ An image must be uploaded before this item can be published.
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Reference Links (Up to 4) */}
-                      <div className="space-y-2 border-t border-gray-100 pt-4">
-                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1 block">Reference Links (Max 4)</label>
-                        {newsReferenceLinks.map((link, idx) => (
-                          <div key={idx} className="flex gap-2 items-center">
-                            <Link2 size={12} className="text-gray-400 shrink-0" />
-                            <input 
-                              type="text"
-                              value={link}
-                              onChange={(e) => {
-                                const copy = [...newsReferenceLinks];
-                                copy[idx] = e.target.value;
-                                setNewsReferenceLinks(copy);
-                              }}
-                              placeholder={`Reference Link ${idx + 1}`}
-                              className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-xl p-2.5 text-[11px] font-bold text-ug-navy outline-none transition"
-                            />
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* External Link */}
-                      <div className="space-y-1.5 border-t border-gray-100 pt-4">
-                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Main External / PDF Link</label>
-                        <input 
-                          type="url" 
-                          value={newsExternalUrl}
-                          onChange={(e) => setNewsExternalUrl(e.target.value)}
-                          placeholder="https://orid.ug.edu.gh/resource-file"
-                          className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl p-4 text-xs font-bold text-ug-navy outline-none transition"
-                        />
-                      </div>
-
-                      <div className="flex gap-3 pt-4">
-                        {editingNews && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingNews(null);
-                              setNewsTitle('');
-                              setNewsCategory('Announcement');
-                              setNewsSummary('');
-                              setNewsImageUrl('');
-                              setNewsExternalUrl('');
-                              setNewsStatus('Published');
-                              setNewsReferenceLinks(['', '', '', '']);
-                              setNewsTags('');
-                              setNewsRelevanceScore(0);
-                              setNewsSourceVerificationNotes('');
-                            }}
-                            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-2xl py-4 font-black text-[9px] uppercase tracking-widest transition"
-                          >
-                            Cancel
-                          </button>
-                        )}
-                        <button
-                          type="submit"
-                          disabled={isSavingNews}
-                          className="flex-1 bg-ug-navy hover:bg-ug-teal text-white rounded-2xl py-4 font-black text-[9px] uppercase tracking-widest shadow-xl shadow-ug-navy/10 transition disabled:opacity-50"
-                        >
-                          {isSavingNews ? 'Saving...' : (editingNews ? 'Save Changes' : 'Broadcast News')}
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                )}
-              </div>
-
-              {/* Right Column: News History Feed List */}
-              <div className="lg:col-span-2 space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <h3 className="text-xl font-black text-ug-navy">Broadcast Archives</h3>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Curation registry and control lists</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleAIScoutSync}
-                    disabled={isScoutingNews}
-                    className="bg-purple-50 hover:bg-purple-100 text-purple-700 hover:text-purple-800 border border-purple-100 font-black text-[10px] uppercase tracking-widest px-4 py-2.5 rounded-xl transition flex items-center gap-2 disabled:opacity-50 shrink-0 shadow-sm"
-                  >
-                    {isScoutingNews ? (
-                      <>
-                        <Loader2 size={13} className="animate-spin" /> Scouting Feeds...
-                      </>
-                    ) : (
-                      <>
-                        <Radio size={13} className="animate-pulse" /> Trigger AI Scout Sync
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  {news.map((item) => (
-                    <div key={item.id} className="bg-white p-5 rounded-[2rem] border border-gray-100 flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between hover:shadow-lg transition">
-                      <div className="flex gap-4 items-center min-w-0">
-                        {item.image_url && (
-                          <div className="w-14 h-14 rounded-2xl overflow-hidden shrink-0 border border-gray-100">
-                            <img src={item.image_url} className="w-full h-full object-cover" alt="" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 mb-1 text-[8px] font-black uppercase tracking-wider text-ug-teal">
-                            <span>{item.category}</span>
-                            <span>•</span>
-                            <span className="text-gray-400">
-                              {item.published_at ? (isNaN(new Date(item.published_at).getTime()) ? item.published_at : new Date(item.published_at).toLocaleDateString()) : 'Recent'}
-                            </span>
-                            {item.is_ai_generated && (
-                              <>
-                                <span>•</span>
-                                <span className="bg-purple-50 text-purple-600 border border-purple-100 px-1.5 rounded">AI SCOUT</span>
-                              </>
-                            )}
-                            <span>•</span>
-                            {item.status === 'Draft' ? (
-                              <span className="bg-amber-50 text-amber-600 border border-amber-100 px-1.5 rounded font-black uppercase">DRAFT</span>
-                            ) : (
-                              <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 px-1.5 rounded font-black uppercase text-[8px]">PUBLISHED</span>
-                            )}
-                          </div>
-                          <h4 className="font-black text-xs text-ug-navy leading-snug line-clamp-1">{item.title}</h4>
-                          <p className="text-[11px] text-gray-400 font-medium line-clamp-1 leading-normal mt-0.5">{item.summary}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                        <button
-                          onClick={(e) => handleEditNewsClick(e, item)}
-                          className="p-2.5 bg-gray-50 hover:bg-gray-100 hover:text-ug-teal text-gray-400 rounded-xl transition border border-gray-100"
-                        >
-                          <Edit size={14} />
-                        </button>
-                        <button
-                          onClick={(e) => handleDeleteNews(e, item.id)}
-                          className="p-2.5 bg-red-50 hover:bg-red-100 text-red-500 rounded-xl border border-red-100 transition"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
 
           {/* 5. GOVERNANCE & INTERACTION LOGS TAB */}
           {activeSubTab === 'logs' && (
