@@ -5,7 +5,8 @@ import {
   Trash2, Plus, Edit, RefreshCw, Layers, CheckCircle2, 
   MapPin, Clock, Search, ExternalLink, Filter, HelpCircle, 
   TrendingUp, BarChart3, Radio, FileSpreadsheet, Lock, Sparkles,
-  MessageSquare, Download, Eye, AlertTriangle, ThumbsUp, Check, Loader2, ChevronDown, ChevronUp, X, Link2, Upload, ChevronLeft, ChevronRight
+  MessageSquare, Download, Eye, AlertTriangle, ThumbsUp, Check, Loader2, ChevronDown, ChevronUp, X, Link2, Upload, ChevronLeft, ChevronRight,
+  Calendar, Tag, Globe, Zap, Maximize2, Minimize2
 } from 'lucide-react';
 import { User, Project, NewsItem, UserRole, ProjectStatus, Visibility, ResearchArea, DisclosureStatus } from '../types';
 import { StorageService } from '../services/storageService';
@@ -1528,6 +1529,667 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
             </motion.div>
           )}
 
+          {/* 3. NEWS CURATOR SUBTAB */}
+          {activeSubTab === 'news' && (
+            <motion.div
+              key="news"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6 text-left"
+            >
+              {/* Header Action Row */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-left">
+                <div>
+                  <h2 className="text-xl font-black text-ug-navy flex items-center gap-2">
+                    <Globe size={20} className="text-ug-teal" />
+                    News & Broadcast Curator
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-1 font-medium">
+                    Manage and broadcast academic breakthroughs, grant opportunities, and strategic ecosystem updates.
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-3 self-end sm:self-auto">
+                  <button
+                    onClick={handleAIScoutSync}
+                    disabled={isScoutingNews}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-100 hover:bg-gray-100 text-xs font-bold text-gray-700 rounded-xl transition disabled:opacity-50 cursor-pointer h-10"
+                  >
+                    {isScoutingNews ? (
+                      <Loader2 size={14} className="animate-spin text-ug-teal" />
+                    ) : (
+                      <RefreshCw size={14} className="text-ug-teal" />
+                    )}
+                    <span>{isScoutingNews ? "Scouting..." : "AI Scout Re-Sync"}</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      handleCreateNewClick();
+                      setIsWorkspaceOpen(true);
+                    }}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-ug-teal hover:bg-ug-teal/90 text-white text-xs font-black rounded-xl transition shadow-md shadow-ug-teal/10 cursor-pointer h-10"
+                  >
+                    <Plus size={14} />
+                    <span>Create New</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Workspace Layout */}
+              <div className="grid grid-cols-12 gap-6 items-start text-left">
+                
+                {/* LEFT SIDE: BROADCAST ARCHIVES */}
+                <div className={`transition-all duration-300 ${
+                  isWorkspaceOpen ? 'col-span-12 lg:col-span-5' : 'col-span-12'
+                } space-y-6`}>
+                  
+                  <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-black text-ug-navy uppercase tracking-wider">
+                        Broadcast Archives
+                      </h3>
+                      <span className="text-[10px] font-black text-gray-500 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100">
+                        {sortedArchives.length} Total items
+                      </span>
+                    </div>
+
+                    {/* Filters & Search Row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                        <input
+                          type="text"
+                          placeholder="Search archives..."
+                          value={archiveSearch}
+                          onChange={e => {
+                            setArchiveSearch(e.target.value);
+                            setArchivePage(1);
+                          }}
+                          className="w-full bg-gray-50/50 border border-gray-200 focus:border-ug-teal rounded-xl pl-9 pr-4 py-2.5 text-xs font-medium text-gray-800 outline-none transition"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          value={selectedCategory}
+                          onChange={e => {
+                            setSelectedCategory(e.target.value);
+                            setArchivePage(1);
+                          }}
+                          className="bg-gray-50/50 border border-gray-200 focus:border-ug-teal rounded-xl px-2 py-2.5 text-xs font-medium text-gray-700 outline-none cursor-pointer"
+                        >
+                          <option value="All">All Categories</option>
+                          <option value="Announcement">Announcement</option>
+                          <option value="Grant Opportunity">Grant Opportunity</option>
+                          <option value="Strategic Partnership">Strategic Partnership</option>
+                          <option value="Research Release">Research Release</option>
+                          <option value="Ecosystem Updates">Ecosystem Updates</option>
+                        </select>
+
+                        <select
+                          value={selectedStatusFilter}
+                          onChange={e => {
+                            setSelectedStatusFilter(e.target.value);
+                            setArchivePage(1);
+                          }}
+                          className="bg-gray-50/50 border border-gray-200 focus:border-ug-teal rounded-xl px-2 py-2.5 text-xs font-medium text-gray-700 outline-none cursor-pointer"
+                        >
+                          <option value="All">All Status</option>
+                          <option value="Draft">Draft</option>
+                          <option value="Published">Published</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Sort Selector Row */}
+                    <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold border-t border-gray-100 pt-3">
+                      <span>SORT ORDER</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setArchiveSort('newest')}
+                          className={`hover:text-ug-teal transition cursor-pointer ${archiveSort === 'newest' ? 'text-ug-teal underline' : ''}`}
+                        >
+                          Newest First
+                        </button>
+                        <button
+                          onClick={() => setArchiveSort('oldest')}
+                          className={`hover:text-ug-teal transition cursor-pointer ${archiveSort === 'oldest' ? 'text-ug-teal underline' : ''}`}
+                        >
+                          Oldest First
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Announcements List */}
+                    <div className="space-y-3 max-h-[700px] overflow-y-auto pr-1">
+                      {paginatedArchives.length === 0 ? (
+                        <div className="text-center py-12 bg-gray-50/30 border border-dashed border-gray-100 rounded-xl">
+                          <p className="text-xs text-gray-400 font-medium">No archived announcements match filters.</p>
+                        </div>
+                      ) : (
+                        paginatedArchives.map((item) => {
+                          const isCurrentlyEditing = editingNews?.id === item.id;
+                          return (
+                            <div
+                              key={item.id}
+                              onClick={() => {
+                                handleEditNewsClick(undefined, item);
+                                setIsWorkspaceOpen(true);
+                              }}
+                              className={`group p-4 bg-white hover:bg-gray-50/30 border rounded-xl transition cursor-pointer flex gap-4 items-start ${
+                                isCurrentlyEditing 
+                                  ? 'border-ug-teal shadow-md shadow-ug-teal/5 bg-ug-teal/5' 
+                                  : 'border-gray-100 hover:border-gray-200'
+                              }`}
+                            >
+                              {/* Thumbnail Image */}
+                              {item.image_url && (
+                                <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-gray-50 border border-gray-100">
+                                  <img 
+                                    src={item.image_url} 
+                                    alt="" 
+                                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                </div>
+                              )}
+
+                              {/* Details */}
+                              <div className="flex-1 min-w-0 space-y-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[9px] font-black uppercase text-ug-teal tracking-wider text-left">
+                                    {item.category}
+                                  </span>
+                                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                                    item.status === 'Published'
+                                      ? 'bg-green-50 text-green-700 border-green-100'
+                                      : 'bg-amber-50 text-amber-700 border-amber-100'
+                                  }`}>
+                                    {item.status}
+                                  </span>
+                                  {item.is_ai_generated && (
+                                    <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-100 rounded-full flex items-center gap-1">
+                                      <Sparkles size={8} className="animate-pulse" />
+                                      AI
+                                    </span>
+                                  )}
+                                </div>
+
+                                <h4 className="text-xs font-bold text-ug-navy line-clamp-1 group-hover:text-ug-teal transition leading-tight text-left">
+                                  {item.title}
+                                </h4>
+
+                                <p className="text-[11px] text-gray-500 line-clamp-2 font-medium leading-relaxed text-left">
+                                  {item.summary}
+                                </p>
+
+                                <div className="flex items-center justify-between text-[9px] text-gray-400 font-bold pt-1">
+                                  <div className="flex items-center gap-1">
+                                    <Clock size={10} />
+                                    <span>{new Date(item.published_at || '').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditNewsClick(e, item);
+                                        setIsWorkspaceOpen(true);
+                                      }}
+                                      className="p-1 hover:bg-gray-100 rounded text-gray-600 hover:text-ug-teal cursor-pointer"
+                                      title="Edit Broadcast"
+                                    >
+                                      <Edit size={12} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteNews(e, item.id);
+                                      }}
+                                      className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-600 cursor-pointer"
+                                      title="Delete Broadcast"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between pt-3 border-t border-gray-100 text-xs font-bold text-gray-500">
+                        <span>Page {archivePage} of {totalPages}</span>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => setArchivePage(prev => Math.max(1, prev - 1))}
+                            disabled={archivePage === 1}
+                            className="p-1.5 bg-gray-50 border border-gray-100 hover:bg-gray-100 rounded-lg transition disabled:opacity-40 cursor-pointer"
+                          >
+                            <ChevronLeft size={14} />
+                          </button>
+                          <button
+                            onClick={() => setArchivePage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={archivePage === totalPages}
+                            className="p-1.5 bg-gray-50 border border-gray-100 hover:bg-gray-100 rounded-lg transition disabled:opacity-40 cursor-pointer"
+                          >
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* RIGHT SIDE: CURATOR WORKSPACE (Only visible when isWorkspaceOpen) */}
+                <AnimatePresence mode="wait">
+                  {isWorkspaceOpen && (
+                    <motion.div
+                      key="workspace"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      className="col-span-12 lg:col-span-7 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden text-left"
+                    >
+                      {/* Workspace Header */}
+                      <div className="bg-gray-50/50 p-5 border-b border-gray-100 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 bg-ug-teal rounded-full animate-pulse" />
+                          <h3 className="text-sm font-extrabold text-ug-navy uppercase tracking-wider">
+                            {editingNews ? "Edit Broadcast Composition" : "New Broadcast Composition"}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleClearWorkspace}
+                            className="px-3 py-1.5 text-[10px] font-black uppercase text-gray-500 hover:bg-gray-100 border border-gray-200 rounded-lg transition cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsWorkspaceOpen(false)}
+                            className="p-1.5 hover:bg-gray-200/50 text-gray-400 hover:text-gray-700 rounded-lg transition cursor-pointer"
+                            title="Collapse Workspace"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Step Indicator / Tabs */}
+                      <div className="flex border-b border-gray-100 bg-gray-50/20">
+                        {[
+                          { id: 1, title: "1. Core Insight" },
+                          { id: 2, title: "2. AI Copywriting" },
+                          { id: 3, title: "3. Verification & Tags" }
+                        ].map((tab) => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex-1 text-center py-3.5 text-[10px] font-black uppercase tracking-wider border-b-2 transition duration-200 cursor-pointer ${
+                              activeTab === tab.id
+                                ? 'border-ug-teal text-ug-teal bg-white font-black'
+                                : 'border-transparent text-gray-400 hover:text-gray-700 hover:bg-gray-50/30'
+                            }`}
+                          >
+                            {tab.title}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Tab Contents Panel */}
+                      <div className="p-6 overflow-y-auto max-h-[600px] space-y-5">
+                        
+                        {/* TAB 1: CORE INSIGHT */}
+                        {activeTab === 1 && (
+                          <div className="space-y-5">
+                            <div>
+                              <div className="flex justify-between items-center mb-1.5">
+                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider">Broadcast Title *</label>
+                                <span className="text-[9px] font-bold text-gray-400">{newsTitle.length}/200 chars</span>
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="e.g. UG Secures $5M Academic Innovation Endowment from bilateral development..."
+                                value={newsTitle}
+                                onChange={e => setNewsTitle(e.target.value.slice(0, 200))}
+                                className="w-full bg-white border border-gray-200 focus:border-ug-teal focus:ring-1 focus:ring-ug-teal rounded-xl p-3 text-xs font-bold text-gray-800 outline-none transition"
+                              />
+                            </div>
+
+                            <div>
+                              <div className="flex justify-between items-center mb-1.5">
+                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider">Short Summary *</label>
+                                <span className="text-[9px] font-bold text-gray-400">{newsSummary.length}/1000 chars</span>
+                              </div>
+                              <textarea
+                                placeholder="Enter an authoritative, structured academic brief explaining the core news breaking..."
+                                value={newsSummary}
+                                onChange={e => setNewsSummary(e.target.value.slice(0, 1000))}
+                                className="w-full bg-white border border-gray-200 focus:border-ug-teal focus:ring-1 focus:ring-ug-teal rounded-xl p-3 text-xs font-medium text-gray-800 outline-none transition h-32 resize-none"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider block mb-1.5">Category *</label>
+                                <select
+                                  value={newsCategory}
+                                  onChange={e => setNewsCategory(e.target.value)}
+                                  className="w-full bg-white border border-gray-200 focus:border-ug-teal rounded-xl p-3 text-xs font-bold text-gray-800 outline-none cursor-pointer"
+                                >
+                                  <option value="Announcement">Announcement</option>
+                                  <option value="Grant Opportunity">Grant Opportunity</option>
+                                  <option value="Strategic Partnership">Strategic Partnership</option>
+                                  <option value="Research Release">Research Release</option>
+                                  <option value="Ecosystem Updates">Ecosystem Updates</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider block mb-1.5">Broadcast Schedule</label>
+                                <input
+                                  type="datetime-local"
+                                  value={newsPublishedAt}
+                                  onChange={e => setNewsPublishedAt(e.target.value)}
+                                  className="w-full bg-white border border-gray-200 focus:border-ug-teal rounded-xl p-2.5 text-xs font-bold text-gray-800 outline-none cursor-pointer"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Image Upload Block */}
+                            <div>
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider block mb-1.5">Featured Broadcast Graphic *</label>
+                              {newsImageUrl ? (
+                                <div className="relative rounded-xl overflow-hidden border border-gray-200 aspect-video group">
+                                  <img 
+                                    src={newsImageUrl} 
+                                    alt="Featured asset" 
+                                    className="w-full h-full object-cover"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                  <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center gap-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => fileInputRef.current?.click()}
+                                      className="px-3 py-1.5 bg-white hover:bg-gray-50 text-slate-900 rounded-lg text-[10px] font-black uppercase tracking-wider transition cursor-pointer"
+                                    >
+                                      Replace Image
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setNewsImageUrl('')}
+                                      className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition cursor-pointer"
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div
+                                  onClick={() => fileInputRef.current?.click()}
+                                  className="border-2 border-dashed border-gray-200 rounded-xl p-6 hover:border-ug-teal hover:bg-gray-50/10 transition cursor-pointer text-center flex flex-col items-center justify-center min-h-[140px] bg-white"
+                                >
+                                  {isUploadingImage ? (
+                                    <>
+                                      <Loader2 className="animate-spin text-ug-teal mb-2" size={24} />
+                                      <span className="text-[10px] font-black text-ug-teal uppercase">Uploading image...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Upload className="text-gray-300 mb-2" size={24} />
+                                      <span className="text-xs font-bold text-gray-700">Upload Featured Image</span>
+                                      <span className="text-[9px] text-gray-400 font-semibold mt-1">JPG, PNG, WEBP. Max 5MB.</span>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                              <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleImageUpload}
+                                accept="image/*"
+                                className="hidden"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider block mb-1.5">Official Source / External Citation Link</label>
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  placeholder="https://orid.ug.edu.gh/strategic-grant-awards"
+                                  value={newsExternalUrl}
+                                  onChange={e => setNewsExternalUrl(e.target.value)}
+                                  className="w-full bg-white border border-gray-200 focus:border-ug-teal rounded-xl p-3 pr-10 text-xs font-bold text-gray-800 outline-none transition"
+                                />
+                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 pointer-events-none">
+                                  <ExternalLink size={12} />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* TAB 2: AI WRITER ASSISTANCE */}
+                        {activeTab === 2 && (
+                          <div className="space-y-5">
+                            <div className="p-5 bg-purple-50/50 border border-purple-100 rounded-2xl space-y-4">
+                              <div className="flex items-center gap-2 text-left">
+                                <div className="p-1.5 bg-purple-600 rounded-lg text-white">
+                                  <Sparkles size={14} className="animate-pulse" />
+                                </div>
+                                <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest text-left">Gemini Professional Copywriter</h4>
+                              </div>
+                              <p className="text-[11px] text-gray-500 font-medium leading-relaxed text-left">
+                                Authoritatively draft elite academic public announcements and breakthroughs instantly. Guided by Gemini intelligence to optimize readability.
+                              </p>
+
+                              <div className="space-y-3 pt-2 text-left">
+                                <div>
+                                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-wider block mb-1">Breakthrough / Announcement Topic</label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g., Malaria immunology breakthrough in ORID department"
+                                    value={aiTopic}
+                                    onChange={e => setAiTopic(e.target.value)}
+                                    className="w-full bg-white border border-gray-200 focus:border-purple-500 rounded-xl px-3 py-2.5 text-xs font-bold outline-none"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-wider block mb-1">Keywords / Context Indicators (Optional)</label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g., Prof. G. Awandare, Nature Medicine journal, clinical trial"
+                                    value={aiKeywords}
+                                    onChange={e => setAiKeywords(e.target.value)}
+                                    className="w-full bg-white border border-gray-200 focus:border-purple-500 rounded-xl px-3 py-2.5 text-xs font-bold outline-none"
+                                  />
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!aiTopic.trim()) {
+                                      showToast("Please enter a core topic for the AI generator.", "error");
+                                      return;
+                                    }
+                                    await handleGenerateAIPressRelease();
+                                    setActiveTab(1);
+                                  }}
+                                  disabled={isGeneratingAI}
+                                  className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-xl py-3 font-black text-[10px] uppercase tracking-widest transition duration-150 flex items-center justify-center gap-2 shadow-lg shadow-purple-600/15 cursor-pointer mt-3 h-11"
+                                >
+                                  {isGeneratingAI ? (
+                                    <>
+                                      <Loader2 className="animate-spin" size={12} />
+                                      <span>Drafting Release...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Sparkles size={12} />
+                                      <span>Write Professional Release</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* TAB 3: VERIFICATION & TAGS */}
+                        {activeTab === 3 && (
+                          <div className="space-y-5">
+                            <div>
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider block mb-1.5">Announcement Tags</label>
+                              <div className="border border-gray-200 rounded-xl p-3 bg-white flex flex-wrap gap-1.5 focus-within:border-ug-teal transition duration-150">
+                                {tagList.map(tag => (
+                                  <span 
+                                    key={tag} 
+                                    className="bg-ug-teal/5 text-ug-teal font-bold text-[10px] pl-2.5 pr-1.5 py-1 rounded-lg border border-ug-teal/10 flex items-center gap-1 shrink-0"
+                                  >
+                                    <span>{tag}</span>
+                                    <button 
+                                      type="button"
+                                      onClick={() => handleRemoveTag(tag)}
+                                      className="p-0.5 text-ug-teal/50 hover:text-ug-teal rounded transition cursor-pointer"
+                                    >
+                                      <X size={10} />
+                                    </button>
+                                  </span>
+                                ))}
+                                <input 
+                                  type="text" 
+                                  placeholder={tagList.length > 0 ? "Add tag..." : "Type tag and press Enter..."}
+                                  className="border-0 p-0.5 text-xs font-bold text-gray-800 focus:ring-0 outline-none flex-1 min-w-[120px] bg-transparent"
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      const target = e.target as HTMLInputElement;
+                                      handleAddTag(target.value);
+                                      target.value = '';
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider block">Administrative relevance weight ({newsRelevanceScore}%)</label>
+                              <div className="flex items-center gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-200">
+                                <input 
+                                  type="range" 
+                                  min="0" 
+                                  max="100" 
+                                  value={newsRelevanceScore}
+                                  onChange={e => setNewsRelevanceScore(Number(e.target.value))}
+                                  className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-ug-teal"
+                                />
+                                <span className="text-xs font-black text-gray-800 w-8 text-right">{newsRelevanceScore}%</span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider block mb-1.5">Credibility & Source Audit Notes</label>
+                              <textarea
+                                placeholder="Record official source verification documents, vetting notes, or citation indexes..."
+                                value={newsSourceVerificationNotes}
+                                onChange={e => setNewsSourceVerificationNotes(e.target.value)}
+                                className="w-full bg-white border border-gray-200 focus:border-ug-teal focus:ring-1 focus:ring-ug-teal rounded-xl p-3 text-xs font-medium text-gray-800 outline-none transition h-24 resize-none"
+                              />
+                            </div>
+
+                            <div>
+                              <h4 className="text-[10px] font-black uppercase text-gray-500 tracking-wider mb-2">Citations & References (Max 4 Links)</h4>
+                              <div className="grid grid-cols-1 gap-2.5">
+                                {newsReferenceLinks.map((link, idx) => (
+                                  <div key={idx} className="relative">
+                                    <input
+                                      type="text"
+                                      placeholder={`Citation link #${idx + 1}`}
+                                      value={link}
+                                      onChange={e => {
+                                        const updated = [...newsReferenceLinks];
+                                        updated[idx] = e.target.value;
+                                        setNewsReferenceLinks(updated);
+                                      }}
+                                      className="w-full bg-white border border-gray-200 focus:border-ug-teal rounded-xl p-2.5 pr-8 text-xs font-medium text-gray-800 outline-none"
+                                    />
+                                    <span className="absolute inset-y-0 right-3 flex items-center text-gray-400 text-[10px] font-bold">
+                                      #{idx + 1}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                      </div>
+
+                      {/* Sticky Footer Actions */}
+                      <div className="bg-gray-50/50 p-5 border-t border-gray-100 flex items-center justify-between">
+                        <div>
+                          {editingNews ? (
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteNews(e, editingNews.id || '')}
+                              className="px-4 py-2 bg-red-50 hover:bg-red-100/80 text-red-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer h-9"
+                            >
+                              <Trash2 size={12} />
+                              <span>Permanently Delete</span>
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                              New Broadcast Composer
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleActionSave('Draft')}
+                            disabled={isSavingNews}
+                            className="px-4 py-2 bg-gray-200/60 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition disabled:opacity-50 cursor-pointer h-9"
+                          >
+                            Save Draft
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleActionSave('Published')}
+                            disabled={isSavingNews}
+                            className="px-5 py-2 bg-ug-navy hover:bg-ug-navy/90 text-white text-xs font-bold rounded-xl transition disabled:opacity-50 flex items-center gap-1 cursor-pointer h-9"
+                          >
+                            {isSavingNews ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <Check size={12} />
+                            )}
+                            <span>Publish Broadcast</span>
+                          </button>
+                        </div>
+                      </div>
+
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+              </div>
+            </motion.div>
+          )}
 
           {/* 5. GOVERNANCE & INTERACTION LOGS TAB */}
           {activeSubTab === 'logs' && (
