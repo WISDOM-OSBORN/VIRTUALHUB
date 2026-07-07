@@ -67,6 +67,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newsRelevanceScore, setNewsRelevanceScore] = useState<number>(0);
   const [newsSourceVerificationNotes, setNewsSourceVerificationNotes] = useState('');
 
+  // Redesigned Administrative Hub states for news curator
+  const [activeTab, setActiveTab] = useState<number>(1);
+  const [tagList, setTagList] = useState<string[]>([]);
+  const [archivePage, setArchivePage] = useState<number>(1);
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('All');
+  const [archiveSort, setArchiveSort] = useState<string>('newest');
+  const [archiveSearch, setArchiveSearch] = useState<string>('');
+  const [newsPublishedAt, setNewsPublishedAt] = useState<string>(new Date().toISOString().substring(0, 16));
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
   // Admin Disclosure Workflows states
   const [selectedDisclosureId, setSelectedDisclosureId] = useState<string | null>(null);
   const [adminInternalNotes, setAdminInternalNotes] = useState('');
@@ -300,6 +311,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     loadAdminData();
   }, []);
 
+  // Auto sync tags list with newsTags state when newsTags is updated externally
+  useEffect(() => {
+    if (newsTags) {
+      const parsed = newsTags.split(',').map(t => t.trim()).filter(Boolean);
+      setTagList(parsed);
+    } else {
+      setTagList([]);
+    }
+  }, [newsTags]);
+
   // Handler for role changes
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
     try {
@@ -423,60 +444,25 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
     }
   };
 
-  // Handle saving news item (Insert or Update)
-  const handleSaveNews = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newsTitle || !newsSummary) {
-      showToast("Please provide a title and summary", "error");
-      return;
-    }
-
-    // MANDATORY IMAGE VALIDATION BEFORE PUBLISHING
-    if (newsStatus === 'Published' && (!newsImageUrl || newsImageUrl.trim() === '')) {
-      showToast("An image is required before publishing. Please upload a JPG, PNG, or WEBP image first.", "error");
-      return;
-    }
-
-    try {
-      setIsSavingNews(true);
-      const payload: Partial<NewsItem> = {
-        id: editingNews?.id,
-        title: newsTitle,
-        category: newsCategory,
-        summary: newsSummary,
-        image_url: newsImageUrl,
-        external_url: newsExternalUrl,
-        published_at: editingNews?.published_at || new Date().toISOString(),
-        status: newsStatus,
-        reference_links: newsReferenceLinks.map(link => link.trim()),
-        tags: newsTags.split(',').map(t => t.trim()).filter(Boolean),
-        relevance_score: Number(newsRelevanceScore) || 0,
-        source_verification_notes: newsSourceVerificationNotes
-      };
-
-      await StorageService.adminSaveNewsItem(payload);
-      showToast(editingNews?.id ? "News item updated" : "News item created successfully", "success");
-      
-      // Reset state & reload
-      setEditingNews(null);
-      setNewsTitle('');
-      setNewsSummary('');
-      setNewsImageUrl('');
-      setNewsExternalUrl('');
-      setNewsStatus('Published');
-      setNewsReferenceLinks(['', '', '', '']);
-      setNewsTags('');
-      setNewsRelevanceScore(0);
-      setNewsSourceVerificationNotes('');
-      loadAdminData();
-    } catch (err) {
-      showToast("Failed saving hub news", "error");
-    } finally {
-      setIsSavingNews(false);
-    }
+  // Handle tag additions & removal
+  const handleAddTag = (tagStr: string) => {
+    const trimmed = tagStr.trim();
+    if (!trimmed) return;
+    if (tagList.includes(trimmed)) return;
+    const newTagsList = [...tagList, trimmed];
+    setTagList(newTagsList);
+    setNewsTags(newTagsList.join(', '));
   };
 
-  const handleEditNewsClick = (item: NewsItem) => {
+  const handleRemoveTag = (tagToRemove: string) => {
+    const newTagsList = tagList.filter(t => t !== tagToRemove);
+    setTagList(newTagsList);
+    setNewsTags(newTagsList.join(', '));
+  };
+
+  // Pre-populate news item for editing
+  const handleEditNewsClick = (e: React.MouseEvent | undefined, item: NewsItem) => {
+    if (e) e.stopPropagation();
     setEditingNews(item);
     setNewsTitle(item.title);
     setNewsCategory(item.category || 'Announcement');
@@ -486,10 +472,59 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
     setNewsStatus(item.status || 'Published');
     setNewsReferenceLinks(item.reference_links && item.reference_links.length > 0 ? [...item.reference_links, '', '', '', ''].slice(0, 4) : ['', '', '', '']);
     setNewsTags(item.tags ? item.tags.join(', ') : '');
+    setTagList(item.tags || []);
     setNewsRelevanceScore(item.relevance_score || 0);
     setNewsSourceVerificationNotes(item.source_verification_notes || '');
+    setNewsPublishedAt(item.published_at ? new Date(item.published_at).toISOString().substring(0, 16) : new Date().toISOString().substring(0, 16));
+    setActiveTab(1); // Return to Core Insight tab in Split Workspace
   };
 
+  // Delete news item
+  const handleDeleteNews = async (e: React.MouseEvent | undefined, newsId: string) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm("Are you sure you want to permanently delete this announcement? This action is irreversible.")) return;
+    try {
+      await StorageService.adminDeleteNewsItem(newsId);
+      showToast("Announcement deleted successfully", "success");
+      setNews(prev => prev.filter(n => n.id !== newsId));
+      if (editingNews?.id === newsId) {
+        setEditingNews(null);
+        setNewsTitle('');
+        setNewsSummary('');
+        setNewsImageUrl('');
+        setNewsExternalUrl('');
+        setNewsStatus('Published');
+        setNewsReferenceLinks(['', '', '', '']);
+        setNewsTags('');
+        setTagList([]);
+        setNewsRelevanceScore(0);
+        setNewsSourceVerificationNotes('');
+        setNewsPublishedAt(new Date().toISOString().substring(0, 16));
+      }
+    } catch (err) {
+      showToast("Failed deleting announcement", "error");
+    }
+  };
+
+  // Helper to clear Curator Workspace completely
+  const handleClearWorkspace = () => {
+    setEditingNews(null);
+    setNewsTitle('');
+    setNewsSummary('');
+    setNewsImageUrl('');
+    setNewsExternalUrl('');
+    setNewsStatus('Published');
+    setNewsReferenceLinks(['', '', '', '']);
+    setNewsTags('');
+    setTagList([]);
+    setNewsRelevanceScore(0);
+    setNewsSourceVerificationNotes('');
+    setNewsPublishedAt(new Date().toISOString().substring(0, 16));
+    setActiveTab(1);
+    showToast("Curator Workspace cleared for new announcement", "info");
+  };
+
+  // Image Upload handler with manual validation
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -521,27 +556,64 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
     }
   };
 
-  const handleDeleteNews = async (newsId: string) => {
-    if (!window.confirm("Are you sure you want to delete this announcement?")) return;
-    try {
-      await StorageService.adminDeleteNewsItem(newsId);
-      showToast("Announcement deleted successfully", "success");
-      setNews(prev => prev.filter(n => n.id !== newsId));
-      if (editingNews?.id === newsId) {
-        setEditingNews(null);
-        setNewsTitle('');
-        setNewsSummary('');
-        setNewsImageUrl('');
-        setNewsExternalUrl('');
-        setNewsStatus('Published');
-        setNewsReferenceLinks(['', '', '', '']);
-        setNewsTags('');
-        setNewsRelevanceScore(0);
-        setNewsSourceVerificationNotes('');
-      }
-    } catch (err) {
-      showToast("Failed deleting announcement", "error");
+  // Handle action-specific saving (Save Draft or Publish) to avoid state sync lag
+  const handleActionSave = async (status: 'Draft' | 'Published') => {
+    if (!newsTitle.trim() || !newsSummary.trim()) {
+      showToast("Please provide a title and summary", "error");
+      return;
     }
+
+    if (status === 'Published' && (!newsImageUrl || newsImageUrl.trim() === '')) {
+      showToast("An image is required before publishing. Please upload a JPG, PNG, or WEBP image first.", "error");
+      return;
+    }
+
+    try {
+      setIsSavingNews(true);
+      const payload: Partial<NewsItem> = {
+        id: editingNews?.id,
+        title: newsTitle,
+        category: newsCategory,
+        summary: newsSummary,
+        image_url: newsImageUrl,
+        external_url: newsExternalUrl,
+        published_at: new Date(newsPublishedAt).toISOString(),
+        status: status,
+        reference_links: newsReferenceLinks.map(link => link.trim()),
+        tags: tagList,
+        relevance_score: Number(newsRelevanceScore) || 0,
+        source_verification_notes: newsSourceVerificationNotes
+      };
+
+      await StorageService.adminSaveNewsItem(payload);
+      showToast(editingNews?.id ? "News item updated" : "News item created successfully", "success");
+      
+      // Reset state & reload list
+      setEditingNews(null);
+      setNewsTitle('');
+      setNewsSummary('');
+      setNewsImageUrl('');
+      setNewsExternalUrl('');
+      setNewsStatus('Published');
+      setNewsReferenceLinks(['', '', '', '']);
+      setNewsTags('');
+      setTagList([]);
+      setNewsRelevanceScore(0);
+      setNewsSourceVerificationNotes('');
+      setNewsPublishedAt(new Date().toISOString().substring(0, 16));
+      setArchivePage(1);
+      
+      await loadAdminData();
+    } catch (err) {
+      showToast("Failed saving announcement", "error");
+    } finally {
+      setIsSavingNews(false);
+    }
+  };
+
+  const handleSaveNews = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleActionSave(newsStatus);
   };
 
   // Filter computations
@@ -557,6 +629,39 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
     p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
     p.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.research_area?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Filter and sort the archives list
+  const filteredArchives = news.filter(item => {
+    const matchesSearch = archiveSearch 
+      ? item.title.toLowerCase().includes(archiveSearch.toLowerCase()) || 
+        item.summary.toLowerCase().includes(archiveSearch.toLowerCase()) ||
+        (item.tags && item.tags.some(t => t.toLowerCase().includes(archiveSearch.toLowerCase())))
+      : true;
+      
+    const matchesCategory = selectedCategory && selectedCategory !== 'All'
+      ? item.category === selectedCategory
+      : true;
+      
+    const matchesStatus = selectedStatusFilter && selectedStatusFilter !== 'All'
+      ? item.status === selectedStatusFilter
+      : true;
+      
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
+
+  const sortedArchives = [...filteredArchives].sort((a, b) => {
+    const dateA = new Date(a.published_at || '').getTime();
+    const dateB = new Date(b.published_at || '').getTime();
+    return archiveSort === 'newest' ? dateB - dateA : dateA - dateB;
+  });
+
+  const itemsPerPage = 5;
+  const totalPages = Math.max(1, Math.ceil(sortedArchives.length / itemsPerPage));
+  
+  const paginatedArchives = sortedArchives.slice(
+    (archivePage - 1) * itemsPerPage,
+    archivePage * itemsPerPage
   );
 
   // Compute stats metrics
@@ -1779,13 +1884,13 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
 
                       <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                         <button
-                          onClick={() => handleEditNewsClick(item)}
+                          onClick={(e) => handleEditNewsClick(e, item)}
                           className="p-2.5 bg-gray-50 hover:bg-gray-100 hover:text-ug-teal text-gray-400 rounded-xl transition border border-gray-100"
                         >
                           <Edit size={14} />
                         </button>
                         <button
-                          onClick={() => handleDeleteNews(item.id)}
+                          onClick={(e) => handleDeleteNews(e, item.id)}
                           className="p-2.5 bg-red-50 hover:bg-red-100 text-red-500 rounded-xl border border-red-100 transition"
                         >
                           <Trash2 size={14} />
