@@ -2086,20 +2086,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                               </div>
                             </div>
 
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider block">Administrative relevance weight ({newsRelevanceScore}%)</label>
-                              <div className="flex items-center gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-200">
-                                <input 
-                                  type="range" 
-                                  min="0" 
-                                  max="100" 
-                                  value={newsRelevanceScore}
-                                  onChange={e => setNewsRelevanceScore(Number(e.target.value))}
-                                  className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-ug-teal"
-                                />
-                                <span className="text-xs font-black text-gray-800 w-8 text-right">{newsRelevanceScore}%</span>
-                              </div>
-                            </div>
+
 
                             <div>
                               <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider block mb-1.5">Credibility & Source Audit Notes</label>
