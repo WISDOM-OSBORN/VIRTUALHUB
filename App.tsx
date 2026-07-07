@@ -20,7 +20,8 @@ import VerifyOTP from './pages/VerifyOTP';
 import ResetPassword from './pages/ResetPassword';
 import { UserRole, User } from './types';
 import { AdminLogin } from './pages/AdminLogin';
-import { AlertCircle, X, CheckCircle2, BellRing } from 'lucide-react';
+import { AlertCircle, X, CheckCircle2, BellRing, LogOut } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from './lib/supabase';
 import { StorageService } from './services/storageService';
 import { AIScoutService } from './services/aiScoutService';
@@ -95,6 +96,7 @@ const AppContent: React.FC = () => {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -180,7 +182,12 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const executeLogout = async () => {
+    setShowLogoutConfirm(false);
     await supabase.auth.signOut();
     setIsAuthenticated(false);
     setUserProfile(null);
@@ -297,6 +304,63 @@ const AppContent: React.FC = () => {
             isOpen={isAuthModalOpen} 
             onClose={() => setIsAuthModalOpen(false)}
         />
+
+        <AnimatePresence>
+          {showLogoutConfirm && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowLogoutConfirm(false)}
+                className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+              />
+
+              {/* Modal Card */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "spring", duration: 0.4 }}
+                className="bg-white rounded-3xl border border-gray-100 shadow-2xl max-w-sm w-full overflow-hidden text-center relative z-10 p-6 sm:p-8"
+              >
+                {/* Warning Icon */}
+                <div className="mx-auto w-14 h-14 rounded-2xl bg-red-50 text-[#ef4444] flex items-center justify-center mb-5 shadow-inner">
+                  <LogOut size={28} className="translate-x-0.5" />
+                </div>
+
+                {/* Title */}
+                <h3 className="text-lg font-extrabold text-ug-navy uppercase tracking-wider mb-2">
+                  Terminate {userProfile?.role === UserRole.Admin ? "Admin Session" : "Active Session"}?
+                </h3>
+
+                {/* Body message */}
+                <p className="text-xs text-gray-500 font-medium leading-relaxed mb-6">
+                  Are you sure you want to log out? Any unsaved edits or active curator tasks will be terminated securely.
+                </p>
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowLogoutConfirm(false)}
+                    className="flex-1 py-3 px-4 text-[10px] font-black uppercase tracking-wider text-gray-500 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl transition cursor-pointer text-center"
+                  >
+                    Keep Session
+                  </button>
+                  <button
+                    type="button"
+                    onClick={executeLogout}
+                    className="flex-1 py-3 px-4 text-[10px] font-black uppercase tracking-wider text-white bg-[#ef4444] hover:bg-red-600 rounded-xl transition cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-lg shadow-red-500/15"
+                  >
+                    <span>Secure Sign Out</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         {!hideLayout && <AIAssistant />}
         {!hideLayout && <Footer />}
