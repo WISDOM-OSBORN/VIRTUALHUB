@@ -571,7 +571,8 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
     showToast("Uploading image...", "info");
     try {
       const url = await StorageService.uploadFile(file, 'projects');
-      setNewsImageUrl(url);
+      const signedUrl = await StorageService.getSignedUrl(url, 'projects');
+      setNewsImageUrl(signedUrl);
       showToast("Image uploaded successfully!", "success");
     } catch (err: any) {
       showToast(`Upload failed: ${err.message || err}`, "error");
@@ -594,12 +595,18 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
 
     try {
       setIsSavingNews(true);
+      
+      // Clean image URL back to a public URL to save cleanly in the database
+      const cleanImageUrl = newsImageUrl && newsImageUrl.includes('?token=') 
+        ? newsImageUrl.split('?')[0].replace('/object/sign/', '/object/public/')
+        : newsImageUrl;
+
       const payload: Partial<NewsItem> = {
         id: editingNews?.id,
         title: newsTitle,
         category: newsCategory,
         summary: newsSummary,
-        image_url: newsImageUrl,
+        image_url: cleanImageUrl,
         external_url: newsExternalUrl,
         published_at: new Date(newsPublishedAt).toISOString(),
         status: status,
@@ -1830,8 +1837,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                       <div className="flex border-b border-gray-100 bg-gray-50/20">
                         {[
                           { id: 1, title: "1. Core Insight" },
-                          { id: 2, title: "2. AI Copywriting" },
-                          { id: 3, title: "3. Verification & Tags" }
+                          { id: 2, title: "2. AI Copywriting" }
                         ].map((tab) => (
                           <button
                             key={tab.id}
@@ -1979,126 +1985,9 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        )}
 
-                        {/* TAB 2: AI WRITER ASSISTANCE */}
-                        {activeTab === 2 && (
-                          <div className="space-y-5">
-                            <div className="p-5 bg-purple-50/50 border border-purple-100 rounded-2xl space-y-4">
-                              <div className="flex items-center gap-2 text-left">
-                                <div className="p-1.5 bg-purple-600 rounded-lg text-white">
-                                  <Sparkles size={14} className="animate-pulse" />
-                                </div>
-                                <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest text-left">Gemini Professional Copywriter</h4>
-                              </div>
-                              <p className="text-[11px] text-gray-500 font-medium leading-relaxed text-left">
-                                Authoritatively draft elite academic public announcements and breakthroughs instantly. Guided by Gemini intelligence to optimize readability.
-                              </p>
-
-                              <div className="space-y-3 pt-2 text-left">
-                                <div>
-                                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-wider block mb-1">Breakthrough / Announcement Topic</label>
-                                  <input
-                                    type="text"
-                                    placeholder="e.g., Malaria immunology breakthrough in ORID department"
-                                    value={aiTopic}
-                                    onChange={e => setAiTopic(e.target.value)}
-                                    className="w-full bg-white border border-gray-200 focus:border-purple-500 rounded-xl px-3 py-2.5 text-xs font-bold outline-none"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-wider block mb-1">Keywords / Context Indicators (Optional)</label>
-                                  <input
-                                    type="text"
-                                    placeholder="e.g., Prof. G. Awandare, Nature Medicine journal, clinical trial"
-                                    value={aiKeywords}
-                                    onChange={e => setAiKeywords(e.target.value)}
-                                    className="w-full bg-white border border-gray-200 focus:border-purple-500 rounded-xl px-3 py-2.5 text-xs font-bold outline-none"
-                                  />
-                                </div>
-
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    if (!aiTopic.trim()) {
-                                      showToast("Please enter a core topic for the AI generator.", "error");
-                                      return;
-                                    }
-                                    await handleGenerateAIPressRelease();
-                                    setActiveTab(1);
-                                  }}
-                                  disabled={isGeneratingAI}
-                                  className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-xl py-3 font-black text-[10px] uppercase tracking-widest transition duration-150 flex items-center justify-center gap-2 shadow-lg shadow-purple-600/15 cursor-pointer mt-3 h-11"
-                                >
-                                  {isGeneratingAI ? (
-                                    <>
-                                      <Loader2 className="animate-spin" size={12} />
-                                      <span>Drafting Release...</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Sparkles size={12} />
-                                      <span>Write Professional Release</span>
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* TAB 3: VERIFICATION & TAGS */}
-                        {activeTab === 3 && (
-                          <div className="space-y-5">
-                            <div>
-                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider block mb-1.5">Announcement Tags</label>
-                              <div className="border border-gray-200 rounded-xl p-3 bg-white flex flex-wrap gap-1.5 focus-within:border-ug-teal transition duration-150">
-                                {tagList.map(tag => (
-                                  <span 
-                                    key={tag} 
-                                    className="bg-ug-teal/5 text-ug-teal font-bold text-[10px] pl-2.5 pr-1.5 py-1 rounded-lg border border-ug-teal/10 flex items-center gap-1 shrink-0"
-                                  >
-                                    <span>{tag}</span>
-                                    <button 
-                                      type="button"
-                                      onClick={() => handleRemoveTag(tag)}
-                                      className="p-0.5 text-ug-teal/50 hover:text-ug-teal rounded transition cursor-pointer"
-                                    >
-                                      <X size={10} />
-                                    </button>
-                                  </span>
-                                ))}
-                                <input 
-                                  type="text" 
-                                  placeholder={tagList.length > 0 ? "Add tag..." : "Type tag and press Enter..."}
-                                  className="border-0 p-0.5 text-xs font-bold text-gray-800 focus:ring-0 outline-none flex-1 min-w-[120px] bg-transparent"
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      const target = e.target as HTMLInputElement;
-                                      handleAddTag(target.value);
-                                      target.value = '';
-                                    }
-                                  }}
-                                />
-                              </div>
-                            </div>
-
-
-
-                            <div>
-                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider block mb-1.5">Credibility & Source Audit Notes</label>
-                              <textarea
-                                placeholder="Record official source verification documents, vetting notes, or citation indexes..."
-                                value={newsSourceVerificationNotes}
-                                onChange={e => setNewsSourceVerificationNotes(e.target.value)}
-                                className="w-full bg-white border border-gray-200 focus:border-ug-teal focus:ring-1 focus:ring-ug-teal rounded-xl p-3 text-xs font-medium text-gray-800 outline-none transition h-24 resize-none"
-                              />
-                            </div>
-
-                            <div>
+                            {/* Moved Citations & References (Max 4 Links) here */}
+                            <div className="pt-4 border-t border-gray-100">
                               <h4 className="text-[10px] font-black uppercase text-gray-500 tracking-wider mb-2">Citations & References (Max 4 Links)</h4>
                               <div className="grid grid-cols-1 gap-2.5">
                                 {newsReferenceLinks.map((link, idx) => (
@@ -2119,6 +2008,78 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                                     </span>
                                   </div>
                                 ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* TAB 2: AI WRITER ASSISTANCE */}
+                        {activeTab === 2 && (
+                          <div className="space-y-5">
+                            <div className="p-5 bg-purple-50/50 border border-purple-100 rounded-2xl space-y-4">
+                              <div className="flex items-center gap-2 text-left">
+                                <div className="p-1.5 bg-purple-600 rounded-lg text-white">
+                                  <Sparkles size={14} className="animate-pulse" />
+                                </div>
+                                <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest text-left">Gemini Professional Copywriter</h4>
+                              </div>
+                              <p className="text-[11px] text-gray-500 font-medium leading-relaxed text-left">
+                                Authoritatively draft elite academic public announcements and breakthroughs instantly. Guided by Gemini intelligence to optimize readability.
+                              </p>
+
+                              <div className="space-y-3 pt-2 text-left">
+                                <div>
+                                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-wider block mb-1">Broadcast Title / Main Topic *</label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g., Malaria immunology breakthrough in ORID department"
+                                    value={aiTopic || newsTitle}
+                                    onChange={e => setAiTopic(e.target.value)}
+                                    className="w-full bg-white border border-gray-200 focus:border-purple-500 rounded-xl px-3 py-2.5 text-xs font-bold outline-none"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-wider block mb-1">Focus Keywords / Context Indicators (The Key) *</label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g., Prof. G. Awandare, Nature Medicine journal, clinical trial"
+                                    value={aiKeywords}
+                                    onChange={e => setAiKeywords(e.target.value)}
+                                    className="w-full bg-white border border-gray-200 focus:border-purple-500 rounded-xl px-3 py-2.5 text-xs font-bold outline-none"
+                                  />
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    // Use aiTopic, or fall back to newsTitle if they typed it in Tab 1
+                                    const topicToUse = aiTopic.trim() || newsTitle.trim();
+                                    if (!topicToUse) {
+                                      showToast("Please enter a core topic or title for the AI generator.", "error");
+                                      return;
+                                    }
+                                    if (!aiTopic.trim()) {
+                                      setAiTopic(topicToUse);
+                                    }
+                                    await handleGenerateAIPressRelease();
+                                    setActiveTab(1);
+                                  }}
+                                  disabled={isGeneratingAI}
+                                  className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-xl py-3 font-black text-[10px] uppercase tracking-widest transition duration-150 flex items-center justify-center gap-2 shadow-lg shadow-purple-600/15 cursor-pointer mt-3 h-11"
+                                >
+                                  {isGeneratingAI ? (
+                                    <>
+                                      <Loader2 className="animate-spin" size={12} />
+                                      <span>Drafting Release...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Sparkles size={12} />
+                                      <span>Write Professional Release</span>
+                                    </>
+                                  )}
+                                </button>
                               </div>
                             </div>
                           </div>

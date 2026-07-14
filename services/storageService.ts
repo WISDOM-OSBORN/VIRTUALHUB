@@ -734,6 +734,63 @@ export const StorageService = {
   },
 
   // News
+  signNewsUrls: async (news: NewsItem[]): Promise<NewsItem[]> => {
+    if (!news || news.length === 0) return [];
+    
+    try {
+      const imagesToSign: { newsIndex: number; filePath: string }[] = [];
+      const mutableNews = JSON.parse(JSON.stringify(news)) as NewsItem[];
+
+      for (let idx = 0; idx < mutableNews.length; idx++) {
+        const item = mutableNews[idx];
+        if (item.image_url && isStorageUrl(item.image_url, 'projects')) {
+          const filePath = getStorageFilePath(item.image_url, 'projects');
+          if (filePath) {
+            imagesToSign.push({ newsIndex: idx, filePath });
+          }
+        }
+      }
+
+      if (imagesToSign.length > 0) {
+        const filePaths = imagesToSign.map(x => x.filePath);
+        const { data: signedUrls, error } = await supabase.storage
+          .from('projects')
+          .createSignedUrls(filePaths, 3600);
+        
+        if (!error && signedUrls) {
+          signedUrls.forEach((obj, sIdx) => {
+            const mapping = imagesToSign[sIdx];
+            if (obj && obj.signedUrl) {
+              mutableNews[mapping.newsIndex].image_url = obj.signedUrl;
+            }
+          });
+        }
+      }
+
+      return mutableNews;
+    } catch (err) {
+      console.warn("Failed to sign news URLs:", err);
+      return news;
+    }
+  },
+
+  getSignedUrl: async (urlOrPath: string, bucket = 'projects', expiry = 3600): Promise<string> => {
+    if (!urlOrPath) return '';
+    try {
+      const filePath = getStorageFilePath(urlOrPath, bucket);
+      if (!filePath) return urlOrPath;
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(filePath, expiry);
+      if (error || !data?.signedUrl) {
+        return urlOrPath;
+      }
+      return data.signedUrl;
+    } catch {
+      return urlOrPath;
+    }
+  },
+
   getNews: async (
     includeDrafts: boolean = false,
     options?: {
@@ -794,9 +851,9 @@ export const StorageService = {
           .select('id, title, category, published_at, image_url, summary')
           .order('published_at', { ascending: false })
           .range(0, 19);
-        return (basicData || []) as NewsItem[];
+        return await StorageService.signNewsUrls((basicData || []) as NewsItem[]);
       }
-      return (data || []) as NewsItem[];
+      return await StorageService.signNewsUrls((data || []) as NewsItem[]);
     } catch (err) {
       console.error("Failed to retrieve news:", err, { includeDrafts, page, limit, search, category });
       // Last resort fallback
@@ -805,7 +862,7 @@ export const StorageService = {
           .from('news')
           .select('id, title, category, published_at, image_url, summary')
           .limit(20);
-        return (data || []) as NewsItem[];
+        return await StorageService.signNewsUrls((data || []) as NewsItem[]);
       } catch (innerErr) {
         return [];
       }
