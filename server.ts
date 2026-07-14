@@ -5,6 +5,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import Groq from 'groq-sdk';
 import { createClient } from '@supabase/supabase-js';
+import mammoth from 'mammoth';
 
 // Safe detection of run directory in both CommonJS and ES Module modes
 const getDirname = () => {
@@ -311,6 +312,144 @@ app.post('/api/gemini/embed', authenticateUser, throttleLimit(100, 60 * 1000), a
   } catch (error: any) {
     console.error('Server Embedding error, returning fallback zero vector:', error);
     res.json({ embedding: new Array(768).fill(0) });
+  }
+});
+
+// 3.5 secure admin document extraction endpoint for News Curation
+app.post('/api/admin/extract-document', authenticateUser, throttleLimit(15, 60 * 1000), async (req: express.Request, res: express.Response) => {
+  // Verify Admin permissions
+  if ((req as any).userRole !== 'Admin') {
+    return res.status(403).json({ error: 'Forbidden: Admin curation access required' });
+  }
+
+  const { fileBase64, fileName, mimeType } = req.body;
+  if (!fileBase64) {
+    return res.status(400).json({ error: 'Missing fileBase64 data' });
+  }
+
+  try {
+    const buffer = Buffer.from(fileBase64, 'base64');
+    let text = '';
+    const ext = fileName ? fileName.split('.').pop().toLowerCase() : '';
+
+    if (ext === 'txt' || mimeType === 'text/plain') {
+      text = buffer.toString('utf8');
+    } else if (ext === 'docx' || mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      const result = await mammoth.extractRawText({ buffer });
+      text = result.value;
+    } else if (ext === 'doc' || mimeType === 'application/msword') {
+      // Legacy .doc binary text scraper
+      let currentString = '';
+      const strings: string[] = [];
+      for (let i = 0; i < buffer.length; i++) {
+        const charCode = buffer[i];
+        if ((charCode >= 32 && charCode <= 126) || charCode === 9 || charCode === 10 || charCode === 13) {
+          currentString += String.fromCharCode(charCode);
+        } else {
+          if (currentString.trim().length >= 4) {
+            strings.push(currentString.trim());
+          }
+          currentString = '';
+        }
+      }
+      if (currentString.trim().length >= 4) {
+        strings.push(currentString.trim());
+      }
+      text = strings.join('\n');
+    } else {
+      return res.status(400).json({ error: `Unsupported file format: .${ext}. Please upload a .txt, .doc, or .docx file.` });
+    }
+
+    if (!text.trim()) {
+      return res.status(400).json({ error: 'Failed to extract any readable text content from the uploaded document.' });
+    }
+
+    // Connect to Gemini to structure this extracted draft text cleanly
+    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
+    if (!isValidKey(apiKey)) {
+      return res.json({ 
+        success: true,
+        text: text.slice(0, 1000),
+        data: {
+          title: fileName ? fileName.replace(/\.[^/.]+$/, "") : "Extracted Document",
+          summary: text.slice(0, 400) + (text.length > 400 ? "..." : ""),
+          category: "Announcement",
+          tags: ["Draft"],
+          source_verification_notes: "Gemini API not configured. Raw text extracted successfully."
+        }
+      });
+    }
+
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+    });
+
+    const systemInstruction = `You are an elite Public Relations Officer and editor at the University of Ghana Virtual Industry Hub.
+Your task is to analyze the extracted draft document text and extract the news details into a highly-polished, fully structured news broadcast JSON object.
+
+You must return EXACTLY this JSON structure:
+{
+  "title": "A captivating, professional academic headline",
+  "summary": "An authoritative, well-written briefing/article summary (around 120-150 words) highlighting research breakthrough, grant, or partnership details.",
+  "category": "Announcement|Grant Opportunity|Strategic Partnership|Research Release|Ecosystem Updates",
+  "tags": ["3 to 5 highly relevant keyword strings"],
+  "source_verification_notes": "A brief administrative audit explaining the credibility/source of this announcement (e.g., verifying researchers, department, or external links mentioned)."
+}
+
+Respond with RAW JSON ONLY. No markdown wrapping. Do not include any text, code block wrappers or explanations.`;
+
+    const prompt = `Please analyze and extract structured news fields from the following draft document text:
+--- DRAFT TEXT ---
+${text.slice(0, 12000)}
+--- END DRAFT ---`;
+
+    let response;
+    let extractError;
+    const extractModels = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+    for (const modelName of extractModels) {
+      try {
+        response = await ai.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: {
+            systemInstruction,
+            responseMimeType: 'application/json'
+          }
+        });
+        if (response && response.text) break;
+      } catch (err: any) {
+        extractError = err;
+        console.warn(`Extraction model ${modelName} failed:`, err?.message || err);
+      }
+    }
+
+    const jsonText = response?.text || '';
+    if (!jsonText) {
+      throw extractError || new Error("Failed to receive structured response from Gemini.");
+    }
+
+    try {
+      const parsedData = JSON.parse(jsonText.replace(/```json/g, '').replace(/```/g, '').trim());
+      return res.json({ success: true, text, data: parsedData });
+    } catch (parseErr) {
+      console.warn("JSON parsing of Gemini output failed, running fallback text structure:", jsonText);
+      return res.json({
+        success: true,
+        text,
+        data: {
+          title: fileName ? fileName.replace(/\.[^/.]+$/, "") : "Extracted Document",
+          summary: text.slice(0, 400) + (text.length > 400 ? "..." : ""),
+          category: "Announcement",
+          tags: ["Extracted"],
+          source_verification_notes: "Auto-extracted. Raw draft text parsing completed."
+        }
+      });
+    }
+
+  } catch (err: any) {
+    console.error('Admin Document Extraction Error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to extract text from document.' });
   }
 });
 

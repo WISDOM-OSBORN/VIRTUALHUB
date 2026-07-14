@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { User, Project, NewsItem, UserRole, ProjectStatus, Visibility, ResearchArea, DisclosureStatus } from '../types';
 import { StorageService } from '../services/storageService';
+import { supabase } from '../lib/supabase';
 import { useToast } from '../App';
 import { AIScoutService } from '../services/aiScoutService';
 import { getGeminiResponse } from '../services/geminiService';
@@ -57,6 +58,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newsExternalUrl, setNewsExternalUrl] = useState('');
   const [isSavingNews, setIsSavingNews] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [isExtractingDoc, setIsExtractingDoc] = useState(false);
   const [isScoutingNews, setIsScoutingNews] = useState(false);
   const [newsStatus, setNewsStatus] = useState<'Draft' | 'Published'>('Published');
   const [newsReferenceLinks, setNewsReferenceLinks] = useState<string[]>(['', '', '', '']);
@@ -80,6 +82,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newsPublishedAt, setNewsPublishedAt] = useState<string>(new Date().toISOString().substring(0, 16));
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const docInputRef = React.useRef<HTMLInputElement>(null);
 
   // Admin Disclosure Workflows states
   const [selectedDisclosureId, setSelectedDisclosureId] = useState<string | null>(null);
@@ -578,6 +581,83 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
     } finally {
       setIsUploadingImage(false);
     }
+  };
+
+  // Extract content from .txt, .doc, or .docx file and populate workspace
+  const handleDocumentExtract = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validExtensions = ['txt', 'doc', 'docx'];
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    if (!validExtensions.includes(ext)) {
+      showToast("Invalid file type. Only .txt, .doc, and .docx files are supported.", "error");
+      return;
+    }
+
+    setIsExtractingDoc(true);
+    showToast("Reading document file...", "info");
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const base64String = (reader.result as string).split(',')[1];
+        
+        showToast("AI Agent: Analyzing draft with Gemini...", "info");
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
+        const response = await fetch('/api/admin/extract-document', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({
+            fileBase64: base64String,
+            fileName: file.name,
+            mimeType: file.type
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP ${response.status}`);
+        }
+
+        const resData = await response.json();
+        if (resData.success && resData.data) {
+          const item = resData.data;
+          if (item.title) setNewsTitle(item.title);
+          if (item.summary) setNewsSummary(item.summary);
+          if (item.category) setNewsCategory(item.category);
+          if (item.tags) {
+            setTagList(item.tags);
+            setNewsTags(item.tags.join(', '));
+          }
+          if (item.source_verification_notes) {
+            setNewsSourceVerificationNotes(item.source_verification_notes);
+          }
+          showToast("Document analyzed and fields auto-populated!", "success");
+        } else {
+          showToast("Failed to parse document content.", "error");
+        }
+      } catch (err: any) {
+        console.error("Document extraction failed:", err);
+        showToast(`Document analysis failed: ${err.message || err}`, "error");
+      } finally {
+        setIsExtractingDoc(false);
+        // Clear input value so upload can be triggered again with the same file
+        if (e.target) e.target.value = '';
+      }
+    };
+
+    reader.onerror = () => {
+      showToast("Failed to read the local file.", "error");
+      setIsExtractingDoc(false);
+    };
+
+    reader.readAsDataURL(file);
   };
 
   // Handle action-specific saving (Save Draft or Publish) to avoid state sync lag
@@ -1859,6 +1939,60 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                         {/* TAB 1: CORE INSIGHT */}
                         {activeTab === 1 && (
                           <div className="space-y-5">
+                            {/* AI Document Extractor Panel */}
+                            <div className="bg-gradient-to-r from-purple-500/5 to-indigo-500/5 border border-purple-100 rounded-2xl p-5 mb-1.5 relative overflow-hidden">
+                              <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-xl pointer-events-none" />
+                              <div className="flex items-start gap-3.5">
+                                <div className="p-2.5 bg-purple-100 rounded-xl text-purple-700 shrink-0 mt-0.5">
+                                  <FileText size={18} />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">AI Document Extractor</h3>
+                                    <span className="bg-purple-100 text-purple-700 font-extrabold text-[8px] px-2 py-0.5 rounded-full uppercase tracking-wider">PRO</span>
+                                  </div>
+                                  <p className="text-[10px] text-gray-500 font-medium leading-relaxed mt-1">
+                                    Upload a news summary draft or article (<span className="font-bold">.txt, .doc, .docx</span>) and the Gemini system will instantly extract the headline, full briefing, category, tags, and verification details to populate this form.
+                                  </p>
+                                  
+                                  <div className="mt-4 flex items-center gap-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => docInputRef.current?.click()}
+                                      disabled={isExtractingDoc}
+                                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white font-black text-[9px] uppercase tracking-wider rounded-xl transition duration-150 flex items-center gap-2 shadow-md shadow-purple-600/15 cursor-pointer"
+                                    >
+                                      {isExtractingDoc ? (
+                                        <>
+                                          <Loader2 size={12} className="animate-spin" />
+                                          <span>Analyzing Document...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Upload size={12} />
+                                          <span>Upload Draft Document</span>
+                                        </>
+                                      )}
+                                    </button>
+                                    
+                                    {isExtractingDoc && (
+                                      <span className="text-[9px] text-purple-600 font-bold uppercase tracking-widest animate-pulse">
+                                        Extracting insights...
+                                      </span>
+                                    )}
+                                  </div>
+                                  
+                                  <input 
+                                    type="file"
+                                    ref={docInputRef}
+                                    onChange={handleDocumentExtract}
+                                    accept=".txt,.doc,.docx"
+                                    className="hidden"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
                             <div>
                               <div className="flex justify-between items-center mb-1.5">
                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider">Broadcast Title *</label>

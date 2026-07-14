@@ -55,8 +55,9 @@ const News: React.FC = () => {
   const [lastSync, setLastSync] = useState<Date | null>(null);
 
   // Administrative / Curation states
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [curatorMode, setCuratorMode] = useState(false);
+  const isAdmin = false;
+  const curatorMode = false;
+  const setCuratorMode = (val: boolean) => {};
 
   // News editing / creation form states
   const [editingNews, setEditingNews] = useState<NewsItem | null>(null);
@@ -84,6 +85,7 @@ const News: React.FC = () => {
   const [isSavingNews, setIsSavingNews] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [isExtractingDoc, setIsExtractingDoc] = useState(false);
   const [showAIWriteModal, setShowAIWriteModal] = useState(false);
   const [aiTopic, setAiTopic] = useState('');
   const [aiKeywords, setAiKeywords] = useState('');
@@ -132,7 +134,6 @@ const News: React.FC = () => {
     setLoading(true);
     try {
       const adminStatus = await StorageService.verifyAdmin();
-      setIsAdmin(adminStatus);
 
       const limit = curatorMode ? 150 : 20;
       const data = await StorageService.getNews(adminStatus, {
@@ -379,6 +380,83 @@ const News: React.FC = () => {
     }
   };
 
+  // Extract content from .txt, .doc, or .docx file and populate workspace
+  const handleDocumentExtract = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validExtensions = ['txt', 'doc', 'docx'];
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    if (!validExtensions.includes(ext)) {
+      showToast("Invalid file type. Only .txt, .doc, and .docx files are supported.", "error");
+      return;
+    }
+
+    setIsExtractingDoc(true);
+    showToast("Reading document file...", "info");
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const base64String = (reader.result as string).split(',')[1];
+        
+        showToast("AI Agent: Analyzing draft with Gemini...", "info");
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
+        const response = await fetch('/api/admin/extract-document', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({
+            fileBase64: base64String,
+            fileName: file.name,
+            mimeType: file.type
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP ${response.status}`);
+        }
+
+        const resData = await response.json();
+        if (resData.success && resData.data) {
+          const item = resData.data;
+          if (item.title) setNewsTitle(item.title);
+          if (item.summary) setNewsSummary(item.summary);
+          if (item.category) setNewsCategory(item.category);
+          if (item.tags) {
+            setTagList(item.tags);
+            setNewsTags(item.tags.join(', '));
+          }
+          if (item.source_verification_notes) {
+            setNewsSourceVerificationNotes(item.source_verification_notes);
+          }
+          showToast("Document analyzed and fields auto-populated!", "success");
+        } else {
+          showToast("Failed to parse document content.", "error");
+        }
+      } catch (err: any) {
+        console.error("Document extraction failed:", err);
+        showToast(`Document analysis failed: ${err.message || err}`, "error");
+      } finally {
+        setIsExtractingDoc(false);
+        // Clear input value so upload can be triggered again with the same file
+        if (e.target) e.target.value = '';
+      }
+    };
+
+    reader.onerror = () => {
+      showToast("Failed to read the local file.", "error");
+      setIsExtractingDoc(false);
+    };
+
+    reader.readAsDataURL(file);
+  };
+
   // Write announcement draft with Gemini assistance
   const handleGenerateAIPressRelease = async () => {
     if (!aiTopic) {
@@ -436,6 +514,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
 
   // Hidden input ref for image upload
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const docInputRef = React.useRef<HTMLInputElement>(null);
 
   // Filter and sort the archives list
   const filteredArchives = news.filter(item => {
@@ -928,6 +1007,60 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                       
                       {/* Left Column Fields */}
                       <div className="space-y-5">
+                        {/* AI Document Extractor Panel */}
+                        <div className="bg-gradient-to-r from-purple-500/5 to-indigo-500/5 border border-purple-100 rounded-2xl p-5 mb-1.5 relative overflow-hidden">
+                          <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-xl pointer-events-none" />
+                          <div className="flex items-start gap-3.5">
+                            <div className="p-2.5 bg-purple-100 rounded-xl text-purple-700 shrink-0 mt-0.5">
+                              <FileText size={18} />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">AI Document Extractor</h3>
+                                <span className="bg-purple-100 text-purple-700 font-extrabold text-[8px] px-2 py-0.5 rounded-full uppercase tracking-wider">PRO</span>
+                              </div>
+                              <p className="text-[10px] text-gray-500 font-medium leading-relaxed mt-1">
+                                Upload a news summary draft or article (<span className="font-bold">.txt, .doc, .docx</span>) and the Gemini system will instantly extract the headline, full briefing, category, tags, and verification details to populate this form.
+                              </p>
+                              
+                              <div className="mt-4 flex items-center gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => docInputRef.current?.click()}
+                                  disabled={isExtractingDoc}
+                                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white font-black text-[9px] uppercase tracking-wider rounded-xl transition duration-150 flex items-center gap-2 shadow-md shadow-purple-600/15 cursor-pointer"
+                                >
+                                  {isExtractingDoc ? (
+                                    <>
+                                      <Loader2 size={12} className="animate-spin" />
+                                      <span>Analyzing Document...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Upload size={12} />
+                                      <span>Upload Draft Document</span>
+                                    </>
+                                  )}
+                                </button>
+                                
+                                {isExtractingDoc && (
+                                  <span className="text-[9px] text-purple-600 font-bold uppercase tracking-widest animate-pulse">
+                                    Extracting insights...
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <input 
+                                type="file"
+                                ref={docInputRef}
+                                onChange={handleDocumentExtract}
+                                accept=".txt,.doc,.docx"
+                                className="hidden"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
                         {/* Title */}
                         <div>
                           <div className="flex justify-between items-center mb-1.5">
@@ -1439,20 +1572,6 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
               </div>
             )}
           </div>
-
-          {isAdmin && (
-            <button
-              onClick={() => setCuratorMode(!curatorMode)}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all shadow-sm shrink-0 border ${
-                curatorMode 
-                  ? 'bg-ug-teal border-teal-500 text-white ring-4 ring-ug-teal/10 animate-pulse' 
-                  : 'bg-ug-navy border-ug-navy text-white hover:bg-ug-teal hover:border-ug-teal'
-              }`}
-            >
-              <LayoutDashboard size={13} />
-              <span>{curatorMode ? "Close Curator Workspace" : "Open Curator Workspace"}</span>
-            </button>
-          )}
         </div>
 
         {/* Dynamic Curation Session Workspace (Only accessible if verified Admin) */}
