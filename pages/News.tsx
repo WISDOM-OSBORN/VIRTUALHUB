@@ -47,6 +47,7 @@ const News: React.FC = () => {
   const [selectedDetailedNews, setSelectedDetailedNews] = useState<NewsItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [debouncedArchiveSearch, setDebouncedArchiveSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -110,6 +111,18 @@ const News: React.FC = () => {
     };
   }, [searchTerm]);
 
+  // Debounce archive search changes
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedArchiveSearch(archiveSearch);
+      setArchivePage(1);
+    }, 450);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [archiveSearch]);
+
   // Reset page number on category changes to start viewing from the beginning
   useEffect(() => {
     setPage(1);
@@ -121,11 +134,11 @@ const News: React.FC = () => {
       const adminStatus = await StorageService.verifyAdmin();
       setIsAdmin(adminStatus);
 
-      const limit = 20;
+      const limit = curatorMode ? 150 : 20;
       const data = await StorageService.getNews(adminStatus, {
         page: pageNum,
         limit,
-        search: debouncedSearchTerm,
+        search: curatorMode ? debouncedArchiveSearch : debouncedSearchTerm,
         category: selectedCategory
       });
 
@@ -152,10 +165,14 @@ const News: React.FC = () => {
     }
   };
 
-  // Trigger paginated data loading reactively when search term, category, or page index changes
+  // Trigger paginated data loading reactively when search term, category, page, curatorMode, or debouncedArchiveSearch changes
   useEffect(() => {
-    fetchNews(page, page > 1);
-  }, [debouncedSearchTerm, selectedCategory, page]);
+    if (curatorMode) {
+      fetchNews(1, false);
+    } else {
+      fetchNews(page, page > 1);
+    }
+  }, [debouncedSearchTerm, selectedCategory, page, curatorMode, debouncedArchiveSearch]);
 
   // Handle seamless background sync on mount if list is empty or news is stale (>2 hours)
   useEffect(() => {

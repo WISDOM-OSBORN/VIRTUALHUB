@@ -294,7 +294,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       const [allProfiles, allProjects, allNews, allEOIs] = await Promise.all([
         StorageService.adminGetAllProfiles(),
         StorageService.getProjects(),
-        StorageService.getNews(true),
+        StorageService.getNews(true, { limit: 150 }),
         StorageService.adminGetAllEOIs()
       ]);
       
