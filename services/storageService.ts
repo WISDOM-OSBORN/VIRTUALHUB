@@ -738,7 +738,6 @@ export const StorageService = {
     if (!news || news.length === 0) return [];
     
     try {
-      const imagesToSign: { newsIndex: number; filePath: string }[] = [];
       const mutableNews = JSON.parse(JSON.stringify(news)) as NewsItem[];
 
       for (let idx = 0; idx < mutableNews.length; idx++) {
@@ -746,30 +745,20 @@ export const StorageService = {
         if (item.image_url && isStorageUrl(item.image_url, 'projects')) {
           const filePath = getStorageFilePath(item.image_url, 'projects');
           if (filePath) {
-            imagesToSign.push({ newsIndex: idx, filePath });
-          }
-        }
-      }
-
-      if (imagesToSign.length > 0) {
-        const filePaths = imagesToSign.map(x => x.filePath);
-        const { data: signedUrls, error } = await supabase.storage
-          .from('projects')
-          .createSignedUrls(filePaths, 3600);
-        
-        if (!error && signedUrls) {
-          signedUrls.forEach((obj, sIdx) => {
-            const mapping = imagesToSign[sIdx];
-            if (obj && obj.signedUrl) {
-              mutableNews[mapping.newsIndex].image_url = obj.signedUrl;
+            // Since we configured public.can_access_project_file to allow public access to news images,
+            // we retrieve a stable, non-expiring public URL. This prevents constant browser re-fetching 
+            // and image container flickering/blinking.
+            const { data } = supabase.storage.from('projects').getPublicUrl(filePath);
+            if (data?.publicUrl) {
+              item.image_url = data.publicUrl;
             }
-          });
+          }
         }
       }
 
       return mutableNews;
     } catch (err) {
-      console.warn("Failed to sign news URLs:", err);
+      console.warn("Failed to stabilize news URLs:", err);
       return news;
     }
   },

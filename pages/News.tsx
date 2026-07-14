@@ -190,6 +190,7 @@ const News: React.FC = () => {
   // Fallback for broken images
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     const target = e.target as HTMLImageElement;
+    target.onerror = null; // Prevent infinite loop
     target.src = 'https://images.unsplash.com/photo-1532187875605-1ef638272ee4?auto=format&fit=crop&w=800&q=80';
   };
 
@@ -351,9 +352,8 @@ const News: React.FC = () => {
     setIsUploadingImage(true);
     showToast("Uploading image...", "info");
     try {
-      const url = await StorageService.uploadFile(file, 'projects');
-      const signedUrl = await StorageService.getSignedUrl(url, 'projects');
-      setNewsImageUrl(signedUrl);
+      const url = await StorageService.uploadFile(file, 'avatars');
+      setNewsImageUrl(url);
       showToast("Image uploaded successfully!", "success");
     } catch (err: any) {
       showToast(`Upload failed: ${err.message || err}`, "error");
@@ -757,7 +757,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                         <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-gray-100 relative">
                           <img 
                             src={item.image_url} 
-                            alt={item.title} 
+                            alt="" 
                             onError={handleImageError}
                             className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                           />
@@ -1332,7 +1332,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
               <div className="w-full aspect-video rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 relative mb-8 md:mb-12 shadow-inner">
                 <img
                   src={selectedDetailedNews.image_url}
-                  alt={selectedDetailedNews.title}
+                  alt=""
                   onError={handleImageError}
                   className="w-full h-full object-cover"
                 />
@@ -1473,7 +1473,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
         </div>
 
         {/* Loading State */}
-        {loading && (
+        {loading && filteredNews.length === 0 && (
            <div className="flex flex-col items-center justify-center py-40">
               <Loader2 className="animate-spin text-ug-teal mb-6" size={56} />
               <p className="text-gray-400 font-black uppercase text-[10px] tracking-[0.4em]">Aggregating Intelligence...</p>
@@ -1481,7 +1481,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
         )}
 
         {/* News Grid */}
-        <div className="grid lg:grid-cols-1 gap-12">
+        <div className={`grid lg:grid-cols-1 gap-12 transition-opacity duration-300 ${loading && filteredNews.length > 0 ? 'opacity-50' : 'opacity-100'}`}>
           {filteredNews.length === 0 && !loading && (
             <div className="text-center py-40 border-2 border-dashed border-gray-100 rounded-[3rem]">
                <Globe className="text-gray-200 mx-auto mb-8" size={80} />
@@ -1500,7 +1500,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
               <div className="w-full md:w-[260px] lg:w-[320px] h-52 md:h-auto overflow-hidden relative shrink-0">
                 <img 
                   src={item.image_url} 
-                  alt={item.title} 
+                  alt="" 
                   onError={handleImageError}
                   className="w-full h-full object-cover group-hover:scale-105 transition duration-700 grayscale-[10%] group-hover:grayscale-0" 
                 />

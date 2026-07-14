@@ -129,6 +129,14 @@ BEGIN
     RETURN TRUE;
   END IF;
 
+  -- 1b. If the file is referenced in news image_url, it is a public news cover image and viewable by any user
+  IF EXISTS (
+    SELECT 1 FROM public.news
+    WHERE image_url LIKE '%' || p_object_name || '%'
+  ) THEN
+    RETURN TRUE;
+  END IF;
+
   -- 2. If user is null, they definitely cannot access secure briefs or docs
   IF p_user_id IS NULL THEN
     RETURN FALSE;

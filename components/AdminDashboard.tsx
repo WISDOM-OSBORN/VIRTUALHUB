@@ -570,9 +570,8 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
     setIsUploadingImage(true);
     showToast("Uploading image...", "info");
     try {
-      const url = await StorageService.uploadFile(file, 'projects');
-      const signedUrl = await StorageService.getSignedUrl(url, 'projects');
-      setNewsImageUrl(signedUrl);
+      const url = await StorageService.uploadFile(file, 'avatars');
+      setNewsImageUrl(url);
       showToast("Image uploaded successfully!", "success");
     } catch (err: any) {
       showToast(`Upload failed: ${err.message || err}`, "error");
