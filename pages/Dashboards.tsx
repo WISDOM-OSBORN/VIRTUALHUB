@@ -20,6 +20,8 @@ import { AdminDashboard } from '../components/AdminDashboard';
 import { supabase } from '../lib/supabase';
 import { AIProfileService } from '../services/aiProfileService';
 import { EmbeddingService } from '../services/embeddingService';
+import { IndustryChallengesMatcher } from '../components/IndustryChallengesMatcher';
+
 
 interface DashboardProps {
   role: UserRole;
@@ -3184,6 +3186,8 @@ const MatchesView = ({
   const navigate = useNavigate();
   const { showToast } = useToast();
 
+  const [activeTabSub, setActiveTabSub] = useState<'challenges' | 'traditional'>('challenges');
+
   const [profileMatches, setProfileMatches] = useState<any[]>([]);
   const [projectMatches, setProjectMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -3506,7 +3510,42 @@ ${senderName}`
 
   return (
     <div className="space-y-6 md:space-y-10 font-sans">
-      <div className="bg-white p-4 sm:p-6 md:p-8 lg:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden">
+      
+      {/* Sub-navigation tabs */}
+      <div className="flex border-b border-gray-100 pb-2 gap-4">
+        <button
+          onClick={() => setActiveTabSub('challenges')}
+          className={`flex items-center gap-2 pb-3 px-1 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${
+            activeTabSub === 'challenges'
+              ? 'border-ug-teal text-ug-teal'
+              : 'border-transparent text-gray-400 hover:text-ug-navy'
+          }`}
+        >
+          <Sparkles size={14} className={activeTabSub === 'challenges' ? 'text-ug-teal animate-pulse' : ''} />
+          Industry Challenges Matcher
+        </button>
+        <button
+          onClick={() => setActiveTabSub('traditional')}
+          className={`flex items-center gap-2 pb-3 px-1 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${
+            activeTabSub === 'traditional'
+              ? 'border-ug-teal text-ug-teal'
+              : 'border-transparent text-gray-400 hover:text-ug-navy'
+          }`}
+        >
+          <Target size={14} />
+          University Projects & Collaborators
+        </button>
+      </div>
+
+      {activeTabSub === 'challenges' ? (
+        <IndustryChallengesMatcher 
+          user={user} 
+          setActiveTab={setActiveTab} 
+          setLocalInitialThreadId={setLocalInitialThreadId} 
+        />
+      ) : (
+        <>
+          <div className="bg-white p-4 sm:p-6 md:p-8 lg:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10">
           <Sparkles size={120} className="text-ug-teal" />
         </div>
@@ -3868,6 +3907,8 @@ ${senderName}`
           </div>
         )}
       </AnimatePresence>
+        </>
+      )}
     </div>
   );
 };

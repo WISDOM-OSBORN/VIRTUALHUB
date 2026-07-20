@@ -228,3 +228,73 @@ export interface NewsItem {
   relevance_score?: number;
   source_verification_notes?: string;
 }
+
+export interface IndustryChallenge {
+  id: string;
+  title: string;
+  summary: string;
+  description: string;
+  category: string;
+  required_skills: string[];
+  collaboration_type: string;
+  budget_range?: string;
+  deadline?: string;
+  location?: string;
+  status: 'Open' | 'Closed' | 'Draft' | 'Completed';
+  partner_id: string;
+  created_at?: string;
+  updated_at?: string;
+  partner_name?: string;
+  partner_company?: string;
+}
+
+export interface ChallengeMatch {
+  id: string;
+  challengeId: string;
+  candidateUserId: string;
+  partnerUserId: string;
+  candidateRole: "student" | "researcher" | "partner";
+  totalScore: number;
+  domainScore?: number;
+  skillScore?: number;
+  experienceScore?: number;
+  interestScore?: number;
+  roleSuitabilityScore?: number;
+  locationScore?: number;
+  availabilityScore?: number;
+  verificationScore?: number;
+  matchedSkills?: string[];
+  missingSkills?: string[];
+  matchReasons?: string[];
+  recommendedRole?: string;
+  status:
+    | "recommended"
+    | "viewed"
+    | "saved"
+    | "invited"
+    | "interested"
+    | "shortlisted"
+    | "dismissed"
+    | "accepted";
+  createdAt?: string;
+  updatedAt?: string;
+  
+  // Joined virtual helper fields
+  challenge?: IndustryChallenge;
+  candidate?: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    avatar_url?: string;
+    bio?: string;
+    company?: string;
+    department?: string;
+    education_level?: string;
+    availability?: string;
+    skills?: string[];
+    research_interests?: string[];
+    ai_profile?: any;
+  };
+}
+

@@ -466,4 +466,96 @@ ALTER TABLE public.news ADD COLUMN IF NOT EXISTS fts_doc tsvector GENERATED ALWA
 CREATE INDEX IF NOT EXISTS news_fts_doc_idx ON public.news USING gin (fts_doc);
 
 
+-- --- INDUSTRY CHALLENGES & CHALLENGE MATCHING ---
+
+CREATE TABLE IF NOT EXISTS public.industry_challenges (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  summary TEXT,
+  description TEXT,
+  category TEXT, -- 'Diagnostics', 'Pharmaceutical', 'Vaccines', etc.
+  required_skills TEXT[] DEFAULT '{}',
+  collaboration_type TEXT,
+  budget_range TEXT,
+  deadline DATE,
+  location TEXT,
+  status TEXT DEFAULT 'Open', -- 'Open', 'Closed', 'Draft', 'Completed'
+  partner_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS on industry_challenges
+ALTER TABLE public.industry_challenges ENABLE ROW LEVEL SECURITY;
+
+-- Allow anyone to select active/open industry challenges
+DROP POLICY IF EXISTS "Anyone can view open industry challenges" ON public.industry_challenges;
+CREATE POLICY "Anyone can view open industry challenges" ON public.industry_challenges
+FOR SELECT USING (
+  status = 'Open' OR status = 'Completed' OR status = 'Closed' OR auth.uid() = partner_id OR public.is_admin()
+);
+
+-- Allow partners to fully manage their own challenges
+DROP POLICY IF EXISTS "Partners can manage their own challenges" ON public.industry_challenges;
+CREATE POLICY "Partners can manage their own challenges" ON public.industry_challenges
+FOR ALL TO authenticated USING (
+  auth.uid() = partner_id OR public.is_admin()
+) WITH CHECK (
+  auth.uid() = partner_id OR public.is_admin()
+);
+
+-- Create challenge_matches table
+CREATE TABLE IF NOT EXISTS public.challenge_matches (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  challenge_id UUID REFERENCES public.industry_challenges(id) ON DELETE CASCADE NOT NULL,
+  candidate_user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  partner_user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  candidate_role TEXT NOT NULL, -- 'student' | 'researcher' | 'partner'
+  total_score INTEGER NOT NULL,
+  domain_score INTEGER,
+  skill_score INTEGER,
+  experience_score INTEGER,
+  interest_score INTEGER,
+  role_suitability_score INTEGER,
+  location_score INTEGER,
+  availability_score INTEGER,
+  verification_score INTEGER,
+  matched_skills TEXT[] DEFAULT '{}',
+  missing_skills TEXT[] DEFAULT '{}',
+  match_reasons TEXT[] DEFAULT '{}',
+  recommended_role TEXT,
+  status TEXT DEFAULT 'recommended', -- 'recommended' | 'viewed' | 'saved' | 'invited' | 'interested' | 'shortlisted' | 'dismissed' | 'accepted'
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  CONSTRAINT unique_challenge_candidate UNIQUE (challenge_id, candidate_user_id)
+);
+
+-- Enable RLS on challenge_matches
+ALTER TABLE public.challenge_matches ENABLE ROW LEVEL SECURITY;
+
+-- Allow users involved (candidate, partner) or admin to view matches
+DROP POLICY IF EXISTS "Involved users or admins can view challenge matches" ON public.challenge_matches;
+CREATE POLICY "Involved users or admins can view challenge matches" ON public.challenge_matches
+FOR SELECT TO authenticated USING (
+  auth.uid() = candidate_user_id OR auth.uid() = partner_user_id OR public.is_admin()
+);
+
+-- Allow users involved to update matches
+DROP POLICY IF EXISTS "Involved users or admins can update challenge matches" ON public.challenge_matches;
+CREATE POLICY "Involved users or admins can update challenge matches" ON public.challenge_matches
+FOR ALL TO authenticated USING (
+  auth.uid() = candidate_user_id OR auth.uid() = partner_user_id OR public.is_admin()
+) WITH CHECK (
+  auth.uid() = candidate_user_id OR auth.uid() = partner_user_id OR public.is_admin()
+);
+
+-- Optimization indexes
+CREATE INDEX IF NOT EXISTS industry_challenges_partner_id_idx ON public.industry_challenges (partner_id);
+CREATE INDEX IF NOT EXISTS industry_challenges_status_idx ON public.industry_challenges (status);
+CREATE INDEX IF NOT EXISTS challenge_matches_challenge_id_idx ON public.challenge_matches (challenge_id);
+CREATE INDEX IF NOT EXISTS challenge_matches_candidate_user_id_idx ON public.challenge_matches (candidate_user_id);
+CREATE INDEX IF NOT EXISTS challenge_matches_partner_user_id_idx ON public.challenge_matches (partner_user_id);
+
+
+
 
