@@ -1,6 +1,8 @@
 import { AIProfile } from '../types';
 import { supabase } from '../lib/supabase';
 
+const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+
 export const MatchingService = {
   rankMatches: async (userProfile: AIProfile, candidateMatches: any[]) => {
     if (!candidateMatches.length) return [];
@@ -9,7 +11,7 @@ export const MatchingService = {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      const response = await fetch('/api/ai-match', {
+      const response = await fetch(`${API_BASE_URL}/api/ai-match`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

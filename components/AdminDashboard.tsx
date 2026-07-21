@@ -607,7 +607,8 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
 
-        const response = await fetch('/api/admin/extract-document', {
+        const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+        const response = await fetch(`${API_BASE_URL}/api/admin/extract-document`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

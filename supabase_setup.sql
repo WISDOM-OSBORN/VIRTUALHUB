@@ -280,7 +280,7 @@ BEGIN
     projects.title,
     projects.description,
     projects.image_url,
-    projects.research_area,
+    projects.research_area::text,
     1 - (projects.embedding <=> query_embedding) AS similarity
   FROM projects
   WHERE 1 - (projects.embedding <=> query_embedding) > match_threshold

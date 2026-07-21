@@ -1,6 +1,8 @@
 import { NewsItem } from "../types";
 import { supabase } from "../lib/supabase";
 
+const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+
 export const AIScoutService = {
   getLastSyncTime: async (): Promise<Date | null> => {
     try {
@@ -27,7 +29,7 @@ export const AIScoutService = {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      const response = await fetch('/api/ai-scout/sync', {
+      const response = await fetch(`${API_BASE_URL}/api/ai-scout/sync`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

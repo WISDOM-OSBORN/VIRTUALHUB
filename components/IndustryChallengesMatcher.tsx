@@ -133,8 +133,9 @@ export const IndustryChallengesMatcher: React.FC<MatcherProps> = ({
     if (!user?.id) return;
     setLoading(true);
     try {
+      const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
       const headers = await getHeaders();
-      const chRes = await fetch('/api/industry-challenges', { headers });
+      const chRes = await fetch(`${API_BASE_URL}/api/industry-challenges`, { headers });
       const chData = await chRes.json();
       const loadedChallenges: IndustryChallenge[] = chData.challenges || [];
       setChallenges(loadedChallenges);
@@ -149,7 +150,7 @@ export const IndustryChallengesMatcher: React.FC<MatcherProps> = ({
 
       // Pre-generate dynamic matches so we always serve live matches
       const headersJson = await getHeaders(true);
-      await fetch('/api/challenge-matches/generate', {
+      await fetch(`${API_BASE_URL}/api/challenge-matches/generate`, {
         method: 'POST',
         headers: headersJson,
         body: JSON.stringify({ challengeId: selectedChallengeId !== 'all' ? selectedChallengeId : undefined })
@@ -157,8 +158,8 @@ export const IndustryChallengesMatcher: React.FC<MatcherProps> = ({
 
       // Fetch challenge matches
       const url = user.role === 'Industry/Partner'
-        ? `/api/challenge-matches?challengeId=${selectedChallengeId !== 'all' ? selectedChallengeId : ''}`
-        : `/api/challenge-matches`;
+        ? `${API_BASE_URL}/api/challenge-matches?challengeId=${selectedChallengeId !== 'all' ? selectedChallengeId : ''}`
+        : `${API_BASE_URL}/api/challenge-matches`;
       const matchesRes = await fetch(url, { headers });
       const matchesData = await matchesRes.json();
       setChallengeMatches(matchesData.matches || []);
@@ -176,7 +177,8 @@ export const IndustryChallengesMatcher: React.FC<MatcherProps> = ({
   const handleUpdateStatus = async (matchId: string, newStatus: ChallengeMatch['status'], toastMsg: string) => {
     try {
       const headersJson = await getHeaders(true);
-      const res = await fetch(`/api/challenge-matches/${matchId}`, {
+      const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+      const res = await fetch(`${API_BASE_URL}/api/challenge-matches/${matchId}`, {
         method: 'PUT',
         headers: headersJson,
         body: JSON.stringify({ status: newStatus })
@@ -234,7 +236,8 @@ ${user?.name}`);
 
       // Update status to 'interested'
       const headersJson = await getHeaders(true);
-      await fetch(`/api/challenge-matches/${selectedMatch.id}`, {
+      const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+      await fetch(`${API_BASE_URL}/api/challenge-matches/${selectedMatch.id}`, {
         method: 'PUT',
         headers: headersJson,
         body: JSON.stringify({ status: 'interested' })
@@ -265,7 +268,8 @@ ${user?.name}`);
         .filter(Boolean);
 
       const headersJson = await getHeaders(true);
-      const res = await fetch('/api/industry-challenges', {
+      const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+      const res = await fetch(`${API_BASE_URL}/api/industry-challenges`, {
         method: 'POST',
         headers: headersJson,
         body: JSON.stringify({

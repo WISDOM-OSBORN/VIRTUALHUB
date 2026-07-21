@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabase';
 
+const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+
 // Standardizing SDK usage: routing through secure server-side API proxy to hide keys completely
 export const getGeminiResponse = async (
   message: string, 
@@ -9,7 +11,7 @@ export const getGeminiResponse = async (
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
 
-    const response = await fetch('/api/gemini/chat', {
+    const response = await fetch(`${API_BASE_URL}/api/gemini/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

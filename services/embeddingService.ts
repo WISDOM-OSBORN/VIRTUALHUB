@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabase';
 
+const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+
 export const EmbeddingService = {
   // Ensure the embedding is exactly the desired size (default 768)
   ensureDimension: (arr: number[] | null | undefined, dimension = 768): number[] => {
@@ -20,7 +22,7 @@ export const EmbeddingService = {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      const response = await fetch('/api/gemini/embed', {
+      const response = await fetch(`${API_BASE_URL}/api/gemini/embed`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

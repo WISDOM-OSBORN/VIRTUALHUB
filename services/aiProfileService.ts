@@ -1,13 +1,15 @@
 import { AIProfile } from "../types";
 import { supabase } from "../lib/supabase";
 
+const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+
 export const AIProfileService = {
   processProfile: async (cvText: string = "", questionnaire: any = {}): Promise<AIProfile> => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      const response = await fetch('/api/ai-profile', {
+      const response = await fetch(`${API_BASE_URL}/api/ai-profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -38,7 +40,7 @@ export const AIProfileService = {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      const response = await fetch('/api/ai-profile', {
+      const response = await fetch(`${API_BASE_URL}/api/ai-profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
