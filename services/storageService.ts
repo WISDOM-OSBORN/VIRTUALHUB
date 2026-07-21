@@ -1294,7 +1294,8 @@ export const StorageService = {
   },
 
   getMatches: async (userId: string, embedding: number[]) => {
-    if (!userId || !embedding) return { profiles: [], projects: [] };
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId || '');
+    if (!userId || !isUuid || !embedding) return { profiles: [], projects: [] };
 
     try {
       const [{ data: profiles }, { data: projects }] = await Promise.all([
