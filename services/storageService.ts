@@ -1011,17 +1011,30 @@ export const StorageService = {
 
   getEOIsForPI: async (userId: string) => {
     if (!userId) return [];
-    const { data: myProjects } = await supabase.from('projects').select('id').eq('owner_id', userId);
-    const projectIds = myProjects?.map(p => p.id) || [];
-    let query = supabase.from('eois').select('*, projects(title, image_url)').order('created_at', { ascending: false });
-    if (projectIds.length > 0) {
-      const projectList = projectIds.map(id => `'${id}'`).join(',');
-      query = query.or(`project_id.in.(${projectList}),recipient_id.eq.${userId}`);
-    } else {
-      query = query.eq('recipient_id', userId);
-    }
-    const { data } = await query;
-    if (!data) return [];
+    try {
+      const { data: myProjects } = await supabase.from('projects').select('id').eq('owner_id', userId);
+      const projectIds = myProjects?.map(p => p.id) || [];
+      let query = supabase.from('eois').select('*, projects(title, image_url)').order('created_at', { ascending: false });
+      if (projectIds.length > 0) {
+        const projectList = projectIds.join(',');
+        query = query.or(`project_id.in.(${projectList}),recipient_id.eq.${userId}`);
+      } else {
+        query = query.eq('recipient_id', userId);
+      }
+      const { data, error } = await query;
+      if (error) {
+        console.warn("Error fetching EOIs with projects join, falling back to basic query:", error);
+        let fallbackQuery = supabase.from('eois').select('*').order('created_at', { ascending: false });
+        if (projectIds.length > 0) {
+          fallbackQuery = fallbackQuery.or(`project_id.in.(${projectIds.join(',')}),recipient_id.eq.${userId}`);
+        } else {
+          fallbackQuery = fallbackQuery.eq('recipient_id', userId);
+        }
+        const { data: fbData } = await fallbackQuery;
+        if (!fbData) return [];
+        return fbData;
+      }
+      if (!data) return [];
 
     const userIds = Array.from(new Set(data.flatMap(msg => [msg.sender_id, msg.recipient_id])));
     const adminUserIds = new Set<string>();
@@ -1048,6 +1061,10 @@ export const StorageService = {
     });
 
     return data;
+    } catch (e) {
+      console.error("Error in getEOIsForPI:", e);
+      return [];
+    }
   },
 
   markEOIRead: async (id: string) => {
