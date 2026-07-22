@@ -217,5 +217,49 @@ export const ChallengeService = {
     } catch (e) {
       console.warn("Client side match generation warning:", e);
     }
+  },
+
+  updateChallengeStatus: async (challengeId: string, status: 'Open' | 'Closed' | 'Draft' | 'Completed'): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('industry_challenges')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', challengeId);
+
+      if (error) {
+        console.warn("Supabase update error, falling back to API route:", error.message);
+        const res = await fetch(`/api/industry-challenges/${challengeId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+        return res.ok;
+      }
+      return true;
+    } catch (e) {
+      console.error("Error in updateChallengeStatus:", e);
+      return false;
+    }
+  },
+
+  deleteChallenge: async (challengeId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('industry_challenges')
+        .delete()
+        .eq('id', challengeId);
+
+      if (error) {
+        console.warn("Supabase delete error, falling back to API route:", error.message);
+        const res = await fetch(`/api/industry-challenges/${challengeId}`, {
+          method: 'DELETE'
+        });
+        return res.ok;
+      }
+      return true;
+    } catch (e) {
+      console.error("Error in deleteChallenge:", e);
+      return false;
+    }
   }
 };

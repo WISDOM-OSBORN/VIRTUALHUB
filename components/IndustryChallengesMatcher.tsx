@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, Target, Zap, Loader2, Award, ShieldCheck, DollarSign, Calendar, 
@@ -91,14 +91,19 @@ interface MatcherProps {
   user: User | null;
   setActiveTab?: (tab: 'overview' | 'matches' | 'messages' | 'profile') => void;
   setLocalInitialThreadId?: (id: string | null) => void;
+  autoOpenCreateChallenge?: boolean;
+  onCloseCreateChallenge?: () => void;
 }
 
 export const IndustryChallengesMatcher: React.FC<MatcherProps> = ({
   user,
   setActiveTab,
-  setLocalInitialThreadId
+  setLocalInitialThreadId,
+  autoOpenCreateChallenge,
+  onCloseCreateChallenge
 }) => {
   const { showToast } = useToast();
+  const formRef = useRef<HTMLDivElement>(null);
   const [challenges, setChallenges] = useState<IndustryChallenge[]>([]);
   const [challengeMatches, setChallengeMatches] = useState<ChallengeMatch[]>([]);
   const [partnerChallenges, setPartnerChallenges] = useState<IndustryChallenge[]>([]);
@@ -122,6 +127,15 @@ export const IndustryChallengesMatcher: React.FC<MatcherProps> = ({
   const [newChallengeDeadline, setNewChallengeDeadline] = useState('');
   const [newChallengeLocation, setNewChallengeLocation] = useState('');
   const [isPostingChallenge, setIsPostingChallenge] = useState(false);
+
+  useEffect(() => {
+    if (autoOpenCreateChallenge) {
+      setIsCreateChallengeOpen(true);
+      setTimeout(() => {
+        formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+    }
+  }, [autoOpenCreateChallenge]);
 
   // Proposal modal states
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
@@ -262,6 +276,7 @@ ${user?.name}`);
       if (created) {
         showToast('Industry Challenge posted and registered successfully!', 'success');
         setIsCreateChallengeOpen(false);
+        onCloseCreateChallenge?.();
         // Reset form
         setNewChallengeTitle('');
         setNewChallengeSummary('');
@@ -562,30 +577,37 @@ ${user?.name}`);
                 Identify specialized academic talent matched dynamically with your active research initiatives using custom criteria weightings.
               </p>
             </div>
-            <button
-              onClick={() => setIsCreateChallengeOpen(!isCreateChallengeOpen)}
-              className="bg-white text-ug-navy hover:bg-ug-navy hover:text-white px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition flex items-center gap-2 shadow-lg shrink-0 self-start sm:self-auto"
-            >
-              <Plus size={14} className="stroke-[3]" /> Post New Challenge
-            </button>
           </div>
 
           {/* Expandable Challenge Creator Form */}
           <AnimatePresence>
             {isCreateChallengeOpen && (
               <motion.div
+                ref={formRef}
                 initial={{ opacity: 0, y: -15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
-                className="bg-white border border-gray-100 rounded-[2.5rem] p-6 md:p-8 shadow-xl space-y-6"
+                className="bg-white border border-gray-100 rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-6 md:p-8 shadow-xl space-y-6"
               >
                 <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="text-ug-teal" size={18} />
-                    <h3 className="font-black text-ug-navy text-sm uppercase tracking-tight">Formulate Commercial Research Challenge</h3>
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2.5 bg-ug-teal/10 rounded-xl text-ug-teal">
+                      <Briefcase size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-ug-navy text-sm sm:text-base uppercase tracking-tight">Formulate Commercial Research Challenge</h3>
+                      <p className="text-[11px] text-gray-500 font-medium">Post your technical parameters to match with University of Ghana researchers & talent</p>
+                    </div>
                   </div>
-                  <button onClick={() => setIsCreateChallengeOpen(false)} className="p-2 hover:bg-gray-100 rounded-full text-gray-400">
-                    <X size={16} />
+                  <button 
+                    onClick={() => {
+                      setIsCreateChallengeOpen(false);
+                      onCloseCreateChallenge?.();
+                    }} 
+                    className="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition"
+                    title="Close Form"
+                  >
+                    <X size={18} />
                   </button>
                 </div>
 
@@ -698,18 +720,21 @@ ${user?.name}`);
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-gray-100 pt-4">
                     <button
                       type="button"
-                      onClick={() => setIsCreateChallengeOpen(false)}
-                      className="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                      onClick={() => {
+                        setIsCreateChallengeOpen(false);
+                        onCloseCreateChallenge?.();
+                      }}
+                      className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-700 transition"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={isPostingChallenge}
-                      className="px-6 py-2.5 bg-ug-navy hover:bg-ug-teal text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition flex items-center gap-1.5 disabled:bg-gray-100 disabled:text-gray-400"
+                      className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-ug-navy hover:bg-ug-teal text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition flex items-center justify-center gap-1.5 shadow-md disabled:bg-gray-100 disabled:text-gray-400"
                     >
                       {isPostingChallenge ? <Loader2 className="animate-spin" size={12} /> : null}
                       Post Commercial Challenge
@@ -941,7 +966,7 @@ ${user?.name}`);
       {/* --- PROPOSAL MODAL --- */}
       <AnimatePresence>
         {isProposalModalOpen && selectedMatch && (
-          <div className="fixed inset-0 bg-ug-navy/60 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 bg-ug-navy/60 backdrop-blur-md z-[9999] flex items-center justify-center p-4 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

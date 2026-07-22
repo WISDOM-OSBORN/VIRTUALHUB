@@ -21,6 +21,8 @@ import { supabase } from '../lib/supabase';
 import { AIProfileService } from '../services/aiProfileService';
 import { EmbeddingService } from '../services/embeddingService';
 import { IndustryChallengesMatcher } from '../components/IndustryChallengesMatcher';
+import { CreateChallengeModal } from '../components/CreateChallengeModal';
+import { PartnerChallengesTracker } from '../components/PartnerChallengesTracker';
 
 
 interface DashboardProps {
@@ -1788,6 +1790,7 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [localInitialThreadId, setLocalInitialThreadId] = useState<string | null>(null);
+  const [autoOpenCreateChallenge, setAutoOpenCreateChallenge] = useState(false);
 
   const getWelcomeName = (fullName: string): string => {
     if (!fullName) return '';
@@ -2023,7 +2026,12 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
                 />
               )}
               {role === UserRole.Student && <StudentDashboard user={localUser} />}
-              {(role === UserRole.Investor || role === UserRole.IndustryPartner) && <InvestorDashboard user={localUser} />}
+              {(role === UserRole.Investor || role === UserRole.IndustryPartner) && (
+                <InvestorDashboard 
+                  user={localUser} 
+                  setActiveTab={setActiveTab} 
+                />
+              )}
               {role === UserRole.Admin && (
                 <AdminDashboard 
                   user={localUser} 
@@ -2041,6 +2049,8 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
                setActiveTab={setActiveTab} 
                setLocalInitialThreadId={setLocalInitialThreadId} 
                onProfileUpdate={refreshProfile}
+               autoOpenCreateChallenge={autoOpenCreateChallenge}
+               onCloseCreateChallenge={() => setAutoOpenCreateChallenge(false)}
              />
           )}
 
@@ -3176,17 +3186,27 @@ const MatchesView = ({
   user, 
   setActiveTab, 
   setLocalInitialThreadId,
-  onProfileUpdate
+  onProfileUpdate,
+  autoOpenCreateChallenge,
+  onCloseCreateChallenge
 }: { 
   user: User | null; 
   setActiveTab?: (tab: 'overview' | 'matches' | 'messages' | 'profile') => void; 
   setLocalInitialThreadId?: (id: string | null) => void; 
   onProfileUpdate?: () => void;
+  autoOpenCreateChallenge?: boolean;
+  onCloseCreateChallenge?: () => void;
 }) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
   const [activeTabSub, setActiveTabSub] = useState<'challenges' | 'traditional'>('challenges');
+
+  useEffect(() => {
+    if (autoOpenCreateChallenge) {
+      setActiveTabSub('challenges');
+    }
+  }, [autoOpenCreateChallenge]);
 
   const [profileMatches, setProfileMatches] = useState<any[]>([]);
   const [projectMatches, setProjectMatches] = useState<any[]>([]);
@@ -3542,6 +3562,8 @@ ${senderName}`
           user={user} 
           setActiveTab={setActiveTab} 
           setLocalInitialThreadId={setLocalInitialThreadId} 
+          autoOpenCreateChallenge={autoOpenCreateChallenge}
+          onCloseCreateChallenge={onCloseCreateChallenge}
         />
       ) : (
         <>
@@ -4482,24 +4504,47 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
    );
 };
 
-const InvestorDashboard = ({ user }: { user: User | null }) => {
+const InvestorDashboard = ({ 
+  user, 
+  setActiveTab
+}: { 
+  user: User | null; 
+  setActiveTab?: (tab: 'overview' | 'matches' | 'messages' | 'profile') => void;
+}) => {
    const [projects, setProjects] = useState<Project[]>([]);
+   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+   const [refreshKey, setRefreshKey] = useState(0);
    const navigate = useNavigate();
+
    useEffect(() => { StorageService.getProjects().then(setProjects); }, []);
+
    return (
       <div className="space-y-8">
-         <UnifiedDashboardProfile user={user} onAction={() => navigate('/projects')} actionLabel="Invest in Tech" />
+         <UnifiedDashboardProfile 
+            user={user} 
+            onAction={() => setIsCreateModalOpen(true)} 
+            actionLabel="Post New Challenge" 
+         />
          
          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard label="Market Ready" value={projects.filter(p => p.status === ProjectStatus.MarketReady).length} trend="High ROI" icon={ShoppingBag} />
-            <StatCard label="In-Review" value="5" trend="+1 Today" icon={Bookmark} />
-            <StatCard label="NDA" value="Verified" trend="Secure" icon={Lock} />
+            <StatCard label="Market Ready Assets" value={projects.filter(p => p.status === ProjectStatus.MarketReady).length} trend="High ROI" icon={ShoppingBag} />
+            <StatCard label="Active Inquiries" value="5" trend="+1 Today" icon={Bookmark} />
+            <StatCard label="Digital NDA" value="Verified" trend="Secure" icon={Lock} />
          </div>
 
+         {/* Commercial Challenges Tracker & Management Ledger */}
+         <PartnerChallengesTracker 
+            user={user}
+            onPostNewChallenge={() => setIsCreateModalOpen(true)}
+            setActiveTab={setActiveTab}
+            refreshKey={refreshKey}
+         />
+
+         {/* Venture Portfolio & Watchlist */}
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 items-start">
             <div className="md:col-span-2 lg:col-span-8 space-y-8">
                <section className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-                  <SectionTitle title="Venture Portfolio" subtitle="Curated Technical Assets" />
+                  <SectionTitle title="Venture Portfolio" subtitle="Curated Technical Assets from University of Ghana" />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      {projects.slice(0, 4).map(p => (
                         <div key={p.id} onClick={() => navigate(`/projects/${p.id}`)} className="bg-gray-50 rounded-3xl p-6 hover:bg-white hover:shadow-xl transition border border-gray-100 cursor-pointer group">
@@ -4518,6 +4563,14 @@ const InvestorDashboard = ({ user }: { user: User | null }) => {
                <HubStreamSidebar />
             </div>
          </div>
+
+         {/* Clean Modal for Posting New Challenge directly on Overview */}
+         <CreateChallengeModal 
+            isOpen={isCreateModalOpen}
+            onClose={() => setIsCreateModalOpen(false)}
+            user={user}
+            onChallengePosted={() => setRefreshKey(prev => prev + 1)}
+         />
       </div>
    );
 };
