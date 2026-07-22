@@ -1,0 +1,221 @@
+import { supabase } from '../lib/supabase';
+import { IndustryChallenge, ChallengeMatch } from '../types';
+
+export const ChallengeService = {
+  getIndustryChallenges: async (): Promise<IndustryChallenge[]> => {
+    try {
+      const { data: challenges, error } = await supabase
+        .from('industry_challenges')
+        .select('*, profiles(name, company)')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn("Could not query industry_challenges from Supabase:", error.message);
+        return [];
+      }
+
+      return (challenges || []).map((ch: any) => ({
+        id: ch.id,
+        title: ch.title,
+        summary: ch.summary || '',
+        description: ch.description || '',
+        category: ch.category || 'General',
+        required_skills: ch.required_skills || [],
+        collaboration_type: ch.collaboration_type || 'Co-Development',
+        budget_range: ch.budget_range,
+        deadline: ch.deadline,
+        location: ch.location,
+        status: ch.status || 'Open',
+        partner_id: ch.partner_id,
+        partner_name: ch.profiles?.name || 'Industry Partner',
+        partner_company: ch.profiles?.company || 'Ecosystem Partner',
+        created_at: ch.created_at,
+        updated_at: ch.updated_at
+      }));
+    } catch (e) {
+      console.error("Error fetching industry challenges:", e);
+      return [];
+    }
+  },
+
+  createIndustryChallenge: async (challengeData: Partial<IndustryChallenge>, partnerId: string): Promise<IndustryChallenge | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('industry_challenges')
+        .insert({
+          title: challengeData.title,
+          summary: challengeData.summary,
+          description: challengeData.description,
+          category: challengeData.category,
+          required_skills: challengeData.required_skills,
+          collaboration_type: challengeData.collaboration_type || 'Co-Development',
+          budget_range: challengeData.budget_range,
+          deadline: challengeData.deadline,
+          location: challengeData.location,
+          partner_id: partnerId,
+          status: challengeData.status || 'Open'
+        })
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error("Error creating industry challenge:", error);
+        throw error;
+      }
+
+      return data as IndustryChallenge;
+    } catch (e) {
+      console.error("Error in createIndustryChallenge:", e);
+      throw e;
+    }
+  },
+
+  getChallengeMatches: async (userId: string, role: string, selectedChallengeId?: string): Promise<ChallengeMatch[]> => {
+    try {
+      let query = supabase.from('challenge_matches').select('*, industry_challenges(*), profiles!candidate_user_id(*)');
+
+      if (role === 'Industry/Partner') {
+        query = query.eq('partner_user_id', userId);
+        if (selectedChallengeId && selectedChallengeId !== 'all') {
+          query = query.eq('challenge_id', selectedChallengeId);
+        }
+      } else {
+        query = query.eq('candidate_user_id', userId);
+        if (selectedChallengeId && selectedChallengeId !== 'all') {
+          query = query.eq('challenge_id', selectedChallengeId);
+        }
+      }
+
+      const { data, error } = await query.order('total_score', { ascending: false });
+
+      if (error) {
+        console.warn("Could not fetch challenge matches from Supabase:", error.message);
+        return [];
+      }
+
+      return (data || []).map((m: any) => ({
+        id: m.id,
+        challengeId: m.challenge_id,
+        candidateUserId: m.candidate_user_id,
+        partnerUserId: m.partner_user_id,
+        candidateRole: m.candidate_role,
+        totalScore: m.total_score,
+        domainScore: m.domain_score,
+        skillScore: m.skill_score,
+        experienceScore: m.experience_score,
+        interestScore: m.interest_score,
+        roleSuitabilityScore: m.role_suitability_score,
+        locationScore: m.location_score,
+        availabilityScore: m.availability_score,
+        verificationScore: m.verification_score,
+        matchedSkills: m.matched_skills || [],
+        missingSkills: m.missing_skills || [],
+        matchReasons: m.match_reasons || [],
+        recommendedRole: m.recommended_role,
+        status: m.status,
+        createdAt: m.created_at,
+        updatedAt: m.updated_at,
+        challenge: m.industry_challenges ? {
+          id: m.industry_challenges.id,
+          title: m.industry_challenges.title,
+          summary: m.industry_challenges.summary,
+          description: m.industry_challenges.description,
+          category: m.industry_challenges.category,
+          required_skills: m.industry_challenges.required_skills || [],
+          collaboration_type: m.industry_challenges.collaboration_type,
+          budget_range: m.industry_challenges.budget_range,
+          deadline: m.industry_challenges.deadline,
+          location: m.industry_challenges.location,
+          status: m.industry_challenges.status,
+          partner_id: m.industry_challenges.partner_id
+        } : undefined,
+        candidate: m.profiles ? {
+          id: m.profiles.id,
+          name: m.profiles.name || 'University Researcher',
+          email: m.profiles.email || '',
+          role: m.profiles.role || 'Researcher',
+          avatar_url: m.profiles.avatar_url,
+          bio: m.profiles.bio,
+          company: m.profiles.company,
+          department: m.profiles.department,
+          education_level: m.profiles.education_level,
+          availability: m.profiles.availability,
+          skills: m.profiles.ai_profile?.skills?.technical_skills || [],
+          research_interests: m.profiles.ai_profile?.research_information?.research_interests || [],
+          ai_profile: m.profiles.ai_profile
+        } : undefined
+      }));
+    } catch (e) {
+      console.error("Error in getChallengeMatches:", e);
+      return [];
+    }
+  },
+
+  updateMatchStatus: async (matchId: string, status: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('challenge_matches')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', matchId);
+
+      if (error) {
+        console.error("Error updating match status:", error);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error("Error in updateMatchStatus:", e);
+      return false;
+    }
+  },
+
+  generateChallengeMatches: async (targetChallengeId?: string, currentUserId?: string): Promise<void> => {
+    try {
+      // Fetch open challenges
+      let challengesQuery = supabase.from('industry_challenges').select('*').eq('status', 'Open');
+      if (targetChallengeId && targetChallengeId !== 'all') {
+        challengesQuery = challengesQuery.eq('id', targetChallengeId);
+      }
+      const { data: challenges } = await challengesQuery;
+      if (!challenges || challenges.length === 0) return;
+
+      // Fetch candidates (profiles)
+      let candidatesQuery = supabase.from('profiles').select('*').in('role', ['Student', 'Researcher']);
+      if (currentUserId) {
+        // can be target user
+      }
+      const { data: candidates } = await candidatesQuery;
+      if (!candidates || candidates.length === 0) return;
+
+      for (const ch of challenges) {
+        for (const cand of candidates) {
+          // Calculate similarity
+          const reqSkills = (ch.required_skills || []).map((s: string) => s.toLowerCase());
+          const candSkills = (cand.ai_profile?.skills?.technical_skills || []).map((s: string) => s.toLowerCase());
+          const matchedSkills = reqSkills.filter((s: string) => candSkills.some((cs: string) => cs.includes(s) || s.includes(cs)));
+
+          const skillScore = reqSkills.length > 0 ? Math.round((matchedSkills.length / reqSkills.length) * 100) : 75;
+          const totalScore = Math.min(98, Math.max(60, skillScore + 20));
+
+          const candidateRole = cand.role === 'Student' ? 'student' : 'researcher';
+
+          await supabase.from('challenge_matches').upsert({
+            challenge_id: ch.id,
+            candidate_user_id: cand.id,
+            partner_user_id: ch.partner_id,
+            candidate_role: candidateRole,
+            total_score: totalScore,
+            domain_score: 85,
+            skill_score: skillScore,
+            matched_skills: matchedSkills,
+            recommended_role: cand.role === 'Student' ? 'Research Intern / Student Analyst' : 'Co-Principal Investigator / Technical Lead',
+            status: 'recommended',
+            match_reasons: [`Matched on technical skills: ${matchedSkills.join(', ') || 'Domain expertise'}`]
+          }, { onConflict: 'challenge_id,candidate_user_id' });
+        }
+      }
+    } catch (e) {
+      console.warn("Client side match generation warning:", e);
+    }
+  }
+};

@@ -36,6 +36,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { StorageService } from '../services/storageService';
 import { AIScoutService } from '../services/aiScoutService';
+import { DocumentExtractionService } from '../services/documentExtractionService';
 import { NewsItem } from '../types';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../App';
@@ -401,29 +402,8 @@ const News: React.FC = () => {
         const base64String = (reader.result as string).split(',')[1];
         
         showToast("AI Agent: Analyzing draft with Gemini...", "info");
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
+        const resData = await DocumentExtractionService.extractAndAnalyze(base64String, file.name, file.type);
 
-        const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
-        const response = await fetch(`${API_BASE_URL}/api/admin/extract-document`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify({
-            fileBase64: base64String,
-            fileName: file.name,
-            mimeType: file.type
-          })
-        });
-
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || `HTTP ${response.status}`);
-        }
-
-        const resData = await response.json();
         if (resData.success && resData.data) {
           const item = resData.data;
           if (item.title) setNewsTitle(item.title);

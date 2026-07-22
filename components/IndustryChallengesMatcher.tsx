@@ -10,6 +10,7 @@ import { User, IndustryChallenge, ChallengeMatch } from '../types';
 import { useToast } from '../App';
 import { supabase } from '../lib/supabase';
 import { StorageService } from '../services/storageService';
+import { ChallengeService } from '../services/challengeService';
 
 // Breathtaking circular progress gauge
 const CircularProgress = ({ score }: { score: number }) => {
@@ -133,11 +134,7 @@ export const IndustryChallengesMatcher: React.FC<MatcherProps> = ({
     if (!user?.id) return;
     setLoading(true);
     try {
-      const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
-      const headers = await getHeaders();
-      const chRes = await fetch(`${API_BASE_URL}/api/industry-challenges`, { headers });
-      const chData = await chRes.json();
-      const loadedChallenges: IndustryChallenge[] = chData.challenges || [];
+      const loadedChallenges = await ChallengeService.getIndustryChallenges();
       setChallenges(loadedChallenges);
 
       if (user.role === 'Industry/Partner') {
@@ -148,21 +145,17 @@ export const IndustryChallengesMatcher: React.FC<MatcherProps> = ({
         }
       }
 
-      // Pre-generate dynamic matches so we always serve live matches
-      const headersJson = await getHeaders(true);
-      await fetch(`${API_BASE_URL}/api/challenge-matches/generate`, {
-        method: 'POST',
-        headers: headersJson,
-        body: JSON.stringify({ challengeId: selectedChallengeId !== 'all' ? selectedChallengeId : undefined })
-      });
+      await ChallengeService.generateChallengeMatches(
+        selectedChallengeId !== 'all' ? selectedChallengeId : undefined,
+        user.id
+      );
 
-      // Fetch challenge matches
-      const url = user.role === 'Industry/Partner'
-        ? `${API_BASE_URL}/api/challenge-matches?challengeId=${selectedChallengeId !== 'all' ? selectedChallengeId : ''}`
-        : `${API_BASE_URL}/api/challenge-matches`;
-      const matchesRes = await fetch(url, { headers });
-      const matchesData = await matchesRes.json();
-      setChallengeMatches(matchesData.matches || []);
+      const loadedMatches = await ChallengeService.getChallengeMatches(
+        user.id,
+        user.role,
+        selectedChallengeId
+      );
+      setChallengeMatches(loadedMatches);
     } catch (err) {
       console.error('Error loading challenge matches:', err);
     } finally {
@@ -176,19 +169,12 @@ export const IndustryChallengesMatcher: React.FC<MatcherProps> = ({
 
   const handleUpdateStatus = async (matchId: string, newStatus: ChallengeMatch['status'], toastMsg: string) => {
     try {
-      const headersJson = await getHeaders(true);
-      const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
-      const res = await fetch(`${API_BASE_URL}/api/challenge-matches/${matchId}`, {
-        method: 'PUT',
-        headers: headersJson,
-        body: JSON.stringify({ status: newStatus })
-      });
-      const data = await res.json();
-      if (data.success) {
+      const success = await ChallengeService.updateMatchStatus(matchId, newStatus);
+      if (success) {
         showToast(toastMsg, 'success');
         setChallengeMatches(prev => prev.map(m => m.id === matchId ? { ...m, status: newStatus } : m));
       } else {
-        showToast(data.error || 'Failed to update status.', 'error');
+        showToast('Failed to update status.', 'error');
       }
     } catch (err: any) {
       showToast(err.message || 'Failed to update status.', 'error');
@@ -235,13 +221,7 @@ ${user?.name}`);
       );
 
       // Update status to 'interested'
-      const headersJson = await getHeaders(true);
-      const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
-      await fetch(`${API_BASE_URL}/api/challenge-matches/${selectedMatch.id}`, {
-        method: 'PUT',
-        headers: headersJson,
-        body: JSON.stringify({ status: 'interested' })
-      });
+      await ChallengeService.updateMatchStatus(selectedMatch.id, 'interested');
 
       // Update local state
       setChallengeMatches(prev => prev.map(m => m.id === selectedMatch.id ? { ...m, status: 'interested' } : m));
@@ -267,26 +247,19 @@ ${user?.name}`);
         .map(s => s.trim())
         .filter(Boolean);
 
-      const headersJson = await getHeaders(true);
-      const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
-      const res = await fetch(`${API_BASE_URL}/api/industry-challenges`, {
-        method: 'POST',
-        headers: headersJson,
-        body: JSON.stringify({
-          title: newChallengeTitle,
-          summary: newChallengeSummary || newChallengeDesc.substring(0, 150),
-          description: newChallengeDesc,
-          category: newChallengeCat,
-          required_skills: parsedSkills,
-          collaboration_type: newChallengeCollab,
-          budget_range: newChallengeBudget,
-          deadline: newChallengeDeadline,
-          location: newChallengeLocation
-        })
-      });
+      const created = await ChallengeService.createIndustryChallenge({
+        title: newChallengeTitle,
+        summary: newChallengeSummary || newChallengeDesc.substring(0, 150),
+        description: newChallengeDesc,
+        category: newChallengeCat,
+        required_skills: parsedSkills,
+        collaboration_type: newChallengeCollab,
+        budget_range: newChallengeBudget,
+        deadline: newChallengeDeadline,
+        location: newChallengeLocation
+      }, user.id);
 
-      const data = await res.json();
-      if (data.success) {
+      if (created) {
         showToast('Industry Challenge posted and registered successfully!', 'success');
         setIsCreateChallengeOpen(false);
         // Reset form
@@ -300,7 +273,7 @@ ${user?.name}`);
         // Reload
         fetchChallengeMatches();
       } else {
-        showToast(data.error || 'Failed to post challenge.', 'error');
+        showToast('Failed to post challenge.', 'error');
       }
     } catch (err: any) {
       showToast(err.message || 'Error occurred.', 'error');

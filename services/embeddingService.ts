@@ -1,6 +1,8 @@
-import { supabase } from '../lib/supabase';
+import { GoogleGenAI } from "@google/genai";
 
-const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+const getApiKey = () => {
+  return (import.meta as any).env.VITE_GEMINI_API_KEY || (import.meta as any).env.GEMINI_API_KEY || '';
+};
 
 export const EmbeddingService = {
   // Ensure the embedding is exactly the desired size (default 768)
@@ -25,35 +27,23 @@ export const EmbeddingService = {
 
   getEmbedding: async (text: string): Promise<number[]> => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      const response = await fetch(`${API_BASE_URL}/api/gemini/embed`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ text })
-      });
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `HTTP ${response.status}`);
+      const apiKey = getApiKey();
+      if (apiKey) {
+        const ai = new GoogleGenAI({ apiKey });
+        const response = await ai.models.embedContent({
+          model: 'text-embedding-004',
+          contents: text,
+        });
+        const resAny = response as any;
+        const rawValues = resAny.embedding?.values || resAny.embeddings?.[0]?.values;
+        if (rawValues && rawValues.length > 0) {
+          return EmbeddingService.ensureDimension(rawValues, 768);
+        }
       }
-
-      const data = await response.json();
-      const rawValues = data.embedding;
-
-      if (!rawValues) {
-        throw new Error("No numerical embedding values found in Gemini API response.");
-      }
-
-      return EmbeddingService.ensureDimension(rawValues, 768);
     } catch (error: any) {
-      console.error("Embedding generation error:", error);
-      console.warn("Falling back to small non-zero vector for match compatibility.");
-      return new Array(768).fill(0.001);
+      console.warn("Client embedding generation fallback used:", error?.message || error);
     }
+    // Fallback vector for compatibility
+    return new Array(768).fill(0.001);
   }
 };

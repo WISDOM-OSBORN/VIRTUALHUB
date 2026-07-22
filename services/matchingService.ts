@@ -1,71 +1,116 @@
 import { AIProfile } from '../types';
-import { supabase } from '../lib/supabase';
+import { GoogleGenAI } from '@google/genai';
 
-const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+const getApiKey = () => {
+  return (import.meta as any).env.VITE_GEMINI_API_KEY || (import.meta as any).env.GEMINI_API_KEY || '';
+};
 
 export const MatchingService = {
   rankMatches: async (userProfile: AIProfile, candidateMatches: any[]) => {
-    if (!candidateMatches.length) return [];
+    if (!candidateMatches || !candidateMatches.length) return [];
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+    const apiKey = getApiKey();
+    if (apiKey) {
+      try {
+        const ai = new GoogleGenAI({ apiKey });
+        const prompt = `
+You are an AI Matching Engine for the University of Ghana Research Hub.
+Re-rank these potential candidates/projects for the current user profile based on research relevance, skills overlap, and collaboration goals.
 
-      const response = await fetch(`${API_BASE_URL}/api/ai-match`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          userProfile,
-          candidateMatches
-        })
-      });
+USER PROFILE:
+- Title/Role: ${userProfile.professional_profile?.current_role || ''}
+- Summary: ${userProfile.semantic_summary || ''}
+- Looking For: ${(userProfile.collaboration_profile?.looking_for || []).join(', ')}
+- Technical Skills: ${(userProfile.skills?.technical_skills || []).join(', ')}
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `HTTP ${response.status}`);
-      }
+CANDIDATES:
+${candidateMatches.map((c: any, i: number) => `
+[Candidate #${i}]
+- ID: ${c.id}
+- Name/Title: ${c.name || c.title}
+- Summary/Role: ${c.semantic_summary || c.role || ''}
+- Skills/Description: ${(c.skills || []).join(', ')} ${c.description || ''}
+`).join('\n')}
 
-      const data = await response.json();
-      const rankings = data.rankings || [];
+Return strictly a JSON array of objects with schema:
+[
+  {
+    "id": "candidate_id",
+    "index": 0,
+    "score": 88,
+    "reasoning": "Direct research synergy in diagnostics and health innovation.",
+    "alignment_label": "Highly Compatible"
+  }
+]
+`;
 
-      // Sort and merge: Match by unique UUID first, then fall back to indices
-      return candidateMatches.map((c, i) => {
-        const ranking = rankings.find((r: any) => {
-          if (!r) return false;
-          // Match by UUID
-          const uuidMatch = r.id && c.id && String(r.id).toLowerCase() === String(c.id).toLowerCase();
-          // Match by Index (loose string/number)
-          const indexMatch = (r.index !== undefined && Number(r.index) === i) || 
-                             (r.id !== undefined && Number(r.id) === i) ||
-                             (r.id !== undefined && String(r.id) === String(i));
-          return uuidMatch || indexMatch;
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json"
+          }
         });
 
-        const fallbackScore = typeof c.similarity === 'number' && !isNaN(c.similarity) ? Math.round(c.similarity * 100) : 75;
-        const finalScore = ranking && typeof ranking.score === 'number' && !isNaN(ranking.score) ? ranking.score : fallbackScore;
+        if (response.text) {
+          const rankings = JSON.parse(response.text);
+          if (Array.isArray(rankings)) {
+            return candidateMatches.map((c, i) => {
+              const ranking = rankings.find((r: any) => 
+                (r.id && c.id && String(r.id).toLowerCase() === String(c.id).toLowerCase()) ||
+                (r.index !== undefined && Number(r.index) === i)
+              );
 
-        return {
-          ...c,
-          ai_score: finalScore,
-          ai_reasoning: ranking?.reasoning || "Semantic similarity indicates strong research alignment.",
-          ai_label: ranking?.alignment_label || "AI Identified Match"
-        };
-      }).sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
+              const simScore = typeof c.similarity === 'number' && !isNaN(c.similarity) ? Math.round(c.similarity * 100) : 75;
+              const finalScore = ranking && typeof ranking.score === 'number' ? ranking.score : simScore;
 
-    } catch (error) {
-      console.error("AI Ranking failed, falling back to vector similarity scores:", error);
-      return candidateMatches.map(c => {
-        const simScore = typeof c.similarity === 'number' && !isNaN(c.similarity) ? Math.round(c.similarity * 100) : 75;
-        return {
-          ...c,
-          ai_score: simScore,
-          ai_reasoning: "Matched based on profile semantic vector alignment.",
-          ai_label: "Semantic Match"
-        };
-      }).sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
+              return {
+                ...c,
+                ai_score: finalScore,
+                ai_reasoning: ranking?.reasoning || "Semantic similarity indicates strong research alignment.",
+                ai_label: ranking?.alignment_label || "AI Identified Match"
+              };
+            }).sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
+          }
+        }
+      } catch (err) {
+        console.warn("Client Gemini ranking fallback used:", err);
+      }
     }
+
+    // High-precision client-side keyword and similarity scoring fallback
+    return candidateMatches.map((c: any) => {
+      const titleText = (c.name || c.title || '').toLowerCase();
+      const descText = (c.semantic_summary || c.description || '').toLowerCase();
+      const userSummary = (userProfile.semantic_summary || '').toLowerCase();
+      const userLooking = (userProfile.collaboration_profile?.looking_for || []).join(' ').toLowerCase();
+
+      const keywords = ['diagnostic', 'vaccine', 'malaria', 'pharma', 'student', 'investor', 'research', 'funding', 'partner', 'cancer', 'health'];
+      let overlapCount = 0;
+      keywords.forEach(kw => {
+        const inUser = userSummary.includes(kw) || userLooking.includes(kw);
+        const inCandidate = titleText.includes(kw) || descText.includes(kw);
+        if (inUser && inCandidate) overlapCount++;
+      });
+
+      const similarityBonus = typeof c.similarity === 'number' && !isNaN(c.similarity) ? Math.round(c.similarity * 80) : 65;
+      const score = Math.max(50, Math.min(98, similarityBonus + (overlapCount * 8)));
+
+      let alignment_label = "Compatible Match";
+      if (score >= 85) alignment_label = "Highly Compatible";
+      else if (score >= 70) alignment_label = "Strategic Match";
+
+      const candType = c.role || (c.title ? 'Project' : 'Entity');
+      const overlappingFields = keywords.filter(kw => (titleText.includes(kw) || descText.includes(kw)));
+      const matchesStr = overlappingFields.length > 0 ? overlappingFields.slice(0, 2).join(' & ') : 'academic technologies';
+      const reasoning = `Matches on joint parameters including ${matchesStr}. Strategic alignment indicates key structural synergies with this ${candType}.`;
+
+      return {
+        ...c,
+        ai_score: score,
+        ai_reasoning: reasoning,
+        ai_label: alignment_label
+      };
+    }).sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
   }
 };

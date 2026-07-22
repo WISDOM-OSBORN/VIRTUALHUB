@@ -1,34 +1,41 @@
-import { supabase } from '../lib/supabase';
+import { GoogleGenAI } from "@google/genai";
 
-const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+const getApiKey = () => {
+  return (import.meta as any).env.VITE_GEMINI_API_KEY || (import.meta as any).env.GEMINI_API_KEY || '';
+};
 
-// Standardizing SDK usage: routing through secure server-side API proxy to hide keys completely
 export const getGeminiResponse = async (
   message: string, 
-  history: { role: 'user' | 'model'; parts: { text: string }[] }[]
+  history: { role: 'user' | 'model'; parts: { text: string }[] }[] = []
 ): Promise<string> => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-
-    const response = await fetch(`${API_BASE_URL}/api/gemini/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify({ message, history })
-    });
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.error || `HTTP ${response.status}`);
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      return "Hello! I am the UG Virtual Industry Hub Assistant. (Tip: Add your VITE_GEMINI_API_KEY to your environment variables for live Gemini AI responses). How can I assist you with research projects, innovation disclosures, or industry partnerships today?";
     }
 
-    const data = await response.json();
-    return data.text || "I'm sorry, I couldn't generate a response.";
-  } catch (error) {
-    console.error("Gemini API Proxy Error:", error);
-    return "I am currently experiencing connection issues. Please try again later.";
+    const ai = new GoogleGenAI({ apiKey });
+    
+    // Format conversation history
+    const contents = [
+      ...history.map(h => ({
+        role: h.role === 'model' ? 'model' : 'user',
+        parts: h.parts
+      })),
+      { role: 'user', parts: [{ text: message }] }
+    ];
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents,
+      config: {
+        systemInstruction: "You are the AI Research & Innovation Assistant for the University of Ghana Virtual Industry Hub. Provide helpful, accurate, concise, and professional guidance on academic research, tech transfer, industry challenges, and collaborations in West Africa."
+      }
+    });
+
+    return response.text || "I'm sorry, I couldn't generate a response.";
+  } catch (error: any) {
+    console.error("Gemini Service Error:", error);
+    return "I am currently experiencing connection issues or invalid API configuration. Please try again later.";
   }
 };
