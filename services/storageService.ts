@@ -1297,20 +1297,25 @@ export const StorageService = {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId || '');
     if (!userId || !isUuid || !embedding) return { profiles: [], projects: [] };
 
+    const validEmbedding = EmbeddingService.ensureDimension(embedding, 768);
+
     try {
-      const [{ data: profiles }, { data: projects }] = await Promise.all([
+      const [{ data: profiles, error: profErr }, { data: projects, error: projErr }] = await Promise.all([
         supabase.rpc('match_profiles', {
-          query_embedding: embedding,
+          query_embedding: validEmbedding,
           match_threshold: 0.0,
           match_count: 20,
           excluded_id: userId
         }),
         supabase.rpc('match_projects', {
-          query_embedding: embedding,
+          query_embedding: validEmbedding,
           match_threshold: 0.0,
           match_count: 20
         })
       ]);
+
+      if (profErr) console.warn("match_profiles RPC warning/error:", profErr);
+      if (projErr) console.warn("match_projects RPC warning/error:", projErr);
 
       let finalProfiles = profiles || [];
       let finalProjects = projects || [];

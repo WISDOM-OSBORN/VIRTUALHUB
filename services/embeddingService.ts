@@ -5,16 +5,22 @@ const API_BASE_URL = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/
 export const EmbeddingService = {
   // Ensure the embedding is exactly the desired size (default 768)
   ensureDimension: (arr: number[] | null | undefined, dimension = 768): number[] => {
-    if (!arr || !Array.isArray(arr)) {
-      return new Array(dimension).fill(0);
+    let vec: number[];
+    if (!arr || !Array.isArray(arr) || arr.length === 0) {
+      vec = new Array(dimension).fill(0.001);
+    } else if (arr.length === dimension) {
+      vec = arr;
+    } else if (arr.length > dimension) {
+      vec = arr.slice(0, dimension);
+    } else {
+      vec = [...arr, ...new Array(dimension - arr.length).fill(0.001)];
     }
-    if (arr.length === dimension) {
-      return arr;
+
+    const isZero = vec.every(v => Math.abs(v) < 1e-9);
+    if (isZero) {
+      return new Array(dimension).fill(0.001);
     }
-    if (arr.length > dimension) {
-      return arr.slice(0, dimension);
-    }
-    return [...arr, ...new Array(dimension - arr.length).fill(0)];
+    return vec;
   },
 
   getEmbedding: async (text: string): Promise<number[]> => {
@@ -46,8 +52,8 @@ export const EmbeddingService = {
       return EmbeddingService.ensureDimension(rawValues, 768);
     } catch (error: any) {
       console.error("Embedding generation error:", error);
-      console.warn("Falling back to zero vector for match compatibility.");
-      return new Array(768).fill(0);
+      console.warn("Falling back to small non-zero vector for match compatibility.");
+      return new Array(768).fill(0.001);
     }
   }
 };

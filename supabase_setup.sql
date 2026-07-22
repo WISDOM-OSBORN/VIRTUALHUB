@@ -223,11 +223,16 @@ CREATE POLICY "Owner Avatar Delete" ON storage.objects FOR DELETE TO authenticat
 -- MATCHING FUNCTIONS
 -- Search profiles by similarity
 DROP FUNCTION IF EXISTS match_profiles(vector, double precision, integer, uuid);
+DROP FUNCTION IF EXISTS match_profiles(vector, float, int, uuid);
+DROP FUNCTION IF EXISTS match_profiles(vector(768), float, int, uuid);
+DROP FUNCTION IF EXISTS match_profiles(vector(768), double precision, integer, uuid);
+DROP FUNCTION IF EXISTS match_profiles;
+
 CREATE OR REPLACE FUNCTION match_profiles (
   query_embedding vector(768),
-  match_threshold float,
-  match_count int,
-  excluded_id uuid
+  match_threshold float DEFAULT 0.0,
+  match_count int DEFAULT 20,
+  excluded_id uuid DEFAULT NULL
 )
 RETURNS TABLE (
   id uuid,
@@ -247,10 +252,11 @@ BEGIN
     profiles.role,
     profiles.ai_profile,
     profiles.semantic_summary,
-    1 - (profiles.embedding <=> query_embedding) AS similarity
+    (1 - (profiles.embedding <=> query_embedding))::float AS similarity
   FROM profiles
-  WHERE profiles.id != excluded_id
-    AND 1 - (profiles.embedding <=> query_embedding) > match_threshold
+  WHERE profiles.embedding IS NOT NULL
+    AND (excluded_id IS NULL OR profiles.id != excluded_id)
+    AND (1 - (profiles.embedding <=> query_embedding)) >= match_threshold
   ORDER BY profiles.embedding <=> query_embedding
   LIMIT match_count;
 END;
@@ -258,10 +264,15 @@ $$;
 
 -- 4. Search projects by similarity
 DROP FUNCTION IF EXISTS match_projects(vector, double precision, integer);
+DROP FUNCTION IF EXISTS match_projects(vector, float, int);
+DROP FUNCTION IF EXISTS match_projects(vector(768), float, int);
+DROP FUNCTION IF EXISTS match_projects(vector(768), double precision, integer);
+DROP FUNCTION IF EXISTS match_projects;
+
 CREATE OR REPLACE FUNCTION match_projects (
   query_embedding vector(768),
-  match_threshold float,
-  match_count int
+  match_threshold float DEFAULT 0.0,
+  match_count int DEFAULT 20
 )
 RETURNS TABLE (
   id uuid,
@@ -281,9 +292,10 @@ BEGIN
     projects.description,
     projects.image_url,
     projects.research_area::text,
-    1 - (projects.embedding <=> query_embedding) AS similarity
+    (1 - (projects.embedding <=> query_embedding))::float AS similarity
   FROM projects
-  WHERE 1 - (projects.embedding <=> query_embedding) > match_threshold
+  WHERE projects.embedding IS NOT NULL
+    AND (1 - (projects.embedding <=> query_embedding)) >= match_threshold
   ORDER BY projects.embedding <=> query_embedding
   LIMIT match_count;
 END;
