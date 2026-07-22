@@ -1636,3 +1636,5 @@ const startServer = async () => {
 startServer().catch(err => {
   console.error('Failed to launch server:', err);
 });
+
+export default app;
