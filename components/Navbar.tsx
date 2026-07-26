@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Menu, X, User, LogIn, LogOut } from 'lucide-react';
+import { Menu, X, User, LogIn, LogOut, Sparkles, LayoutDashboard, ChevronRight } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 import LanguageSwitcher from './LanguageSwitcher';
 import { User as UserType } from '../types';
@@ -31,100 +31,159 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <nav className="bg-ug-navy text-white sticky top-0 z-50 shadow-lg">
+    <nav className="bg-ug-navy/95 backdrop-blur-md text-white sticky top-0 z-50 border-b border-white/10 shadow-xl shadow-black/10 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex-shrink-0 flex items-center gap-2 cursor-pointer">
-             <div className="w-8 h-8 bg-ug-teal rounded-full flex items-center justify-center font-bold text-white">
+        <div className="flex items-center justify-between h-16 md:h-18">
+          
+          {/* Logo & Brand */}
+          <Link to="/" className="flex-shrink-0 flex items-center gap-3 cursor-pointer group">
+             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-ug-teal via-teal-600 to-teal-800 flex items-center justify-center font-black text-white text-sm shadow-md shadow-teal-900/40 ring-2 ring-white/15 group-hover:scale-105 transition-transform duration-200">
                 UG
              </div>
-             <span className="font-bold text-lg tracking-wide">{t('nav.brand')}</span>
+             <div className="flex flex-col">
+               <div className="flex items-center gap-1.5">
+                 <span className="font-black text-base md:text-lg tracking-tight text-white group-hover:text-ug-teal transition-colors">
+                   {t('nav.brand')}
+                 </span>
+                 <span className="hidden sm:inline-block text-[9px] font-extrabold uppercase tracking-widest px-1.5 py-0.5 rounded bg-ug-gold/20 text-ug-gold border border-ug-gold/30">
+                   IAST
+                 </span>
+               </div>
+               <span className="text-[10px] text-gray-300 font-bold tracking-wider hidden sm:block uppercase -mt-0.5">
+                 University of Ghana
+               </span>
+             </div>
           </Link>
 
-          {/* Desktop Menu */}
+          {/* Desktop Navigation Links */}
           <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-4">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                    isActive(link.path)
-                      ? 'bg-ug-teal text-white'
-                      : 'text-gray-300 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  {link.name}
-                </Link>
-              ))}
+            <div className="flex items-center space-x-1.5 lg:space-x-2 bg-white/5 p-1.5 rounded-2xl border border-white/10 backdrop-blur-md">
+              {navLinks.map((link) => {
+                const active = isActive(link.path);
+                return (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 relative ${
+                      active
+                        ? 'bg-ug-teal text-white shadow-md shadow-teal-900/40'
+                        : 'text-gray-300 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <span>{link.name}</span>
+                    {active && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           </div>
 
-          {/* User & Notifications & Language Selector */}
-          <div className="hidden md:flex items-center gap-4">
+          {/* User & Controls Right Side */}
+          <div className="hidden md:flex items-center gap-3">
              <LanguageSwitcher />
 
              {isAuthenticated && (
                <NotificationCenter user={user} onSelectMessage={onSelectMessage} />
              )}
              
-             {/* User Icon - Acts as Dashboard Link if logged in, Login trigger if not */}
-             <div 
-                className={`h-9 w-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 ${isAuthenticated ? 'bg-ug-teal text-white shadow-lg shadow-ug-teal/50 ring-2 ring-ug-teal/20' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+             {/* Account Dashboard Button */}
+             <button
+                type="button"
                 onClick={onUserIconClick}
+                className={`h-10 px-3.5 rounded-xl flex items-center gap-2 text-xs font-bold transition-all duration-200 border cursor-pointer ${
+                  isAuthenticated
+                    ? 'bg-gradient-to-r from-teal-500 to-ug-teal text-white border-teal-400/40 shadow-lg shadow-teal-900/30 hover:scale-[1.02]'
+                    : 'bg-white/10 text-white border-white/15 hover:bg-white/20 hover:border-white/25'
+                }`}
                 title={isAuthenticated ? t('nav.myDashboard') : t('nav.login')}
              >
-                {isAuthenticated ? <User size={18} /> : <LogIn size={18} />}
-             </div>
+                {isAuthenticated ? (
+                  <>
+                    <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center font-black text-[11px]">
+                      {user?.name ? user.name.charAt(0).toUpperCase() : <User size={14} />}
+                    </div>
+                    <span className="max-w-[120px] truncate">{user?.name || t('nav.myDashboard')}</span>
+                    <LayoutDashboard size={14} className="opacity-80" />
+                  </>
+                ) : (
+                  <>
+                    <LogIn size={15} />
+                    <span>{t('nav.login')}</span>
+                  </>
+                )}
+             </button>
+
+             {isAuthenticated && (
+               <button
+                 type="button"
+                 onClick={onLogout}
+                 className="p-2 rounded-xl text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors border border-transparent hover:border-red-500/20 cursor-pointer"
+                 title={t('nav.logout')}
+               >
+                 <LogOut size={16} />
+               </button>
+             )}
           </div>
 
-          {/* Mobile menu progress & action elements */}
-          <div className="-mr-2 flex md:hidden items-center gap-2.5">
+          {/* Mobile menu toggle & quick controls */}
+          <div className="-mr-1 flex md:hidden items-center gap-2">
              <LanguageSwitcher dropdownPosition="right" />
 
              {isAuthenticated && (
                <NotificationCenter user={user} onSelectMessage={onSelectMessage} />
              )}
              <button
+               type="button"
                onClick={() => setIsOpen(!isOpen)}
-               className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-white/10 focus:outline-none transition-colors cursor-pointer"
+               className="p-2 rounded-xl text-gray-300 hover:text-white bg-white/5 border border-white/10 focus:outline-none transition-colors cursor-pointer"
              >
-               {isOpen ? <X size={24} /> : <Menu size={24} />}
+               {isOpen ? <X size={22} /> : <Menu size={22} />}
              </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Drawer */}
       {isOpen && (
-        <div className="md:hidden animate-fade-in">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-ug-navy border-t border-gray-700">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                onClick={() => setIsOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  isActive(link.path)
-                    ? 'bg-ug-teal text-white'
-                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                }`}
-              >
-                {link.name}
-              </Link>
-            ))}
-             <div className="mt-4 pt-4 border-t border-gray-700 space-y-3">
+        <div className="md:hidden border-t border-white/10 bg-ug-navy/98 backdrop-blur-xl animate-fade-in shadow-2xl">
+          <div className="px-4 pt-3 pb-6 space-y-2">
+            {navLinks.map((link) => {
+              const active = isActive(link.path);
+              return (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  onClick={() => setIsOpen(false)}
+                  className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                    active
+                      ? 'bg-ug-teal text-white shadow-md'
+                      : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <span>{link.name}</span>
+                  <ChevronRight size={16} className={active ? 'text-white' : 'text-gray-500'} />
+                </Link>
+              );
+            })}
+
+             <div className="mt-4 pt-4 border-t border-white/10 space-y-2.5">
                <button 
+                  type="button"
                   onClick={() => { setIsOpen(false); onUserIconClick(); }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-md ${isAuthenticated ? 'bg-ug-teal text-white' : 'text-gray-300 hover:text-white'}`}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold border transition-all cursor-pointer ${
+                    isAuthenticated 
+                      ? 'bg-gradient-to-r from-teal-600 to-ug-teal text-white border-teal-500/30' 
+                      : 'bg-white/10 text-white border-white/15'
+                  }`}
                >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <User size={18} />
-                    <span>{isAuthenticated ? t('nav.myDashboard') : t('nav.login')}</span>
+                    <span>{isAuthenticated ? (user?.name || t('nav.myDashboard')) : t('nav.login')}</span>
                   </div>
                   {isAuthenticated && unreadCount > 0 && (
-                    <span className="bg-ug-error text-white text-[10px] px-2 py-0.5 rounded-full font-black">
+                    <span className="bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full font-black">
                       {unreadCount}
                     </span>
                   )}
@@ -132,8 +191,9 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
                
                {isAuthenticated && (
                  <button 
+                    type="button"
                     onClick={() => { setIsOpen(false); onLogout(); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-red-400 hover:text-red-300 hover:bg-white/5 rounded-md font-bold transition-colors"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl font-bold transition-colors cursor-pointer"
                  >
                     <LogOut size={18} />
                     <span>{t('nav.logout')}</span>

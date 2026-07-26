@@ -1,63 +1,134 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Mail, Phone, MapPin, Facebook, Twitter, Linkedin } from 'lucide-react';
+import { Mail, Phone, MapPin, Globe, ExternalLink, Linkedin, Twitter, Facebook } from 'lucide-react';
 
 const Footer: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <footer className="bg-gray-900 text-gray-300">
+    <footer className="bg-ug-navy text-slate-300 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="col-span-1 md:col-span-1">
-            <h3 className="text-white text-lg font-bold mb-4">{t('nav.brand')}</h3>
-            <p className="text-sm leading-relaxed">
-              {t('dashboard.welcomeBanner')}
-            </p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12">
           
-          <div>
-            <h3 className="text-white text-md font-semibold mb-4">{t('footer.quickLinks')}</h3>
-            <ul className="space-y-2 text-sm">
-              <li><a href="/projects" className="hover:text-ug-teal transition">{t('nav.projects')}</a></li>
-              <li><a href="/products" className="hover:text-ug-teal transition">{t('nav.products')}</a></li>
-              <li><a href="/news" className="hover:text-ug-teal transition">{t('nav.news')}</a></li>
-            </ul>
-          </div>
+          {/* Brand & Institution Info */}
+          <div className="md:col-span-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-ug-teal flex items-center justify-center font-black text-white text-base shadow-md">
+                UG
+              </div>
+              <div>
+                <h3 className="text-white text-base font-bold tracking-tight leading-tight">
+                  Institute of Applied Science and Technology (IAST)
+                </h3>
+                <p className="text-xs text-ug-gold font-semibold tracking-wider uppercase">
+                  University of Ghana • Virtual Industry Hub
+                </p>
+              </div>
+            </div>
 
-          <div>
-            <h3 className="text-white text-md font-semibold mb-4">{t('footer.contactUs')}</h3>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-center gap-2">
-                <MapPin size={16} />
-                <span>Legon Campus, Accra, Ghana</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Mail size={16} />
-                <span>industry@ug.edu.gh</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Phone size={16} />
-                <span>+233 302 123 456</span>
-              </li>
-            </ul>
-          </div>
+            <p className="text-xs text-slate-400 leading-relaxed max-w-md">
+              Promoting industry-academic partnerships, commercialization of research, and technology transfer for sustainable national development.
+            </p>
 
-          <div>
-            <h3 className="text-white text-md font-semibold mb-4">Follow Us</h3>
-            <div className="flex space-x-4">
-              <a href="#" className="hover:text-ug-teal transition"><Facebook size={20} /></a>
-              <a href="#" className="hover:text-ug-teal transition"><Twitter size={20} /></a>
-              <a href="#" className="hover:text-ug-teal transition"><Linkedin size={20} /></a>
+            <div className="flex items-center gap-3 pt-1">
+              <a
+                href="https://iast.ug.edu.gh/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-ug-teal hover:text-teal-300 transition-colors"
+              >
+                <span>Visit iast.ug.edu.gh</span>
+                <ExternalLink size={12} />
+              </a>
             </div>
           </div>
+
+          {/* Platform Links */}
+          <div className="md:col-span-3 space-y-3">
+            <h4 className="text-white text-xs font-bold uppercase tracking-wider">
+              Quick Links
+            </h4>
+            <ul className="space-y-2 text-xs">
+              <li>
+                <a href="#/projects" className="hover:text-ug-teal transition-colors">
+                  Research Projects
+                </a>
+              </li>
+              <li>
+                <a href="#/products" className="hover:text-ug-teal transition-colors">
+                  Intellectual Property & Products
+                </a>
+              </li>
+              <li>
+                <a href="#/news" className="hover:text-ug-teal transition-colors">
+                  Industry Discovery & News
+                </a>
+              </li>
+
+            </ul>
+          </div>
+
+          {/* Contact Details */}
+          <div className="md:col-span-4 space-y-3">
+            <h4 className="text-white text-xs font-bold uppercase tracking-wider">
+              Contact IAST
+            </h4>
+            <ul className="space-y-2.5 text-xs text-slate-300">
+              <li className="flex items-start gap-2">
+                <MapPin size={14} className="text-ug-teal shrink-0 mt-0.5" />
+                <span>Legon Campus, University of Ghana, Accra, Ghana</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Mail size={14} className="text-ug-teal shrink-0" />
+                <a href="mailto:iast@ug.edu.gh" className="hover:text-ug-teal transition-colors">
+                  iast@ug.edu.gh
+                </a>
+              </li>
+              <li className="flex items-center gap-2">
+                <Globe size={14} className="text-ug-teal shrink-0" />
+                <a
+                  href="https://iast.ug.edu.gh/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-ug-teal transition-colors"
+                >
+                  https://iast.ug.edu.gh/
+                </a>
+              </li>
+            </ul>
+
+            {/* Social Icons */}
+            <div className="flex items-center gap-3 pt-2">
+              <a href="#" aria-label="LinkedIn" className="text-slate-400 hover:text-ug-teal transition-colors">
+                <Linkedin size={16} />
+              </a>
+              <a href="#" aria-label="Twitter" className="text-slate-400 hover:text-ug-teal transition-colors">
+                <Twitter size={16} />
+              </a>
+              <a href="#" aria-label="Facebook" className="text-slate-400 hover:text-ug-teal transition-colors">
+                <Facebook size={16} />
+              </a>
+            </div>
+          </div>
+
         </div>
-        <div className="mt-8 pt-8 border-t border-gray-800 text-center text-xs">
-          <p>&copy; {new Date().getFullYear()} {t('footer.universityOfGhana')}. {t('footer.allRightsReserved')}.</p>
+
+        {/* Bottom copyright line */}
+        <div className="mt-8 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+          <p className="text-center sm:text-left">
+            &copy; {new Date().getFullYear()} Institute of Applied Science and Technology, University of Ghana. All rights reserved.
+          </p>
+          <div className="flex items-center gap-4 text-xs">
+            <a href="#/privacy" className="hover:text-slate-200 transition-colors">Privacy Policy</a>
+            <span>•</span>
+            <a href="#/terms" className="hover:text-slate-200 transition-colors">Terms of Service</a>
+          </div>
         </div>
+
       </div>
     </footer>
   );
 };
 
 export default Footer;
+
