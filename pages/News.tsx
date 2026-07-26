@@ -1425,7 +1425,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
   if (selectedDetailedNews) {
     return (
       <div className="min-h-screen bg-slate-50/50 py-6 sm:py-10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           {/* Back Button */}
           <button
             type="button"
