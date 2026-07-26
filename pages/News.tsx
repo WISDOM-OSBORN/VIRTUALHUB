@@ -17,7 +17,10 @@ import {
   Clock, 
   Search, 
   Filter, 
+  ChevronDown,
   Link2,
+  LayoutGrid,
+  List,
   Edit,
   Trash2,
   Trash,
@@ -52,6 +55,7 @@ const News: React.FC = () => {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [debouncedArchiveSearch, setDebouncedArchiveSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -1420,8 +1424,8 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
   }
   if (selectedDetailedNews) {
     return (
-      <div className="min-h-screen bg-slate-50/50 py-8 md:py-12">
-        <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 w-full">
+      <div className="min-h-screen bg-slate-50/50 py-6 sm:py-10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           {/* Back Button */}
           <button
             type="button"
@@ -1429,40 +1433,40 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
               setSelectedDetailedNews(null);
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className="inline-flex items-center gap-2 px-5 py-3 bg-white hover:bg-gray-50 text-ug-navy font-black text-xs uppercase tracking-wider rounded-2xl border border-gray-200/80 shadow-sm transition-all duration-200 cursor-pointer mb-6 md:mb-8 group"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-gray-50 text-ug-navy font-bold text-xs uppercase tracking-wider rounded-xl border border-gray-200 shadow-xs transition-all duration-200 cursor-pointer mb-6 group"
           >
-            <ArrowLeft size={16} className="transform group-hover:-translate-x-1 transition-transform" />
+            <ArrowLeft size={14} className="transform group-hover:-translate-x-1 transition-transform" />
             <span>Back to Discovery Feed</span>
           </button>
 
-          {/* Article Header */}
-          <div className="bg-white rounded-2xl md:rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden p-5 sm:p-8 md:p-12 mb-8 w-full">
-            <div className="flex flex-wrap items-center gap-3 mb-6">
-              <span className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-4.5 py-2 rounded-full shadow-sm ${selectedDetailedNews.is_ai_generated ? 'bg-ug-teal text-white' : 'bg-ug-navy text-white'}`}>
+          {/* Article Container */}
+          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden p-5 sm:p-8 mb-8 w-full">
+            <div className="flex flex-wrap items-center gap-2.5 mb-4">
+              <span className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${selectedDetailedNews.is_ai_generated ? 'bg-ug-teal text-white' : 'bg-ug-navy text-white'}`}>
                 {selectedDetailedNews.is_ai_generated ? <Zap size={11} className="fill-white" /> : <Tag size={11} />} 
                 {selectedDetailedNews.category}
               </span>
-              <span className="text-gray-300 text-sm">•</span>
-              <span className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest font-mono">
-                <Calendar size={13} /> Published: {formatNewsDate(selectedDetailedNews.published_at)}
+              <span className="text-gray-300 text-xs">•</span>
+              <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-500">
+                <Calendar size={12} /> {formatNewsDate(selectedDetailedNews.published_at)}
               </span>
               {selectedDetailedNews.source_name && (
                 <>
-                  <span className="text-gray-300 text-sm">•</span>
-                  <span className="flex items-center gap-1.5 text-[10px] font-black text-ug-navy uppercase tracking-[0.15em] bg-gray-50 px-4 py-1.5 rounded-full border border-gray-100">
-                     <Globe size={13} className="text-ug-teal" /> {selectedDetailedNews.source_name}
+                  <span className="text-gray-300 text-xs">•</span>
+                  <span className="flex items-center gap-1 text-[11px] font-bold text-ug-teal bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-100">
+                     <Globe size={12} /> {selectedDetailedNews.source_name}
                   </span>
                 </>
               )}
             </div>
 
-            <h1 className="text-2xl sm:text-3xl md:text-5xl font-black text-ug-navy mb-8 leading-tight tracking-tight text-left">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-ug-navy mb-6 leading-tight tracking-tight text-left">
               {selectedDetailedNews.title}
             </h1>
 
             {/* Featured Image */}
             {selectedDetailedNews.image_url && (
-              <div className="w-full aspect-[21/9] max-h-[520px] min-h-[220px] rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 relative mb-8 md:mb-12 shadow-inner">
+              <div className="w-full aspect-[21/9] max-h-[380px] min-h-[180px] rounded-xl overflow-hidden border border-gray-100 bg-gray-50 relative mb-6 shadow-xs">
                 <img
                   src={selectedDetailedNews.image_url}
                   alt=""
@@ -1473,49 +1477,49 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
             )}
 
             {/* Content Summary (News Body) */}
-            <div className="text-gray-700 font-medium text-base sm:text-lg md:text-xl leading-relaxed space-y-6 mb-8 whitespace-pre-line border-b border-gray-100 pb-8 prose max-w-none text-left">
+            <div className="text-slate-700 font-normal text-sm sm:text-base leading-relaxed space-y-4 mb-6 whitespace-pre-line border-b border-gray-100 pb-6 text-left">
               {selectedDetailedNews.summary}
             </div>
 
             {/* Sources & Hyperlinks Section */}
-            <div className="space-y-5 text-left">
-              <h3 className="text-xs font-black uppercase text-ug-navy tracking-widest flex items-center gap-2">
+            <div className="space-y-4 text-left">
+              <h3 className="text-xs font-bold uppercase text-ug-navy tracking-wider flex items-center gap-2">
                 <Globe size={14} className="text-ug-teal" /> Official Sources & References
               </h3>
 
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2.5">
                 {/* Primary Citation Link */}
                 {selectedDetailedNews.external_url && (
                   <a
                     href={selectedDetailedNews.external_url.startsWith('http') ? selectedDetailedNews.external_url : `https://${selectedDetailedNews.external_url}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-between p-5 bg-ug-teal/5 hover:bg-ug-teal hover:text-white border border-ug-teal/20 hover:border-ug-teal rounded-2xl text-xs font-black uppercase tracking-wider text-ug-teal transition duration-200 group w-full"
+                    className="inline-flex items-center justify-between p-3.5 bg-ug-teal/5 hover:bg-ug-teal hover:text-white border border-ug-teal/20 hover:border-ug-teal rounded-xl text-xs font-bold text-ug-teal transition duration-200 group w-full"
                   >
                     <span className="flex items-center gap-2">
-                      <Globe size={16} />
+                      <Globe size={14} />
                       <span>Official Source / External Citation Link</span>
                     </span>
-                    <ExternalLink size={16} className="transform group-hover:translate-x-1 transition-transform" />
+                    <ExternalLink size={14} className="transform group-hover:translate-x-0.5 transition-transform" />
                   </a>
                 )}
 
                 {/* Secondary reference links */}
                 {selectedDetailedNews.reference_links && Array.isArray(selectedDetailedNews.reference_links) && selectedDetailedNews.reference_links.filter(Boolean).length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-1">
                     {selectedDetailedNews.reference_links.filter(Boolean).slice(0, 6).map((link, idx) => (
                       <a
                         key={idx}
                         href={link.startsWith('http') ? link : `https://${link}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center justify-between px-5 py-4 bg-gray-50 hover:bg-gray-100 border border-gray-200/50 rounded-2xl text-xs font-bold text-gray-600 hover:text-ug-navy transition group"
+                        className="inline-flex items-center justify-between px-3.5 py-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-200/60 rounded-xl text-xs font-medium text-slate-700 transition group"
                       >
                         <span className="flex items-center gap-2 truncate">
-                          <Link2 size={14} className="text-gray-400 group-hover:text-ug-teal" />
+                          <Link2 size={13} className="text-gray-400 group-hover:text-ug-teal shrink-0" />
                           <span className="truncate">{link}</span>
                         </span>
-                        <ExternalLink size={12} className="text-gray-400 group-hover:text-ug-navy" />
+                        <ExternalLink size={12} className="text-gray-400 group-hover:text-ug-navy shrink-0 ml-1" />
                       </a>
                     ))}
                   </div>
@@ -1529,184 +1533,189 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
   }
 
   return (
-    <div className="min-h-screen bg-white py-16">
+    <div className="min-h-screen bg-white py-3 sm:py-6">
       <div id="news-curator-workspace-anchor" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 border-b border-gray-100 pb-8 gap-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 border-b border-gray-100 pb-3 gap-2">
           <div className="flex-1">
-            <div className="flex items-center gap-3.5 mb-3">
-              <div className="p-3 bg-ug-navy rounded-2xl text-white shadow-lg shrink-0">
-                 <Microscope size={24} />
+            <div className="flex items-center gap-2.5 mb-1">
+              <div className="p-2 bg-ug-navy rounded-xl text-white shadow-xs shrink-0">
+                 <Microscope size={18} />
               </div>
               <div>
-                <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-ug-navy tracking-tight">Discovery Feed</h1>
-                <p className="text-ug-teal font-black text-[9px] md:text-[10px] uppercase tracking-[0.4em] mt-0.5">University of Ghana Innovation Watch</p>
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-ug-navy tracking-tight">Discovery & Industry News</h1>
+                <p className="text-ug-teal font-extrabold text-[9px] sm:text-[10px] uppercase tracking-[0.2em]">University of Ghana • Virtual Industry Hub</p>
               </div>
             </div>
-            <p className="text-gray-500 font-medium text-sm md:text-base max-w-2xl leading-relaxed">
-              Monitoring global and local breakthroughs in vaccines, drug discoveries, and diagnostics.
+            <p className="text-gray-500 font-medium text-xs max-w-2xl leading-relaxed">
+              Monitoring research outputs, commercial spin-offs, partnerships, and global innovation trends.
             </p>
-            {lastSync && (
-              <div className="flex items-center gap-2 mt-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                <Clock size={12} className="text-ug-teal" />
-                Last Automated Sync: {lastSync.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
-              </div>
-            )}
           </div>
+          {lastSync && (
+            <div className="inline-flex items-center gap-1.5 text-[10px] font-bold text-gray-400 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100 self-start md:self-auto shrink-0">
+              <Clock size={11} className="text-ug-teal" />
+              <span>Synced: {lastSync.toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+            </div>
+          )}
         </div>
 
-        {/* Dynamic Curation Session Workspace (Only accessible if verified Admin) */}
+        {/* Search & Category Filter Control Bar */}
+        <div className="bg-slate-50/80 p-2.5 sm:p-3.5 rounded-2xl border border-slate-200/80 mb-5">
+          <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
+            
+            {/* Search Input Box (Compact) */}
+            <div className="relative flex-1 max-w-md w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+              <input 
+                type="text" 
+                placeholder="Search news, grants, breakthroughs..." 
+                className="w-full pl-9 pr-8 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ug-teal/50 focus:border-ug-teal transition-all text-xs font-semibold text-slate-800 placeholder:text-gray-400 shadow-xs"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button 
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                  title="Clear search"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
 
-        {/* Search and Category Filters */}
-        <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100/80 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-            <input 
-              type="text" 
-              placeholder="Search news..." 
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200/60 rounded-xl focus:outline-none focus:ring-1 focus:ring-ug-teal focus:border-transparent transition-all font-bold text-xs md:text-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          <div className="relative w-full md:w-56">
-             <select 
-                className="appearance-none w-full bg-white border border-gray-200/60 text-gray-700 py-2.5 px-4 pr-10 rounded-xl font-bold text-xs leading-tight focus:outline-none focus:ring-1 focus:ring-ug-teal transition-all cursor-pointer"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-             >
-                <option value="All">All Categories</option>
-                <option value="Announcement">Announcement</option>
-                <option value="Grant Opportunity">Grant Opportunity</option>
-                <option value="Strategic Partnership">Strategic Partnership</option>
-                <option value="Research Release">Research Release</option>
-                <option value="Ecosystem Updates">Ecosystem Updates</option>
-             </select>
-             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-gray-400">
-                <Filter size={14} />
-             </div>
+            {/* Filter Dropdown & View Mode Controls */}
+            <div className="flex items-center gap-2 justify-between sm:justify-end">
+              {/* Category Select Dropdown with Funnel Filter Icon */}
+              <div className="relative flex-1 sm:flex-none min-w-[150px]">
+                <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ug-navy pointer-events-none" size={13} />
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="appearance-none w-full bg-white border border-gray-200 text-slate-800 py-2 pl-8 pr-7 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-ug-teal/50 focus:border-ug-teal cursor-pointer shadow-xs truncate"
+                >
+                  <option value="All">Filter: All Discovery</option>
+                  <option value="Announcement">Announcements</option>
+                  <option value="Grant Opportunity">Grants & Funding</option>
+                  <option value="Strategic Partnership">Partnerships</option>
+                  <option value="Research Release">Research Releases</option>
+                  <option value="Ecosystem Updates">Ecosystem Updates</option>
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={13} />
+              </div>
+
+              {/* View Mode Switcher */}
+              <div className="flex items-center bg-white p-0.5 rounded-xl border border-gray-200 shadow-xs shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 ${viewMode === 'grid' ? 'bg-ug-navy text-white shadow-xs' : 'text-gray-500 hover:text-slate-900'}`}
+                  title="Grid View"
+                >
+                  <LayoutGrid size={13} />
+                  <span className="hidden sm:inline">Grid</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 ${viewMode === 'list' ? 'bg-ug-navy text-white shadow-xs' : 'text-gray-500 hover:text-slate-900'}`}
+                  title="List View"
+                >
+                  <List size={13} />
+                  <span className="hidden sm:inline">List</span>
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
 
         {/* Loading State */}
         {loading && filteredNews.length === 0 && (
-           <div className="flex flex-col items-center justify-center py-40">
-              <Loader2 className="animate-spin text-ug-teal mb-6" size={56} />
-              <p className="text-gray-400 font-black uppercase text-[10px] tracking-[0.4em]">Aggregating Intelligence...</p>
+           <div className="flex flex-col items-center justify-center py-24">
+              <Loader2 className="animate-spin text-ug-teal mb-4" size={40} />
+              <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Loading Intelligence...</p>
            </div>
         )}
 
-        {/* News Grid */}
-        <div className={`grid lg:grid-cols-1 gap-12 transition-opacity duration-300 ${loading && filteredNews.length > 0 ? 'opacity-50' : 'opacity-100'}`}>
-          {filteredNews.length === 0 && !loading && (
-            <div className="text-center py-40 border-2 border-dashed border-gray-100 rounded-[3rem]">
-               <Globe className="text-gray-200 mx-auto mb-8" size={80} />
-               <h3 className="text-2xl font-black text-ug-navy">No news items matched</h3>
-               <p className="text-gray-400 font-medium mt-3 text-lg">Try clearing your filters or refining your search words.</p>
-            </div>
-          )}
+        {/* News Items Display */}
+        {filteredNews.length === 0 && !loading && (
+          <div className="text-center py-24 border-2 border-dashed border-gray-200/80 rounded-2xl bg-slate-50/50">
+             <Globe className="text-gray-300 mx-auto mb-4" size={48} />
+             <h3 className="text-lg font-bold text-ug-navy">No news items found</h3>
+             <p className="text-gray-500 font-medium mt-1 text-sm">Try clearing your search words or category filter.</p>
+             <button
+               onClick={() => { setSearchTerm(''); setSelectedCategory('All'); }}
+               className="mt-4 px-4 py-2 bg-ug-navy text-white rounded-xl text-xs font-bold hover:bg-ug-navy/90 transition-colors"
+             >
+               Reset Filters
+             </button>
+          </div>
+        )}
 
-          {filteredNews.map((item, idx) => (
+        {/* News Grid / List Layout */}
+        <div className={`transition-opacity duration-300 ${loading && filteredNews.length > 0 ? 'opacity-50' : 'opacity-100'} ${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6' : 'space-y-4'}`}>
+          {filteredNews.map((item) => (
             <article 
               key={item.id} 
               onClick={() => handleNewsClick(item)}
-              className="group bg-gray-50/20 rounded-2xl overflow-hidden flex flex-col md:flex-row border border-gray-100/80 hover:bg-white hover:shadow-xl hover:border-ug-teal/20 transition-all duration-500 cursor-pointer animate-fade-in-up relative"
-              style={{ animationDelay: `${idx * 100}ms` }}
+              className={`group bg-white rounded-2xl overflow-hidden border border-gray-200/90 hover:border-ug-teal/40 hover:shadow-lg transition-all duration-300 cursor-pointer flex ${viewMode === 'grid' ? 'flex-col h-full' : 'flex-col sm:flex-row'}`}
             >
-              <div className="w-full md:w-[260px] lg:w-[320px] h-52 md:h-auto overflow-hidden relative shrink-0">
+              {/* Image thumbnail */}
+              <div className={`overflow-hidden relative bg-gray-100 shrink-0 ${viewMode === 'grid' ? 'aspect-[16/10] w-full' : 'w-full sm:w-52 lg:w-60 h-44 sm:h-auto'}`}>
                 <img 
                   src={item.image_url} 
                   alt="" 
                   onError={handleImageError}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-700 grayscale-[10%] group-hover:grayscale-0" 
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500" 
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-ug-navy/95 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6">
-                   <div className="text-white">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-ug-teal mb-1">Original Context Available</p>
-                      <div className="flex items-center gap-1.5">
-                         <span className="font-extrabold text-sm">Access Full Briefing</span>
-                         <ExternalLink size={14} />
-                      </div>
-                   </div>
+                <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                  <span className={`text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-xs ${item.is_ai_generated ? 'bg-ug-teal text-white' : 'bg-ug-navy text-white'}`}>
+                    {item.category}
+                  </span>
                 </div>
               </div>
               
-              <div className="p-6 md:p-8 lg:p-10 flex-1 flex flex-col justify-between">
+              {/* Card Body */}
+              <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
                 <div>
-                  <div className="flex flex-wrap items-center gap-3 mb-4">
-                    <span className={`flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-sm ${item.is_ai_generated ? 'bg-ug-teal text-white' : 'bg-ug-navy text-white'}`}>
-                      {item.is_ai_generated ? <Zap size={12} className="fill-white" /> : <Tag size={12} />} 
-                      {item.category}
-                    </span>
-                    <span className="flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                      <Calendar size={13} /> {formatNewsDate(item.published_at)}
+                  <div className="flex items-center gap-2 text-[10px] font-semibold text-gray-400 mb-2">
+                    <span className="flex items-center gap-1">
+                      <Calendar size={11} />
+                      <span>{formatNewsDate(item.published_at)}</span>
                     </span>
                     {item.source_name && (
-                      <span className="flex items-center gap-1.5 text-[9px] font-black text-ug-navy uppercase tracking-[0.15em] bg-white px-4 py-1.5 rounded-full border border-gray-100 shadow-sm">
-                         <Globe size={13} className="text-ug-teal" /> {item.source_name}
-                      </span>
-                    )}
-                    {item.status === 'Draft' && (
-                      <span className="bg-amber-50 text-amber-600 border border-amber-200 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
-                        Draft
-                      </span>
+                      <>
+                        <span>•</span>
+                        <span className="flex items-center gap-1 text-ug-teal font-bold truncate max-w-[140px]">
+                          <Globe size={11} />
+                          <span className="truncate">{item.source_name}</span>
+                        </span>
+                      </>
                     )}
                   </div>
                   
-                  <h2 className="text-lg md:text-xl lg:text-2xl font-extrabold text-ug-navy mb-3 leading-snug group-hover:text-ug-teal transition-colors tracking-tight max-w-3xl">
+                  <h2 className="text-sm sm:text-base font-bold text-ug-navy mb-2 leading-snug group-hover:text-ug-teal transition-colors line-clamp-2">
                     {item.title}
                   </h2>
                   
-                  <p className="text-gray-500 font-medium text-xs md:text-sm leading-relaxed mb-4 line-clamp-3 max-w-4xl whitespace-pre-line">
+                  <p className="text-slate-600 text-xs leading-relaxed line-clamp-2 font-normal mb-3">
                     {item.summary}
                   </p>
-                  
-                  {item.reference_links && Array.isArray(item.reference_links) && item.reference_links.filter(Boolean).length > 0 && (
-                    <div className="mb-4" onClick={e => e.stopPropagation()}>
-                      <h4 className="text-[9px] font-black uppercase text-ug-navy tracking-widest mb-2">Reference Links:</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {item.reference_links.filter(Boolean).slice(0, 4).map((link, lIdx) => (
-                          <a 
-                            key={lIdx}
-                            href={link.startsWith('http') ? link : `https://${link}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1.5 bg-gray-50 hover:bg-ug-teal hover:text-white rounded-lg text-[10px] font-bold text-gray-600 transition-all flex items-center gap-1.5 border border-gray-200/50"
-                          >
-                            <Link2 size={10} />
-                            <span>Link {lIdx + 1}</span>
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
-                
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-4 border-t border-gray-100/60 pt-4">
-                  <div className="flex items-center gap-2 text-ug-navy font-black text-[10px] md:text-xs uppercase tracking-widest group-hover:text-ug-teal transition-all group-hover:translate-x-2">
-                    Explore Full Discovery <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                  </div>
 
-                  {isAdmin && curatorMode && (
-                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={(e) => handleEditNewsClick(e, item)}
-                        className="px-4 py-2 bg-gray-50 hover:bg-ug-teal hover:text-white text-gray-600 hover:border-ug-teal rounded-lg transition font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5 border border-gray-200 cursor-pointer"
-                      >
-                        <Edit size={12} />
-                        <span>Edit</span>
-                      </button>
-                      <button
-                        onClick={(e) => handleDeleteNews(e, item.id)}
-                        className="px-4 py-2 bg-red-50 hover:bg-red-600 hover:text-white text-red-600 hover:border-red-600 rounded-lg transition font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5 border border-red-100 cursor-pointer"
-                      >
-                        <Trash2 size={12} />
-                        <span>Delete</span>
-                      </button>
-                    </div>
+                <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+                  <span className="text-ug-navy font-bold text-[11px] group-hover:text-ug-teal transition-colors flex items-center gap-1">
+                    <span>Read Briefing</span>
+                    <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                  </span>
+                  {item.external_url && (
+                    <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                      <ExternalLink size={10} />
+                      <span>Source</span>
+                    </span>
                   )}
                 </div>
               </div>
@@ -1716,36 +1725,28 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
 
         {/* Paginated Feed Control */}
         {hasMore && (
-          <div className="mt-16 flex justify-center">
+          <div className="mt-12 flex justify-center">
             <button
               onClick={() => setPage(prev => prev + 1)}
               disabled={loading}
-              className="px-8 py-4 bg-white border-2 border-ug-navy hover:bg-ug-navy hover:text-white text-ug-navy rounded-3xl font-black text-xs uppercase tracking-widest transition duration-300 shadow-md hover:shadow-xl flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
+              className="px-6 py-3 bg-white border border-ug-navy hover:bg-ug-navy hover:text-white text-ug-navy rounded-xl font-bold text-xs uppercase tracking-wider transition duration-200 shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
-                  <Loader2 className="animate-spin text-ug-teal" size={16} />
+                  <Loader2 className="animate-spin text-ug-teal" size={14} />
                   <span>Loading Discoveries...</span>
                 </>
               ) : (
                 <>
-                  <span>Load More Discoveries</span>
-                  <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                  <span>Load More News</span>
+                  <ChevronRight size={14} />
                 </>
               )}
             </button>
           </div>
         )}
-        <div className="mt-32 text-center">
-           <div className="inline-flex items-center gap-4 px-10 py-4 bg-gray-50 rounded-full border border-gray-100">
-              <Sparkles size={18} className="text-ug-teal" /> 
-              <span className="text-[11px] font-black text-gray-400 uppercase tracking-[0.5em]">
-                 Autonomous Research Scout Operational
-              </span>
-           </div>
-        </div>
-      </div>
 
+      </div>
     </div>
   );
 };
