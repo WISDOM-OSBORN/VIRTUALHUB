@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, SlidersHorizontal, ArrowRight, Loader2, Bookmark, X, ChevronDown, RotateCcw } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { StorageService } from '../services/storageService';
 import { Project, ProjectStatus, ResearchArea } from '../types';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../App';
 
 const Projects: React.FC = () => {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedArea, setSelectedArea] = useState<string>('All');

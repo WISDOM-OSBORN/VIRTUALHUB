@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   Calendar, 
   Tag, 
@@ -43,6 +44,7 @@ import { useToast } from '../App';
 import { getGeminiResponse } from '../services/geminiService';
 
 const News: React.FC = () => {
+  const { t } = useTranslation();
   const { showToast } = useToast();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [selectedDetailedNews, setSelectedDetailedNews] = useState<NewsItem | null>(null);
@@ -1418,8 +1420,8 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
   }
   if (selectedDetailedNews) {
     return (
-      <div className="min-h-screen bg-slate-50/50 py-12 md:py-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-slate-50/50 py-8 md:py-12">
+        <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 w-full">
           {/* Back Button */}
           <button
             type="button"
@@ -1427,14 +1429,14 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
               setSelectedDetailedNews(null);
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className="inline-flex items-center gap-2 px-5 py-3 bg-white hover:bg-gray-50 text-ug-navy font-black text-xs uppercase tracking-wider rounded-2xl border border-gray-200/80 shadow-sm transition-all duration-200 cursor-pointer mb-8 md:mb-12 group"
+            className="inline-flex items-center gap-2 px-5 py-3 bg-white hover:bg-gray-50 text-ug-navy font-black text-xs uppercase tracking-wider rounded-2xl border border-gray-200/80 shadow-sm transition-all duration-200 cursor-pointer mb-6 md:mb-8 group"
           >
             <ArrowLeft size={16} className="transform group-hover:-translate-x-1 transition-transform" />
             <span>Back to Discovery Feed</span>
           </button>
 
           {/* Article Header */}
-          <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden p-6 md:p-12 mb-8">
+          <div className="bg-white rounded-2xl md:rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden p-5 sm:p-8 md:p-12 mb-8 w-full">
             <div className="flex flex-wrap items-center gap-3 mb-6">
               <span className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-4.5 py-2 rounded-full shadow-sm ${selectedDetailedNews.is_ai_generated ? 'bg-ug-teal text-white' : 'bg-ug-navy text-white'}`}>
                 {selectedDetailedNews.is_ai_generated ? <Zap size={11} className="fill-white" /> : <Tag size={11} />} 
@@ -1454,13 +1456,13 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
               )}
             </div>
 
-            <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-ug-navy mb-8 leading-tight tracking-tight text-left">
+            <h1 className="text-2xl sm:text-3xl md:text-5xl font-black text-ug-navy mb-8 leading-tight tracking-tight text-left">
               {selectedDetailedNews.title}
             </h1>
 
             {/* Featured Image */}
             {selectedDetailedNews.image_url && (
-              <div className="w-full aspect-video rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 relative mb-8 md:mb-12 shadow-inner">
+              <div className="w-full aspect-[21/9] max-h-[520px] min-h-[220px] rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 relative mb-8 md:mb-12 shadow-inner">
                 <img
                   src={selectedDetailedNews.image_url}
                   alt=""
@@ -1471,7 +1473,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
             )}
 
             {/* Content Summary (News Body) */}
-            <div className="text-gray-700 font-medium text-sm md:text-lg leading-relaxed space-y-6 mb-8 whitespace-pre-line border-b border-gray-100 pb-8 prose max-w-none text-left">
+            <div className="text-gray-700 font-medium text-base sm:text-lg md:text-xl leading-relaxed space-y-6 mb-8 whitespace-pre-line border-b border-gray-100 pb-8 prose max-w-none text-left">
               {selectedDetailedNews.summary}
             </div>
 
@@ -1500,8 +1502,8 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
 
                 {/* Secondary reference links */}
                 {selectedDetailedNews.reference_links && Array.isArray(selectedDetailedNews.reference_links) && selectedDetailedNews.reference_links.filter(Boolean).length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
-                    {selectedDetailedNews.reference_links.filter(Boolean).slice(0, 4).map((link, idx) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-1">
+                    {selectedDetailedNews.reference_links.filter(Boolean).slice(0, 6).map((link, idx) => (
                       <a
                         key={idx}
                         href={link.startsWith('http') ? link : `https://${link}`}

@@ -246,7 +246,7 @@ const HubStreamSidebar: React.FC = () => {
   );
 
   return (
-    <aside className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm sticky top-24">
+    <aside className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-gray-100 shadow-sm sticky top-24 z-10">
        <div className="flex justify-between items-center mb-8">
           <div>
             <h3 className="text-lg font-black text-ug-navy">Hub Stream</h3>
@@ -2009,7 +2009,7 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
         </header>
 
         <main className="flex-1 overflow-y-auto w-full bg-[#fcfdfe]">
-          <div className="max-w-[1600px] mx-auto w-full p-4 lg:p-6 pb-20 lg:pb-8 space-y-6 lg:space-y-8">
+          <div className="max-w-[1600px] mx-auto w-full px-2 sm:px-4 lg:px-6 py-3 sm:py-6 pb-24 lg:pb-8 space-y-4 sm:space-y-6 lg:space-y-8">
           {activeTab === 'overview' && (
             <div className="animate-fade-in space-y-6 md:space-y-8">
               {role === UserRole.Researcher && (
@@ -2240,6 +2240,9 @@ const ResearcherDashboard = ({
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
   const [uploadingRevisedId, setUploadingRevisedId] = useState<string | null>(null);
+  const [expandedEoiId, setExpandedEoiId] = useState<string | null>(null);
+  const [showAllEois, setShowAllEois] = useState<boolean>(false);
+  const [eoiFilter, setEoiFilter] = useState<'all' | 'pending' | 'disclosures' | 'applications'>('all');
   const navigate = useNavigate();
   const { showToast } = useToast();
 
@@ -2450,7 +2453,7 @@ const ResearcherDashboard = ({
           <ActiveProjectHero project={activeProject} />
         )}
 
-        <section className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+        <section className="bg-white p-3.5 sm:p-6 md:p-8 rounded-2xl md:rounded-[2rem] border border-gray-100 shadow-sm">
           <div className="flex justify-between items-center mb-6 md:mb-8">
             <SectionTitle title="My Disclosures" subtitle="Secure Research Record Management" />
           </div>
@@ -2801,149 +2804,365 @@ const ResearcherDashboard = ({
         </section>
 
         {/* INBOUND PORTAL - INTERACTION HUB */}
-        <section className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm mt-8">
-          <div className="flex justify-between items-center mb-6 md:mb-8">
-            <SectionTitle title="Interaction Hub" subtitle="Student Applications & Technical Disclosures" />
-          </div>
-          <div className="space-y-4 mt-6">
-            {eois.length === 0 ? (
-              <div className="py-12 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                <Inbox className="mx-auto text-gray-300 mb-3" size={32} />
-                <p className="text-gray-400 font-bold uppercase text-[9px] tracking-widest">No requests received yet.</p>
-              </div>
-            ) : eois.map(eoi => {
-              const isReveal = eoi.message.includes('[REVEAL_REQUEST]') || eoi.message.includes('🔐 Technical Disclosure Request');
-              const isAssistantship = eoi.message.includes('[ASSISTANTSHIP_APPLICATION]');
-              const isScholarship = eoi.message.includes('[SCHOLARSHIP_APPLICATION]');
-              const isLabAccess = eoi.message.includes('[LAB_WORKSPACE_ACCESS]');
-              const isCollabProposal = eoi.message.includes('[COLLABORATION_PROPOSAL]');
-              const isExpressionOfInterest = eoi.message.includes('[EXPRESSION_OF_INTEREST]');
-              
-              let typeLabel = "Inquiry";
-              let badgeColor = "bg-gray-100 text-gray-600 border border-gray-200";
-              let cleanMessage = eoi.message;
+        <section className="bg-white p-3.5 sm:p-6 md:p-8 rounded-2xl md:rounded-[2rem] border border-gray-100 shadow-sm mt-6 sm:mt-8">
+          {/* Header & Filter Controls */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
+            <div>
+              <SectionTitle title="Interaction Hub" subtitle="Student Applications & Technical Disclosures" />
+            </div>
 
-              if (isReveal) {
-                typeLabel = "Key Document Reveal Requested";
-                badgeColor = "bg-pink-50 text-pink-700 border border-pink-200/50";
-                if (eoi.message.includes('🔐 Technical Disclosure Request')) {
-                  cleanMessage = eoi.message;
-                } else {
-                  cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
+            {/* Filter Segmented Control */}
+            {eois.length > 0 && (
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 w-full lg:w-auto shrink-0">
+                <button
+                  onClick={() => setEoiFilter('all')}
+                  className={`shrink-0 w-full sm:w-auto px-3 sm:px-3.5 py-2 sm:py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center justify-between sm:justify-start gap-1.5 ${
+                    eoiFilter === 'all'
+                      ? 'bg-ug-navy text-white shadow-sm ring-1 ring-ug-navy'
+                      : 'bg-gray-50 text-gray-600 hover:text-ug-navy hover:bg-gray-100 border border-gray-100'
+                  }`}
+                >
+                  <span>All</span>
+                  <span className={`px-1.5 py-0.5 text-[10px] rounded-md font-black ${eoiFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-200/70 text-gray-700'}`}>
+                    {eois.length}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setEoiFilter('pending')}
+                  className={`shrink-0 w-full sm:w-auto px-3 sm:px-3.5 py-2 sm:py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center justify-between sm:justify-start gap-1.5 ${
+                    eoiFilter === 'pending'
+                      ? 'bg-amber-500 text-white shadow-sm ring-1 ring-amber-500'
+                      : 'bg-gray-50 text-gray-600 hover:text-amber-700 hover:bg-amber-50/60 border border-gray-100'
+                  }`}
+                >
+                  <span>Pending</span>
+                  <span className={`px-1.5 py-0.5 text-[10px] rounded-md font-black ${eoiFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'}`}>
+                    {eois.filter(e => !e.status || e.status === 'pending').length}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setEoiFilter('disclosures')}
+                  className={`shrink-0 w-full sm:w-auto px-3 sm:px-3.5 py-2 sm:py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center justify-between sm:justify-start gap-1.5 ${
+                    eoiFilter === 'disclosures'
+                      ? 'bg-pink-600 text-white shadow-sm ring-1 ring-pink-600'
+                      : 'bg-gray-50 text-gray-600 hover:text-pink-700 hover:bg-pink-50/60 border border-gray-100'
+                  }`}
+                >
+                  <span>Disclosures</span>
+                  <span className={`px-1.5 py-0.5 text-[10px] rounded-md font-black ${eoiFilter === 'disclosures' ? 'bg-white/20 text-white' : 'bg-pink-100 text-pink-800'}`}>
+                    {eois.filter(e => e.message?.includes('[REVEAL_REQUEST]') || e.message?.includes('🔐 Technical Disclosure Request')).length}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setEoiFilter('applications')}
+                  className={`shrink-0 w-full sm:w-auto px-3 sm:px-3.5 py-2 sm:py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center justify-between sm:justify-start gap-1.5 ${
+                    eoiFilter === 'applications'
+                      ? 'bg-ug-teal text-white shadow-sm ring-1 ring-ug-teal'
+                      : 'bg-gray-50 text-gray-600 hover:text-ug-teal hover:bg-teal-50/60 border border-gray-100'
+                  }`}
+                >
+                  <span>Applications</span>
+                  <span className={`px-1.5 py-0.5 text-[10px] rounded-md font-black ${eoiFilter === 'applications' ? 'bg-white/20 text-white' : 'bg-teal-100 text-teal-800'}`}>
+                    {eois.filter(e => e.message?.includes('[ASSISTANTSHIP_APPLICATION]') || e.message?.includes('[SCHOLARSHIP_APPLICATION]') || e.message?.includes('[LAB_WORKSPACE_ACCESS]')).length}
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3 mt-4">
+            {(() => {
+              // Sort eois most recent first
+              const sortedEois = [...eois].sort((a, b) => {
+                const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                return timeB - timeA;
+              });
+
+              const filteredEois = sortedEois.filter(eoi => {
+                if (eoiFilter === 'pending') {
+                  return !eoi.status || eoi.status === 'pending';
                 }
-              } else if (isAssistantship) {
-                typeLabel = "Graduate Assistantship Candidate";
-                badgeColor = "bg-blue-50 text-blue-700 border border-blue-200/50";
-                cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
-              } else if (isScholarship) {
-                typeLabel = "Scholarship Fellow Inquiry";
-                badgeColor = "bg-amber-50 text-amber-700 border border-amber-200/50";
-                cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
-              } else if (isLabAccess) {
-                typeLabel = "Lab Space Authorization";
-                badgeColor = "bg-purple-50 text-purple-700 border border-purple-200/50";
-                cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
-              } else if (isCollabProposal) {
-                typeLabel = "Academic Collaboration Proposal";
-                badgeColor = "bg-teal-50 text-teal-700 border border-teal-200/50";
-                cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
-              } else if (isExpressionOfInterest) {
-                typeLabel = "Expression of Research Interest";
-                badgeColor = "bg-indigo-50 text-indigo-700 border border-indigo-200/50";
-                cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
+                if (eoiFilter === 'disclosures') {
+                  return eoi.message?.includes('[REVEAL_REQUEST]') || eoi.message?.includes('🔐 Technical Disclosure Request');
+                }
+                if (eoiFilter === 'applications') {
+                  return eoi.message?.includes('[ASSISTANTSHIP_APPLICATION]') || eoi.message?.includes('[SCHOLARSHIP_APPLICATION]') || eoi.message?.includes('[LAB_WORKSPACE_ACCESS]');
+                }
+                return true;
+              });
+
+              const displayedEois = showAllEois ? filteredEois : filteredEois.slice(0, 5);
+
+              if (filteredEois.length === 0) {
+                return (
+                  <div className="py-12 text-center bg-gray-50/60 rounded-2xl border border-dashed border-gray-200">
+                    <Inbox className="mx-auto text-gray-300 mb-2" size={32} />
+                    <p className="text-gray-500 font-bold text-xs">
+                      {eois.length === 0 ? "No requests received yet." : "No interactions match the selected filter."}
+                    </p>
+                  </div>
+                );
               }
 
               return (
-                <div key={eoi.id} className="p-5 border border-gray-100 rounded-3xl bg-gray-50/20 hover:bg-white hover:shadow-lg transition space-y-4">
-                  <div className="flex justify-between items-start gap-3 flex-wrap sm:flex-nowrap">
-                    <div>
-                      <span className={`inline-block px-2.5 py-1 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-wider mb-2 ${badgeColor}`}>
-                        {typeLabel}
-                      </span>
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <h4 className="font-black text-ug-navy text-xs md:text-sm">From: {eoi.user_name}</h4>
-                        {eoi.sender_id && (
-                          <Link 
-                            to={`/researcher/${eoi.sender_id}`}
-                            className="bg-ug-teal/5 text-ug-teal hover:bg-ug-teal hover:text-white transition duration-200 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1 border border-ug-teal/10 hover:border-ug-teal"
-                          >
-                            <UserIcon size={10} /> View Portfolio
-                          </Link>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500 font-semibold">Associated Asset: {eoi.projects?.title || 'Direct/Hub'}</p>
-                    </div>
-                    {eoi.status && eoi.status.startsWith('released') ? (
-                      <span className="flex items-center gap-1.5 text-ug-success text-[10px] md:text-xs font-black uppercase tracking-wider bg-ug-success/10 px-3 py-1.5 rounded-xl border border-ug-success/20">
-                        <Check size={12} strokeWidth={3} /> Approved / Released
-                      </span>
-                    ) : eoi.status === 'declined' ? (
-                      <span className="flex items-center gap-1.5 text-red-700 text-[10px] md:text-xs font-black uppercase tracking-wider bg-red-50 px-3 py-1.5 rounded-xl border border-red-200">
-                        Declined / Restricted
-                      </span>
-                    ) : (
-                      <span className="text-gray-500 text-[10px] md:text-xs font-black uppercase tracking-wider bg-gray-100 px-3 py-1.5 rounded-xl border border-gray-200 font-black">
-                        Pending Assessment
-                      </span>
-                    )}
-                  </div>
-                  
-                  <p className="text-gray-700 text-xs md:text-sm font-medium leading-relaxed italic border-l-2 border-ug-teal/30 pl-4 py-1 whitespace-pre-wrap">
-                    "{cleanMessage}"
-                  </p>
+                <>
+                  <div className="space-y-3">
+                    {displayedEois.map(eoi => {
+                      const isReveal = eoi.message?.includes('[REVEAL_REQUEST]') || eoi.message?.includes('🔐 Technical Disclosure Request');
+                      const isAssistantship = eoi.message?.includes('[ASSISTANTSHIP_APPLICATION]');
+                      const isScholarship = eoi.message?.includes('[SCHOLARSHIP_APPLICATION]');
+                      const isLabAccess = eoi.message?.includes('[LAB_WORKSPACE_ACCESS]');
+                      const isCollabProposal = eoi.message?.includes('[COLLABORATION_PROPOSAL]');
+                      const isExpressionOfInterest = eoi.message?.includes('[EXPRESSION_OF_INTEREST]');
+                      
+                      let typeLabel = "Inquiry";
+                      let badgeColor = "bg-gray-100 text-gray-700 border-gray-200";
+                      let IconComponent = FileText;
+                      let cleanMessage = eoi.message || '';
 
-                  {(!eoi.status || eoi.status === 'pending') && (
-                    <div className="flex gap-3 pt-1">
-                      {isReveal ? (
-                        <>
-                          <button
-                            onClick={() => handleAcceptReveal(eoi)}
-                            className="bg-ug-teal text-white px-5 py-2.5 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition flex items-center gap-1.5 shadow-sm active:scale-95"
-                          >
-                            <Award size={12} /> Approve Secure Reveal
-                          </button>
-                          <button
-                            onClick={() => handleDeclineReveal(eoi)}
-                            className="bg-red-600 text-white px-5 py-2.5 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-red-700 transition flex items-center gap-1.5 shadow-sm active:scale-95"
-                          >
-                            Decline Request
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={async () => {
-                            try {
-                              await StorageService.updateEOIStatus(eoi.id, 'released');
-                              setEois(prev => prev.map(item => item.id === eoi.id ? { ...item, status: 'released' } : item));
-                              showToast("Clearance and Approval Disclosed Successfully!", "success");
-                            } catch (err: any) {
-                              showToast(err.message || "Failed to issue approval", "error");
-                            }
-                          }}
-                          className="bg-ug-navy text-white px-5 py-2.5 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-ug-teal transition flex items-center gap-1.5 shadow-sm active:scale-95"
+                      if (isReveal) {
+                        typeLabel = "Disclosure Request";
+                        badgeColor = "bg-pink-50 text-pink-700 border-pink-200/80";
+                        IconComponent = Lock;
+                        if (!eoi.message?.includes('🔐 Technical Disclosure Request') && eoi.message?.includes(']')) {
+                          cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
+                        }
+                      } else if (isAssistantship) {
+                        typeLabel = "Graduate Assistantship";
+                        badgeColor = "bg-blue-50 text-blue-700 border-blue-200/80";
+                        IconComponent = GraduationCap;
+                        if (eoi.message?.includes(']')) cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
+                      } else if (isScholarship) {
+                        typeLabel = "Scholarship Fellow";
+                        badgeColor = "bg-amber-50 text-amber-800 border-amber-200/80";
+                        IconComponent = Award;
+                        if (eoi.message?.includes(']')) cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
+                      } else if (isLabAccess) {
+                        typeLabel = "Lab Authorization";
+                        badgeColor = "bg-purple-50 text-purple-700 border-purple-200/80";
+                        IconComponent = Briefcase;
+                        if (eoi.message?.includes(']')) cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
+                      } else if (isCollabProposal) {
+                        typeLabel = "Research Proposal";
+                        badgeColor = "bg-teal-50 text-teal-800 border-teal-200/80";
+                        IconComponent = Handshake;
+                        if (eoi.message?.includes(']')) cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
+                      } else if (isExpressionOfInterest) {
+                        typeLabel = "Research Interest";
+                        badgeColor = "bg-indigo-50 text-indigo-700 border-indigo-200/80";
+                        IconComponent = FileText;
+                        if (eoi.message?.includes(']')) cleanMessage = eoi.message.substring(eoi.message.indexOf(']') + 1).trim();
+                      }
+
+                      const isExpanded = expandedEoiId === eoi.id;
+                      const previewSnippet = cleanMessage.length > 90 ? cleanMessage.slice(0, 90) + '...' : cleanMessage;
+
+                      return (
+                        <div 
+                          key={eoi.id} 
+                          className={`border rounded-2xl transition duration-200 overflow-hidden ${
+                            isExpanded 
+                              ? 'bg-white border-ug-teal shadow-md ring-1 ring-ug-teal/20' 
+                              : 'bg-white border-gray-200/80 hover:border-ug-teal/40 hover:shadow-sm'
+                          }`}
                         >
-                          <Award size={12} /> Accredit Application
-                        </button>
-                      )}
+                          {/* Card Header (Click to expand) */}
+                          <div 
+                            onClick={() => setExpandedEoiId(isExpanded ? null : eoi.id)}
+                            className="p-4 md:p-5 cursor-pointer flex flex-col gap-2.5 select-none"
+                          >
+                            {/* Top Meta Row */}
+                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-extrabold border ${badgeColor}`}>
+                                  <IconComponent size={13} />
+                                  {typeLabel}
+                                </span>
+
+                                {eoi.created_at && (
+                                  <span className="text-[11px] text-gray-400 font-medium flex items-center gap-1">
+                                    <Clock size={11} />
+                                    {new Date(eoi.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Status Badge & Chevron */}
+                              <div className="flex items-center gap-2.5 shrink-0 ml-auto sm:ml-0">
+                                {eoi.status && eoi.status.startsWith('released') ? (
+                                  <span className="inline-flex items-center gap-1 text-emerald-700 text-xs font-bold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/80">
+                                    <Check size={12} strokeWidth={2.5} /> Approved
+                                  </span>
+                                ) : eoi.status === 'declined' ? (
+                                  <span className="inline-flex items-center gap-1 text-red-700 text-xs font-bold bg-red-50 px-2.5 py-1 rounded-lg border border-red-200/80">
+                                    Declined
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-amber-800 text-xs font-bold bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/80">
+                                    Pending Assessment
+                                  </span>
+                                )}
+
+                                <div className="p-1 rounded-md text-gray-400 hover:text-ug-navy transition">
+                                  {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Main Content Line */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4 pt-0.5">
+                              <div className="flex items-center gap-2 text-xs text-gray-700 min-w-0 flex-wrap">
+                                <span>From: <strong className="font-extrabold text-ug-navy">{eoi.user_name}</strong></span>
+                                <span className="text-gray-300 font-bold">•</span>
+                                <span className="text-gray-500 truncate max-w-sm" title={eoi.projects?.title || 'Direct/Hub'}>
+                                  Asset: <strong className="font-semibold text-ug-teal">{eoi.projects?.title || 'Direct/Hub'}</strong>
+                                </span>
+                              </div>
+
+                              {!isExpanded && previewSnippet && (
+                                <p className="text-gray-500 text-xs italic truncate max-w-lg font-normal">
+                                  "{previewSnippet}"
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Expanded Card Body */}
+                          {isExpanded && (
+                            <div className="px-4 pb-5 md:px-5 border-t border-gray-100 pt-4 space-y-4 bg-slate-50/40">
+                              {/* Metadata Strip */}
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                                <div>
+                                  <p className="text-gray-400 font-bold uppercase text-[10px] tracking-wider mb-0.5">Applicant / Sender</p>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-black text-ug-navy text-xs">{eoi.user_name}</span>
+                                    {eoi.sender_id && (
+                                      <Link 
+                                        to={`/researcher/${eoi.sender_id}`}
+                                        className="inline-flex items-center gap-1 text-ug-teal hover:underline font-bold text-[10px] bg-ug-teal/5 px-2 py-0.5 rounded-md border border-ug-teal/20"
+                                      >
+                                        <UserIcon size={10} /> Profile
+                                      </Link>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <p className="text-gray-400 font-bold uppercase text-[10px] tracking-wider mb-0.5">Associated Research Asset</p>
+                                  <p className="font-bold text-ug-navy text-xs truncate">{eoi.projects?.title || 'Direct/Hub'}</p>
+                                </div>
+
+                                {eoi.created_at && (
+                                  <div>
+                                    <p className="text-gray-400 font-bold uppercase text-[10px] tracking-wider mb-0.5">Received Date</p>
+                                    <p className="font-medium text-gray-700 text-xs">{new Date(eoi.created_at).toLocaleString()}</p>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Message Callout Box */}
+                              <div>
+                                <p className="text-gray-400 font-bold uppercase text-[10px] tracking-wider mb-1.5">Submitted Application Message</p>
+                                <p className="text-gray-800 text-xs md:text-sm font-medium leading-relaxed italic bg-white border-l-4 border-ug-teal p-4 rounded-r-xl border-y border-r border-gray-200/80 whitespace-pre-wrap shadow-2xs">
+                                  "{cleanMessage}"
+                                </p>
+                              </div>
+
+                              {/* Actions Bar */}
+                              <div className="flex items-center justify-between pt-2 flex-wrap gap-3">
+                                <div>
+                                  {(!eoi.status || eoi.status === 'pending') && (
+                                    <div className="flex gap-2.5 flex-wrap">
+                                      {isReveal ? (
+                                        <>
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); handleAcceptReveal(eoi); }}
+                                            className="bg-ug-teal text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-600 transition flex items-center gap-1.5 shadow-sm active:scale-95"
+                                          >
+                                            <Award size={14} /> Approve Secure Disclosure
+                                          </button>
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); handleDeclineReveal(eoi); }}
+                                            className="bg-red-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-red-700 transition flex items-center gap-1.5 shadow-sm active:scale-95"
+                                          >
+                                            Decline Request
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <button
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            try {
+                                              await StorageService.updateEOIStatus(eoi.id, 'released');
+                                              setEois(prev => prev.map(item => item.id === eoi.id ? { ...item, status: 'released' } : item));
+                                              showToast("Application accredited and approved successfully!", "success");
+                                            } catch (err: any) {
+                                              showToast(err.message || "Failed to issue approval", "error");
+                                            }
+                                          }}
+                                          className="bg-ug-navy text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-ug-teal transition flex items-center gap-1.5 shadow-sm active:scale-95"
+                                        >
+                                          <Award size={14} /> Accredit Application
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setExpandedEoiId(null); }}
+                                  className="text-xs text-gray-500 hover:text-ug-navy font-bold flex items-center gap-1 py-1.5 px-3 rounded-lg hover:bg-gray-200/50 transition ml-auto"
+                                >
+                                  Close Details <ChevronUp size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Show More / Capped View Controls */}
+                  {filteredEois.length > 5 && (
+                    <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-100">
+                      <p className="text-xs text-gray-500 font-semibold">
+                        Showing <span className="font-bold text-ug-navy">{displayedEois.length}</span> of <span className="font-bold text-ug-navy">{filteredEois.length}</span> recent interactions
+                      </p>
+                      <button
+                        onClick={() => setShowAllEois(!showAllEois)}
+                        className="w-full sm:w-auto px-5 py-2 rounded-xl bg-ug-navy text-white text-xs font-bold hover:bg-ug-teal transition duration-200 flex items-center justify-center gap-2 shadow-sm active:scale-95"
+                      >
+                        {showAllEois ? (
+                          <>
+                            Show Top 5 Only <ChevronUp size={15} />
+                          </>
+                        ) : (
+                          <>
+                            View All ({filteredEois.length}) Interactions <ChevronDown size={15} />
+                          </>
+                        )}
+                      </button>
                     </div>
                   )}
-                </div>
+                </>
               );
-            })}
+            })()}
           </div>
         </section>
       </div>
 
       <div className="md:col-span-2 lg:col-span-4 space-y-6 border-t lg:border-t-0 pt-6 lg:pt-0">
-        <HubStreamSidebar />
         {user?.id && <BookmarkedProjectsList userId={user.id} />}
+        <HubStreamSidebar />
       </div>
     </div>
   );
 };
 
 const UnifiedDashboardProfile = ({ user, onAction, actionLabel }: { user: User | null, onAction: () => void, actionLabel: string }) => (
-  <div className="bg-white p-5 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-5 md:gap-6 relative overflow-hidden group">
+  <div className="bg-white p-3.5 sm:p-5 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-4 sm:gap-6 relative overflow-hidden group">
     <div className="absolute top-0 right-0 w-32 h-32 bg-ug-teal/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition duration-1000"></div>
     
     <div className="relative shrink-0">
@@ -3403,28 +3622,44 @@ ${senderName}`
         return;
       }
 
-      // Perform AI re-ranking if we have an AI profile
+      // 1. INSTANT INITIAL DISPLAY (<50ms): Map vector similarity scores directly
+      const initialProfiles = profiles.map(p => ({
+        ...p,
+        ai_score: Math.round((p.similarity || 0.75) * 100),
+        ai_reasoning: p.ai_reasoning || "Direct research synergy based on ecosystem profile & vector distance.",
+        ai_label: (p.similarity || 0) >= 0.85 ? "Highly Compatible" : "Strategic Match"
+      }));
+
+      const initialProjects = projects.map(p => ({
+        ...p,
+        ai_score: Math.round((p.similarity || 0.75) * 100),
+        ai_reasoning: p.ai_reasoning || "Strong research alignment with active project roadmap.",
+        ai_label: (p.similarity || 0) >= 0.85 ? "Highly Compatible" : "Strategic Match"
+      }));
+
+      setProfileMatches(initialProfiles);
+      setProjectMatches(initialProjects);
+      
+      // Unblock UI immediately so tab loads instantly
+      setLoading(false);
+
+      // 2. BACKGROUND AI RE-RANKING: Asynchronously refine scores with cached or background Gemini ranking
       if (user.ai_profile) {
         setIsProcessing(true);
-        try {
-          const [rankedProfiles, rankedProjects] = await Promise.all([
-            MatchingService.rankMatches(user.ai_profile, profiles),
-            MatchingService.rankMatches(user.ai_profile, projects)
-          ]);
-          setProfileMatches(rankedProfiles.length > 0 ? rankedProfiles : profiles.map(p => ({ ...p, ai_score: Math.round(p.similarity * 100) })));
-          setProjectMatches(rankedProjects.length > 0 ? rankedProjects : projects.map(p => ({ ...p, ai_score: Math.round(p.similarity * 100) })));
-        } catch (rankError) {
-          console.warn("AI Ranking failed, falling back to vector similarity:", rankError);
-          setProfileMatches(profiles.map(p => ({ ...p, ai_score: Math.round(p.similarity * 100) })));
-          setProjectMatches(projects.map(p => ({ ...p, ai_score: Math.round(p.similarity * 100) })));
-        }
-      } else {
-        setProfileMatches(profiles.map(p => ({ ...p, ai_score: Math.round(p.similarity * 100) })));
-        setProjectMatches(projects.map(p => ({ ...p, ai_score: Math.round(p.similarity * 100) })));
+        Promise.all([
+          MatchingService.rankMatches(user.ai_profile, profiles),
+          MatchingService.rankMatches(user.ai_profile, projects)
+        ]).then(([rankedProfiles, rankedProjects]) => {
+          if (rankedProfiles && rankedProfiles.length > 0) setProfileMatches(rankedProfiles);
+          if (rankedProjects && rankedProjects.length > 0) setProjectMatches(rankedProjects);
+        }).catch((rankError) => {
+          console.warn("Background AI Ranking silent fallback:", rankError);
+        }).finally(() => {
+          setIsProcessing(false);
+        });
       }
     } catch (error) {
       console.error("Failed to fetch matches:", error);
-    } finally {
       setLoading(false);
       setIsProcessing(false);
     }
@@ -3437,6 +3672,7 @@ ${senderName}`
     }
     
     setIsRerunning(true);
+    MatchingService.clearCache(); // Wipe match cache for fresh rerun
     showToast("Analyzing profile and regenerating neural vectors...", "info");
     
     try {
@@ -3483,7 +3719,7 @@ ${senderName}`
         await onProfileUpdate();
       }
       
-      // Trigger fetch matches
+      // Trigger fetch matches immediately
       await fetchMatches();
     } catch (error: any) {
       console.error("Failed to rerun matching:", error);
@@ -4151,7 +4387,7 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 items-start">
             <div className="md:col-span-2 lg:col-span-8 space-y-8">
                {/* COLLABORATION CALLS */}
-               <section className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
+               <section className="bg-white p-3.5 sm:p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-gray-100 shadow-sm">
                   <SectionTitle title="Collaboration Calls" subtitle="Active Research Projects Seeking Talent" />
                   <div className="space-y-4 mt-6">
                      {openOpportunities.length === 0 ? (
@@ -4193,7 +4429,7 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
                </section>
 
                {/* SCHOLARSHIPS */}
-               <section className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm mt-8">
+               <section className="bg-white p-3.5 sm:p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-gray-100 shadow-sm mt-6 sm:mt-8">
                   <SectionTitle title="Scholarships & Research Fellowships" subtitle="Academically Funded Pathways to Support Innovation" />
                   <div className="space-y-4 mt-6">
                      {[
@@ -4224,7 +4460,7 @@ const StudentDashboard = ({ user }: { user: User | null }) => {
 
                {/* STUDENT SPECIFIC RECOMMENDATIONS */}
                {recommendations.length > 0 && (
-                 <section className="bg-gradient-to-tr from-ug-navy/[0.02] to-ug-teal/[0.02] p-8 rounded-[2.5rem] border border-gray-100 shadow-sm mt-8">
+                 <section className="bg-gradient-to-tr from-ug-navy/[0.02] to-ug-teal/[0.02] p-3.5 sm:p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-gray-100 shadow-sm mt-6 sm:mt-8">
                     <SectionTitle title="Recommended for You" subtitle="Personalized research matches based on your program and profile keywords" />
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                        {recommendations.map(({ project: p, reason }) => (
@@ -4543,7 +4779,7 @@ const InvestorDashboard = ({
          {/* Venture Portfolio & Watchlist */}
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 items-start">
             <div className="md:col-span-2 lg:col-span-8 space-y-8">
-               <section className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
+               <section className="bg-white p-3.5 sm:p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-gray-100 shadow-sm">
                   <SectionTitle title="Venture Portfolio" subtitle="Curated Technical Assets from University of Ghana" />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      {projects.slice(0, 4).map(p => (
@@ -4583,17 +4819,17 @@ const BookmarkedProjectsList: React.FC<{ userId: string }> = ({ userId }) => {
   useEffect(() => { StorageService.getBookmarks(userId).then(setBookmarks); }, [userId]);
   if (bookmarks.length === 0) return null;
   return (
-    <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+    <section className="bg-white p-3.5 sm:p-6 md:p-8 rounded-2xl md:rounded-[2rem] border border-gray-100 shadow-sm">
       <SectionTitle title="Watchlist" subtitle="Secured Research Notifications" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="space-y-3 mt-4">
         {bookmarks.map(p => (
-          <div key={p.id} onClick={() => navigate(`/projects/${p.id}`)} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50/20 hover:bg-white hover:shadow-md transition cursor-pointer group">
-            <div className="w-12 h-12 rounded-xl overflow-hidden shadow-sm shrink-0"><img src={p.image_url && p.image_url.trim() !== '' ? p.image_url.split('|')[0] : 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80'} className="w-full h-full object-cover" alt="" /></div>
+          <div key={p.id} onClick={() => navigate(`/projects/${p.id}`)} className="flex items-center gap-3 p-3.5 rounded-2xl bg-gray-50/50 border border-gray-100 hover:bg-white hover:border-ug-teal/20 hover:shadow-md transition cursor-pointer group">
+            <div className="w-11 h-11 rounded-xl overflow-hidden shadow-sm shrink-0 border border-white"><img src={p.image_url && p.image_url.trim() !== '' ? p.image_url.split('|')[0] : 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80'} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" alt="" /></div>
             <div className="flex-1 min-w-0">
-               <h4 className="font-black text-ug-navy text-sm truncate group-hover:text-ug-teal">{p.title}</h4>
-               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{p.research_area}</p>
+               <h4 className="font-black text-ug-navy text-xs truncate group-hover:text-ug-teal transition">{p.title}</h4>
+               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest truncate">{p.research_area}</p>
             </div>
-            <Bookmark size={16} className="text-ug-teal fill-ug-teal" />
+            <Bookmark size={16} className="text-ug-teal fill-ug-teal shrink-0" />
           </div>
         ))}
       </div>

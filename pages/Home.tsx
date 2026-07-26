@@ -2,11 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Microscope, Pill, Syringe, CheckCircle, Send, Loader2, Newspaper, Calendar, Sparkles, BookOpen, ChevronRight } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { HERO_IMAGES } from '../constants';
 import { ProjectStatus, Project, ResearchArea, NewsItem } from '../types';
 import { StorageService } from '../services/storageService';
 
 const Home: React.FC = () => {
+  const { t } = useTranslation();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [formStatus, setFormStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [marketReadyProducts, setMarketReadyProducts] = useState<Project[]>([]);

@@ -1,8 +1,10 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Menu, X, User, LogIn, LogOut } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
+import LanguageSwitcher from './LanguageSwitcher';
 import { User as UserType } from '../types';
 
 interface NavbarProps {
@@ -17,12 +19,13 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick, onLogout, onSelectMessage, unreadCount = 0 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { t } = useTranslation();
 
   const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: 'Projects', path: '/projects' },
-    { name: 'Products', path: '/products' },
-    { name: 'News', path: '/news' },
+    { name: t('nav.home'), path: '/' },
+    { name: t('nav.projects'), path: '/projects' },
+    { name: t('nav.products'), path: '/products' },
+    { name: t('nav.news'), path: '/news' },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -36,7 +39,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
              <div className="w-8 h-8 bg-ug-teal rounded-full flex items-center justify-center font-bold text-white">
                 UG
              </div>
-             <span className="font-bold text-lg tracking-wide">Industry Hub</span>
+             <span className="font-bold text-lg tracking-wide">{t('nav.brand')}</span>
           </Link>
 
           {/* Desktop Menu */}
@@ -44,7 +47,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
             <div className="ml-10 flex items-baseline space-x-4">
               {navLinks.map((link) => (
                 <Link
-                  key={link.name}
+                  key={link.path}
                   to={link.path}
                   className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
                     isActive(link.path)
@@ -58,8 +61,10 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
             </div>
           </div>
 
-          {/* User & Notifications */}
+          {/* User & Notifications & Language Selector */}
           <div className="hidden md:flex items-center gap-4">
+             <LanguageSwitcher />
+
              {isAuthenticated && (
                <NotificationCenter user={user} onSelectMessage={onSelectMessage} />
              )}
@@ -68,14 +73,16 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
              <div 
                 className={`h-9 w-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 ${isAuthenticated ? 'bg-ug-teal text-white shadow-lg shadow-ug-teal/50 ring-2 ring-ug-teal/20' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
                 onClick={onUserIconClick}
-                title={isAuthenticated ? "Go to Dashboard" : "Login / Register"}
+                title={isAuthenticated ? t('nav.myDashboard') : t('nav.login')}
              >
                 {isAuthenticated ? <User size={18} /> : <LogIn size={18} />}
              </div>
           </div>
 
           {/* Mobile menu progress & action elements */}
-          <div className="-mr-2 flex md:hidden items-center gap-3">
+          <div className="-mr-2 flex md:hidden items-center gap-2.5">
+             <LanguageSwitcher dropdownPosition="right" />
+
              {isAuthenticated && (
                <NotificationCenter user={user} onSelectMessage={onSelectMessage} />
              )}
@@ -95,7 +102,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-ug-navy border-t border-gray-700">
             {navLinks.map((link) => (
               <Link
-                key={link.name}
+                key={link.path}
                 to={link.path}
                 onClick={() => setIsOpen(false)}
                 className={`block px-3 py-2 rounded-md text-base font-medium ${
@@ -114,7 +121,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
                >
                   <div className="flex items-center gap-2">
                     <User size={18} />
-                    <span>{isAuthenticated ? 'My Dashboard' : 'Login / Register'}</span>
+                    <span>{isAuthenticated ? t('nav.myDashboard') : t('nav.login')}</span>
                   </div>
                   {isAuthenticated && unreadCount > 0 && (
                     <span className="bg-ug-error text-white text-[10px] px-2 py-0.5 rounded-full font-black">
@@ -129,7 +136,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
                     className="w-full flex items-center gap-2 px-3 py-2 text-red-400 hover:text-red-300 hover:bg-white/5 rounded-md font-bold transition-colors"
                  >
                     <LogOut size={18} />
-                    <span>Logout</span>
+                    <span>{t('nav.logout')}</span>
                  </button>
                )}
             </div>

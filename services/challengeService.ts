@@ -187,6 +187,7 @@ export const ChallengeService = {
       const { data: candidates } = await candidatesQuery;
       if (!candidates || candidates.length === 0) return;
 
+      const matchesToUpsert: any[] = [];
       for (const ch of challenges) {
         for (const cand of candidates) {
           // Calculate similarity
@@ -199,7 +200,7 @@ export const ChallengeService = {
 
           const candidateRole = cand.role === 'Student' ? 'student' : 'researcher';
 
-          await supabase.from('challenge_matches').upsert({
+          matchesToUpsert.push({
             challenge_id: ch.id,
             candidate_user_id: cand.id,
             partner_user_id: ch.partner_id,
@@ -211,8 +212,12 @@ export const ChallengeService = {
             recommended_role: cand.role === 'Student' ? 'Research Intern / Student Analyst' : 'Co-Principal Investigator / Technical Lead',
             status: 'recommended',
             match_reasons: [`Matched on technical skills: ${matchedSkills.join(', ') || 'Domain expertise'}`]
-          }, { onConflict: 'challenge_id,candidate_user_id' });
+          });
         }
+      }
+
+      if (matchesToUpsert.length > 0) {
+        await supabase.from('challenge_matches').upsert(matchesToUpsert, { onConflict: 'challenge_id,candidate_user_id' });
       }
     } catch (e) {
       console.warn("Client side match generation warning:", e);

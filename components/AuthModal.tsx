@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, User, ArrowRight, AlertCircle, Info, Eye, EyeOff, Target } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { UserRole } from '../types';
 import { supabase } from '../lib/supabase';
 import { StorageService } from '../services/storageService';
@@ -12,6 +13,7 @@ interface AuthModalProps {
 }
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
+  const { t } = useTranslation();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -115,7 +117,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 <div className="w-12 h-12 bg-ug-teal rounded-full flex items-center justify-center font-bold text-white text-xl mx-auto mb-2 shadow-lg border-2 border-white">
                     UG
                 </div>
-                <h2 className="text-white font-bold text-xl tracking-wide">Industry Hub</h2>
+                <h2 className="text-white font-bold text-xl tracking-wide">{t('nav.brand')}</h2>
             </div>
             <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white transition"><X size={24} /></button>
         </div>
@@ -151,13 +153,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     className={`flex-1 pb-3 text-sm font-black transition-colors ${isLogin ? 'text-ug-teal border-b-2 border-ug-teal' : 'text-gray-400'}`}
                     onClick={() => setIsLogin(true)}
                 >
-                    Login
+                    {t('auth.login')}
                 </button>
                 <button 
                     className={`flex-1 pb-3 text-sm font-black transition-colors ${!isLogin ? 'text-ug-teal border-b-2 border-ug-teal' : 'text-gray-400'}`}
                     onClick={() => setIsLogin(false)}
                 >
-                    Join Hub
+                    {t('auth.register')}
                 </button>
             </div>
 
@@ -210,7 +212,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
                 <div className="relative">
                     <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input required type="email" placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ug-teal/20 focus:border-ug-teal text-sm font-bold bg-gray-50" />
+                    <input required type="email" placeholder={t('auth.email')} value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ug-teal/20 focus:border-ug-teal text-sm font-bold bg-gray-50" />
                 </div>
 
                 <div className="relative">
@@ -218,7 +220,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     <input 
                       required 
                       type={showPassword ? "text" : "password"} 
-                      placeholder="Password" 
+                      placeholder={t('auth.password')} 
                       value={password} 
                       onChange={(e) => setPassword(e.target.value)} 
                       className="w-full pl-10 pr-12 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ug-teal/20 focus:border-ug-teal text-sm font-bold bg-gray-50" 
@@ -239,7 +241,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     <input 
                       required 
                       type={showPassword ? "text" : "password"} 
-                      placeholder="Confirm Password" 
+                      placeholder={t('auth.password')} 
                       value={confirmPassword} 
                       onChange={(e) => setConfirmPassword(e.target.value)} 
                       className="w-full pl-10 pr-12 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ug-teal/20 focus:border-ug-teal text-sm font-bold bg-gray-50" 
@@ -254,7 +256,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                       onClick={handleForgotPassword}
                       className="text-[10px] font-black text-ug-teal uppercase tracking-widest hover:underline"
                     >
-                      Forgot Password?
+                      {t('auth.forgotPassword')}
                     </button>
                   </div>
                 )}
@@ -264,7 +266,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     disabled={loading}
                     className="w-full bg-ug-navy text-white py-3 rounded-lg font-black uppercase tracking-widest hover:bg-opacity-90 transition flex items-center justify-center gap-2 mt-2 disabled:opacity-50 shadow-lg"
                 >
-                    {loading ? 'Authenticating...' : 'Enter Hub'} <ArrowRight size={18} />
+                    {loading ? t('common.loading') : (isLogin ? t('auth.login') : t('auth.signUp'))} <ArrowRight size={18} />
                 </button>
             </form>
 

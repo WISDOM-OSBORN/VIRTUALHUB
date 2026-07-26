@@ -5,9 +5,26 @@ const getApiKey = () => {
   return (import.meta as any).env.VITE_GEMINI_API_KEY || (import.meta as any).env.GEMINI_API_KEY || '';
 };
 
+// High-speed in-memory rank cache
+const rankCache = new Map<string, any[]>();
+
 export const MatchingService = {
+  clearCache: () => {
+    rankCache.clear();
+  },
+
   rankMatches: async (userProfile: AIProfile, candidateMatches: any[]) => {
     if (!candidateMatches || !candidateMatches.length) return [];
+
+    // Cache lookup
+    const candIds = candidateMatches.map(c => c.id).sort().join(',');
+    const cacheKey = `${userProfile.semantic_summary?.substring(0, 40) || 'default'}_${candIds}`;
+    
+    if (rankCache.has(cacheKey)) {
+      return rankCache.get(cacheKey)!;
+    }
+
+    let result: any[] = [];
 
     const apiKey = getApiKey();
     if (apiKey) {
@@ -24,7 +41,7 @@ USER PROFILE:
 - Technical Skills: ${(userProfile.skills?.technical_skills || []).join(', ')}
 
 CANDIDATES:
-${candidateMatches.map((c: any, i: number) => `
+${candidateMatches.slice(0, 15).map((c: any, i: number) => `
 [Candidate #${i}]
 - ID: ${c.id}
 - Name/Title: ${c.name || c.title}
@@ -48,14 +65,15 @@ Return strictly a JSON array of objects with schema:
           model: 'gemini-2.5-flash',
           contents: prompt,
           config: {
-            responseMimeType: "application/json"
+            responseMimeType: "application/json",
+            maxOutputTokens: 1000
           }
         });
 
         if (response.text) {
           const rankings = JSON.parse(response.text);
           if (Array.isArray(rankings)) {
-            return candidateMatches.map((c, i) => {
+            result = candidateMatches.map((c, i) => {
               const ranking = rankings.find((r: any) => 
                 (r.id && c.id && String(r.id).toLowerCase() === String(c.id).toLowerCase()) ||
                 (r.index !== undefined && Number(r.index) === i)
@@ -71,6 +89,9 @@ Return strictly a JSON array of objects with schema:
                 ai_label: ranking?.alignment_label || "AI Identified Match"
               };
             }).sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
+
+            rankCache.set(cacheKey, result);
+            return result;
           }
         }
       } catch (err) {
@@ -79,7 +100,7 @@ Return strictly a JSON array of objects with schema:
     }
 
     // High-precision client-side keyword and similarity scoring fallback
-    return candidateMatches.map((c: any) => {
+    result = candidateMatches.map((c: any) => {
       const titleText = (c.name || c.title || '').toLowerCase();
       const descText = (c.semantic_summary || c.description || '').toLowerCase();
       const userSummary = (userProfile.semantic_summary || '').toLowerCase();
@@ -112,5 +133,8 @@ Return strictly a JSON array of objects with schema:
         ai_label: alignment_label
       };
     }).sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
+
+    rankCache.set(cacheKey, result);
+    return result;
   }
 };
