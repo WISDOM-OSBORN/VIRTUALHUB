@@ -2,6 +2,7 @@
 import { Project, NewsItem, User, UserRole, SavedSearch, AlertNotification, AccountDeletionRecord } from '../types';
 import { supabase } from '../lib/supabase';
 import { EmbeddingService } from './embeddingService';
+import { encryptMessage, decryptMessage } from '../lib/cryptoService';
 
 const getStorageFilePath = (urlOrPath: string, bucket = 'projects'): string => {
   if (!urlOrPath) return '';
@@ -893,12 +894,15 @@ export const StorageService = {
       throw new Error("Recipient Error: No target identified for this transmission.");
     }
 
+    // Encrypt message content for in-transit and at-rest cryptographic protection
+    const encryptedPayload = await encryptMessage(message);
+
     const { error } = await supabase
       .from('eois')
       .insert([{ 
         project_id: project_id, 
         user_name: finalUserName, 
-        message,
+        message: encryptedPayload,
         read: false,
         sender_id: sender_id,
         recipient_id: target_recipient,
@@ -978,15 +982,18 @@ export const StorageService = {
     }
 
     const threads: Record<string, any[]> = {};
-    data.forEach(msg => {
+    for (const msg of data) {
       if (adminUserIds.has(msg.sender_id)) {
         msg.user_name = 'UG Industry Hub Admin';
       }
+      msg.raw_message = msg.message; // preserve encrypted envelope for crypto audit
+      msg.message = await decryptMessage(msg.message);
+      
       const partnerId = msg.sender_id === userId ? msg.recipient_id : msg.sender_id;
       const threadKey = `${msg.project_id || 'direct'}-${partnerId}`;
       if (!threads[threadKey]) threads[threadKey] = [];
       threads[threadKey].push(msg);
-    });
+    }
     
     return Object.values(threads);
   },
@@ -1054,11 +1061,13 @@ export const StorageService = {
       }
     }
 
-    data.forEach(msg => {
+    for (const msg of data) {
       if (adminUserIds.has(msg.sender_id)) {
         msg.user_name = 'UG Industry Hub Admin';
       }
-    });
+      msg.raw_message = msg.message;
+      msg.message = await decryptMessage(msg.message);
+    }
 
     return data;
     } catch (e) {
@@ -1596,7 +1605,12 @@ export const StorageService = {
         `)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data || [];
+      const list = data || [];
+      for (const msg of list) {
+        msg.raw_message = msg.message;
+        msg.message = await decryptMessage(msg.message);
+      }
+      return list;
     } catch (err) {
       console.error('Error fetching admin EOIs:', err);
       throw err;
@@ -1740,7 +1754,12 @@ export const StorageService = {
       console.error("Error fetching student applications:", error);
       return [];
     }
-    return data || [];
+    const list = data || [];
+    for (const msg of list) {
+      msg.raw_message = msg.message;
+      msg.message = await decryptMessage(msg.message);
+    }
+    return list;
   },
 
   updateStudentProfile: async (userId: string, data: { education_level: string; availability: string; looking_for: string; program: string }) => {
