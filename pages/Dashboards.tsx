@@ -1952,9 +1952,6 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
             </div>
             <div className="flex flex-col">
               <span className="font-black text-xs tracking-tight text-white leading-none group-hover:text-ug-teal transition-colors">UG Industry Hub</span>
-              <span className="text-[8px] text-ug-teal font-black uppercase tracking-widest mt-0.5 flex items-center gap-1">
-                Return Home <ChevronRight size={8} />
-              </span>
             </div>
           </div>
 

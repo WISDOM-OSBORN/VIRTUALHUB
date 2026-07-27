@@ -54,6 +54,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   
+  // Project Screener filter states
+  const [projectSearch, setProjectSearch] = useState('');
+  const [projectAreaFilter, setProjectAreaFilter] = useState<string>('all');
+  const [projectVisibilityFilter, setProjectVisibilityFilter] = useState<string>('all');
+  const [projectStatusFilter, setProjectStatusFilter] = useState<string>('all');
+  const [projectSort, setProjectSort] = useState<string>('newest');
+  
   // News Editor states
   const [editingNews, setEditingNews] = useState<Partial<NewsItem> | null>(null);
   const [newsTitle, setNewsTitle] = useState('');
@@ -453,35 +460,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   // Handler for project status updates
-  const handleProjectStatusChange = async (projectId: string, field: 'status' | 'visibility' | 'trl', value: any) => {
+  const handleProjectStatusChange = async (projectId: string, field: 'status' | 'visibility', value: any) => {
     try {
       const proj = projects.find(p => p.id === projectId);
       if (!proj) return;
       
-      let updatedProject = {
+      const updatedProject = {
         ...proj,
         [field]: value
       };
-      
-      if (field === 'status') {
-        const index = Object.values(ProjectStatus).indexOf(value as ProjectStatus);
-        updatedProject.trl = index >= 0 ? index + 1 : 1;
-      } else if (field === 'trl') {
-        const statusValues = Object.values(ProjectStatus);
-        const index = value - 1;
-        if (index >= 0 && index < statusValues.length) {
-          updatedProject.status = statusValues[index];
-        }
-      }
       
       await StorageService.saveProject(updatedProject);
       showToast(`Project ${field} updated successfully`, "success");
       
       setProjects(prev => prev.map(p => p.id === projectId ? { 
         ...p, 
-        ...(field === 'status' ? { status: value, trl: updatedProject.trl } : 
-            field === 'trl' ? { trl: value, status: updatedProject.status } : 
-            { [field]: value })
+        [field]: value
       } : p));
     } catch (err) {
       showToast("Failed to modify project constraints", "error");
@@ -828,11 +822,27 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
     return matchesSearch && matchesRole;
   });
 
-  const filteredProjects = projects.filter(p => 
-    p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    p.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.research_area?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const screenerProjects = projects
+    .filter(p => {
+      const matchesSearch = !projectSearch || 
+        p.title?.toLowerCase().includes(projectSearch.toLowerCase()) ||
+        p.department?.toLowerCase().includes(projectSearch.toLowerCase()) ||
+        p.research_area?.toLowerCase().includes(projectSearch.toLowerCase()) ||
+        p.description?.toLowerCase().includes(projectSearch.toLowerCase());
+      
+      const matchesArea = projectAreaFilter === 'all' || p.research_area === projectAreaFilter;
+      const matchesVisibility = projectVisibilityFilter === 'all' || p.visibility === projectVisibilityFilter;
+      const matchesStatus = projectStatusFilter === 'all' || p.status === projectStatusFilter;
+
+      return matchesSearch && matchesArea && matchesVisibility && matchesStatus;
+    })
+    .sort((a, b) => {
+      if (projectSort === 'newest') return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime();
+      if (projectSort === 'oldest') return new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime();
+      if (projectSort === 'title_asc') return (a.title || '').localeCompare(b.title || '');
+      if (projectSort === 'title_desc') return (b.title || '').localeCompare(a.title || '');
+      return 0;
+    });
 
   // Filter and sort the archives list
   const filteredArchives = news.filter(item => {
@@ -873,9 +883,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
   const totalInvestors = profiles.filter(p => p.role === UserRole.Investor).length;
   const totalIndustry = profiles.filter(p => p.role === UserRole.IndustryPartner).length;
   
-  const averageTRL = projects.length > 0 
-    ? (projects.reduce((acc, p) => acc + (p.trl || 0), 0) / projects.length).toFixed(1)
-    : '0';
+  const publicProjectsCount = projects.filter(p => p.visibility === Visibility.Public).length;
 
   const totalExpressionsOfInterests = eois.length;
 
@@ -939,7 +947,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                       ["Total Projects", projects.length],
                       ["Total Disclosure Views", projects.reduce((acc, p) => acc + (p.views || 0), 0) || 1240],
                       ["Total Expression of Interest Clicks", eois.length || 86],
-                      ["Average Project Stage (TRL)", averageTRL],
+                      ["Public Projects Count", publicProjectsCount],
                       ["Researchers Count", totalResearchers],
                       ["Investors Count", totalInvestors]
                     ];
@@ -2147,108 +2155,270 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="space-y-6"
+              className="space-y-4 text-left"
             >
-              <div className="bg-white p-6 rounded-3xl border border-gray-100 flex items-center justify-between">
-                <div className="relative w-full max-w-md">
-                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input 
-                    type="text" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search Innovation titles, departments, or research tags..."
-                    className="w-full bg-gray-50 border border-transparent focus:border-ug-teal focus:bg-white rounded-2xl py-3 pl-12 pr-4 text-xs font-bold text-ug-navy outline-none transition"
-                  />
+              {/* Header & Filter System */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                  <div>
+                    <h2 className="text-lg font-black text-ug-navy flex items-center gap-2">
+                      <Layers size={18} className="text-ug-teal" />
+                      Project Screener & Moderation
+                    </h2>
+                    <p className="text-xs text-gray-500 font-medium mt-0.5">
+                      Review, filter, and moderate university research innovations across all departments.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    <span className="text-[10px] font-black text-gray-500 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl font-mono">
+                      Showing {screenerProjects.length} of {projects.length} Innovations
+                    </span>
+                    {(projectSearch || projectAreaFilter !== 'all' || projectVisibilityFilter !== 'all' || projectStatusFilter !== 'all' || projectSort !== 'newest') && (
+                      <button
+                        onClick={() => {
+                          setProjectSearch('');
+                          setProjectAreaFilter('all');
+                          setProjectVisibilityFilter('all');
+                          setProjectStatusFilter('all');
+                          setProjectSort('newest');
+                        }}
+                        className="text-[10px] font-bold text-red-600 hover:text-red-700 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <X size={12} /> Clear Filters
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-mono">
-                  Registry Index Count: {filteredProjects.length} projects
-                </span>
+
+                {/* Filter Controls Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                  {/* Search Bar */}
+                  <div className="relative sm:col-span-2 lg:col-span-2">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input 
+                      type="text" 
+                      value={projectSearch}
+                      onChange={(e) => setProjectSearch(e.target.value)}
+                      placeholder="Search title, department, or area..."
+                      className="w-full bg-gray-50/70 border border-gray-200 focus:border-ug-teal focus:bg-white rounded-xl py-2 pl-9 pr-8 text-xs font-semibold text-ug-navy outline-none transition"
+                    />
+                    {projectSearch && (
+                      <button 
+                        onClick={() => setProjectSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Research Area Filter */}
+                  <div>
+                    <select
+                      value={projectAreaFilter}
+                      onChange={(e) => setProjectAreaFilter(e.target.value)}
+                      className="w-full bg-gray-50/70 border border-gray-200 focus:border-ug-teal focus:bg-white rounded-xl py-2 px-2.5 text-xs font-semibold text-gray-700 outline-none cursor-pointer transition"
+                    >
+                      <option value="all">All Research Areas</option>
+                      {Object.values(ResearchArea).map(area => (
+                        <option key={area} value={area}>{area}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Visibility Filter */}
+                  <div>
+                    <select
+                      value={projectVisibilityFilter}
+                      onChange={(e) => setProjectVisibilityFilter(e.target.value)}
+                      className="w-full bg-gray-50/70 border border-gray-200 focus:border-ug-teal focus:bg-white rounded-xl py-2 px-2.5 text-xs font-semibold text-gray-700 outline-none cursor-pointer transition"
+                    >
+                      <option value="all">All Visibility</option>
+                      {Object.values(Visibility).map(vis => (
+                        <option key={vis} value={vis}>{vis}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Readiness Status Filter */}
+                  <div>
+                    <select
+                      value={projectStatusFilter}
+                      onChange={(e) => setProjectStatusFilter(e.target.value)}
+                      className="w-full bg-gray-50/70 border border-gray-200 focus:border-ug-teal focus:bg-white rounded-xl py-2 px-2.5 text-xs font-semibold text-gray-700 outline-none cursor-pointer transition"
+                    >
+                      <option value="all">All Readiness Statuses</option>
+                      {Object.values(ProjectStatus).map(st => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Secondary Sort & Active Filter Pills Row */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] text-gray-500 pt-1 border-t border-gray-50">
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    <span className="font-bold text-gray-400 text-[10px] uppercase tracking-wider">Active Filters:</span>
+                    {projectSearch && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-ug-teal/10 text-ug-teal font-extrabold text-[10px]">
+                        "{projectSearch}"
+                        <X size={10} className="cursor-pointer hover:text-red-500" onClick={() => setProjectSearch('')} />
+                      </span>
+                    )}
+                    {projectAreaFilter !== 'all' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 font-bold text-[10px]">
+                        {projectAreaFilter}
+                        <X size={10} className="cursor-pointer hover:text-red-500" onClick={() => setProjectAreaFilter('all')} />
+                      </span>
+                    )}
+                    {projectVisibilityFilter !== 'all' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-bold text-[10px]">
+                        {projectVisibilityFilter}
+                        <X size={10} className="cursor-pointer hover:text-red-500" onClick={() => setProjectVisibilityFilter('all')} />
+                      </span>
+                    )}
+                    {projectStatusFilter !== 'all' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold text-[10px]">
+                        {projectStatusFilter}
+                        <X size={10} className="cursor-pointer hover:text-red-500" onClick={() => setProjectStatusFilter('all')} />
+                      </span>
+                    )}
+                    {!projectSearch && projectAreaFilter === 'all' && projectVisibilityFilter === 'all' && projectStatusFilter === 'all' && (
+                      <span className="text-gray-400 italic text-[10px]">None (Showing all records)</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                    <span className="font-bold text-gray-400 text-[10px] uppercase tracking-wider">Sort:</span>
+                    <select
+                      value={projectSort}
+                      onChange={(e) => setProjectSort(e.target.value)}
+                      className="bg-transparent text-xs font-bold text-ug-navy outline-none cursor-pointer"
+                    >
+                      <option value="newest">Newest First</option>
+                      <option value="oldest">Oldest First</option>
+                      <option value="title_asc">Title (A-Z)</option>
+                      <option value="title_desc">Title (Z-A)</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
-              {/* Projects Grid with detailed moderation tools */}
-              <div className="grid grid-cols-1 gap-6">
-                {filteredProjects.length === 0 ? (
-                  <div className="bg-white rounded-[2.5rem] border border-gray-100 p-16 text-center">
-                    <p className="text-xs font-black uppercase tracking-widest text-gray-400">No active hub research matched description.</p>
+              {/* Projects Compact List */}
+              <div className="space-y-3">
+                {screenerProjects.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+                    <Layers className="mx-auto text-gray-300 mb-2" size={32} />
+                    <p className="text-xs font-black uppercase tracking-widest text-gray-400">
+                      No research projects matched your filter criteria.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setProjectSearch('');
+                        setProjectAreaFilter('all');
+                        setProjectVisibilityFilter('all');
+                        setProjectStatusFilter('all');
+                        setProjectSort('newest');
+                      }}
+                      className="mt-3 text-xs font-bold text-ug-teal hover:underline inline-block cursor-pointer"
+                    >
+                      Reset All Filters
+                    </button>
                   </div>
                 ) : (
-                  filteredProjects.map((p) => (
-                    <div key={p.id} className="bg-white rounded-[2.5rem] border border-gray-100 p-6 md:p-8 hover:shadow-xl transition flex flex-col lg:flex-row gap-8 items-start lg:items-center">
-                      {/* Left: Thumbnail & Details */}
-                      <div className="w-full lg:w-24 h-24 rounded-2xl overflow-hidden shadow-inner border border-gray-100 shrink-0 bg-gray-50">
-                        {p.image_url && p.image_url.trim() !== '' ? (
-                          <img src={p.image_url.split('|')[0] || 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80'} className="w-full h-full object-cover" alt="" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300">
-                            <Layers size={32} />
+                  screenerProjects.map((p) => (
+                    <div 
+                      key={p.id} 
+                      className="bg-white rounded-2xl border border-gray-100 p-3.5 sm:p-4 hover:border-ug-teal/40 hover:shadow-md transition flex flex-col md:flex-row gap-4 items-start md:items-center justify-between"
+                    >
+                      {/* Thumbnail & Title/Info Block */}
+                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden border border-gray-100 shrink-0 bg-gray-50 shadow-2xs">
+                          {p.image_url && p.image_url.trim() !== '' ? (
+                            <img src={p.image_url.split('|')[0]} className="w-full h-full object-cover" alt="" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-300">
+                              <Layers size={22} />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex flex-wrap gap-1.5 items-center">
+                            <span className="px-2 py-0.5 rounded-md bg-ug-teal/10 text-ug-teal font-extrabold text-[9px] uppercase tracking-wider">
+                              {p.research_area || 'General Research'}
+                            </span>
+                            <span className="text-gray-300">•</span>
+                            <span className="text-[10px] font-bold text-gray-500 truncate max-w-[150px]">
+                              {p.department || 'Unspecified Dept'}
+                            </span>
+                            {p.budget && (
+                              <>
+                                <span className="text-gray-300">•</span>
+                                <span className="text-[10px] font-semibold text-gray-400 font-mono">
+                                  {p.budget}
+                                </span>
+                              </>
+                            )}
                           </div>
-                        )}
+
+                          <h3 className="text-sm font-extrabold text-ug-navy tracking-tight truncate hover:text-ug-teal transition cursor-pointer" title={p.title}>
+                            {p.title}
+                          </h3>
+
+                          <p className="text-xs text-gray-500 font-medium line-clamp-1 leading-snug">
+                            {p.description}
+                          </p>
+                        </div>
                       </div>
 
-                      {/* Middle: Content */}
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div className="flex flex-wrap gap-2 items-center text-[9px] font-black uppercase tracking-wider">
-                          <span className="text-ug-teal">{p.research_area}</span>
-                          <span className="text-gray-300">•</span>
-                          <span className="text-gray-400">{p.department}</span>
-                          <span className="text-gray-300">•</span>
-                          <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Budget: {p.budget}</span>
-                        </div>
-                        <h3 className="text-lg font-black text-ug-navy tracking-tight truncate hover:text-ug-teal transition cursor-pointer">{p.title}</h3>
-                        <p className="text-xs text-gray-500 font-medium line-clamp-2 leading-relaxed">{p.description}</p>
-                      </div>
-
-                      {/* Right: Moderation Controls */}
-                      <div className="w-full lg:w-auto p-6 bg-gray-50/50 rounded-2xl border border-gray-100 grid grid-cols-1 sm:grid-cols-3 lg:flex gap-4 shrink-0">
-                        {/* Maturity Stage Selection */}
-                        <div className="space-y-1.5">
-                          <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest block font-mono">Maturity Stage</label>
-                          <select 
-                            value={p.trl || 1}
-                            onChange={(e) => handleProjectStatusChange(p.id, 'trl', parseInt(e.target.value))}
-                            className="bg-white border border-gray-200 hover:border-gray-300 rounded-xl px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-ug-navy transition outline-none cursor-pointer w-full"
-                          >
-                            {[1,2,3,4,5,6].map(num => (
-                              <option key={num} value={num}>Stage {num}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Visibility Status */}
-                        <div className="space-y-1.5">
-                          <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest block font-mono">Visibility Filter</label>
+                      {/* Right Moderation Controls */}
+                      <div className="flex flex-wrap items-center gap-2.5 shrink-0 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-gray-100 justify-end">
+                        {/* Visibility Selector */}
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest font-mono">
+                            Visibility
+                          </span>
                           <select 
                             value={p.visibility || Visibility.Public}
                             onChange={(e) => handleProjectStatusChange(p.id, 'visibility', e.target.value as Visibility)}
-                            className="bg-white border border-gray-200 hover:border-gray-300 rounded-xl px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-ug-navy transition outline-none cursor-pointer w-full"
+                            className="bg-gray-50 hover:bg-white border border-gray-200 hover:border-ug-teal rounded-lg px-2.5 py-1 text-[10px] font-black uppercase text-ug-navy transition outline-none cursor-pointer"
                           >
                             {Object.values(Visibility).map(vis => (
-                              <option key={vis} value={vis}>{vis.toUpperCase()}</option>
+                              <option key={vis} value={vis}>{vis}</option>
                             ))}
                           </select>
                         </div>
 
-                        {/* Project Status */}
-                        <div className="space-y-1.5">
-                          <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest block font-mono">Readiness Status</label>
+                        {/* Readiness Status Selector */}
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest font-mono">
+                            Readiness Status
+                          </span>
                           <select 
                             value={p.status || ProjectStatus.Concept}
                             onChange={(e) => handleProjectStatusChange(p.id, 'status', e.target.value as ProjectStatus)}
-                            className="bg-white border border-gray-200 hover:border-gray-300 rounded-xl px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-ug-navy transition outline-none cursor-pointer w-full"
+                            className="bg-gray-50 hover:bg-white border border-gray-200 hover:border-ug-teal rounded-lg px-2.5 py-1 text-[10px] font-black uppercase text-ug-navy transition outline-none cursor-pointer"
                           >
                             {Object.values(ProjectStatus).map(st => (
-                              <option key={st} value={st}>{st.toUpperCase()}</option>
+                              <option key={st} value={st}>{st}</option>
                             ))}
                           </select>
                         </div>
 
-                        <button 
-                          onClick={() => handleDeleteProject(p.id)}
-                          className="self-end p-2.5 bg-red-50 hover:bg-red-100 text-red-500 rounded-xl border border-red-100 hover:border-red-200 transition shrink-0 h-10 w-10 flex items-center justify-center self-center"
-                          title="Withdraw Project"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {/* Delete / Withdraw Button */}
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[8px] font-black text-transparent uppercase tracking-widest font-mono">
+                            Action
+                          </span>
+                          <button 
+                            onClick={() => handleDeleteProject(p.id)}
+                            className="p-1.5 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg border border-red-100 transition shrink-0 cursor-pointer"
+                            title="Withdraw Project"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))
