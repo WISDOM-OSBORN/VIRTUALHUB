@@ -160,6 +160,83 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
+// 1.5. Live Translation Endpoint using Gemini
+app.post('/api/translate', async (req: express.Request, res: express.Response) => {
+  const { text, texts, targetLang } = req.body;
+  const lang = (targetLang || 'en').split('-')[0].toLowerCase();
+
+  if (lang === 'en') {
+    return res.json({ translatedText: text, translatedTexts: texts });
+  }
+
+  const langNames: Record<string, string> = {
+    fr: 'French',
+    ak: 'Akan (Twi)',
+    sw: 'Kiswahili'
+  };
+  const langName = langNames[lang] || 'French';
+
+  const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
+  if (isValidKey(apiKey)) {
+    try {
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+      });
+
+      if (texts && Array.isArray(texts)) {
+        const prompt = `Translate the following array of academic, research, and university innovation strings into ${langName}. Retain proper names (e.g. University of Ghana, Legon, Noguchi, WACCBIP, ORID) and standard acronyms (e.g. PCR, TRL, FDA) intact. Return a JSON array of translated strings matching the exact length and order of the input array.
+Input: ${JSON.stringify(texts)}`;
+
+        let response;
+        const models = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+        for (const modelName of models) {
+          try {
+            response = await ai.models.generateContent({
+              model: modelName,
+              contents: prompt,
+              config: { responseMimeType: 'application/json' }
+            });
+            if (response && response.text) break;
+          } catch (mErr) {}
+        }
+
+        if (response && response.text) {
+          const parsed = JSON.parse(response.text.replace(/```json/g, '').replace(/```/g, '').trim());
+          if (Array.isArray(parsed)) {
+            return res.json({ translatedTexts: parsed });
+          }
+        }
+      } else if (text) {
+        const prompt = `Translate the following text accurately into ${langName}. Maintain a clear, professional, academic, and natural tone. Retain proper nouns like 'University of Ghana', 'Legon', 'Noguchi', 'WACCBIP'.
+Text: "${text}"
+Output ONLY the translated text string with no extra explanations or markdown quotes.`;
+
+        let response;
+        const models = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+        for (const modelName of models) {
+          try {
+            response = await ai.models.generateContent({
+              model: modelName,
+              contents: prompt
+            });
+            if (response && response.text) break;
+          } catch (mErr) {}
+        }
+
+        if (response && response.text) {
+          return res.json({ translatedText: response.text.trim().replace(/^"/, '').replace(/"$/, '') });
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[Translate Endpoint Error]: ${err?.message || err}`);
+    }
+  }
+
+  // Graceful fallback if no key or error
+  return res.json({ translatedText: text, translatedTexts: texts });
+});
+
 // --- Authentication & Throttling Middleware ---
 const authenticateUser = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   const authHeader = req.headers.authorization;

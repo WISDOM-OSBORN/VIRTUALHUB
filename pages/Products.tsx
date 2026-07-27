@@ -6,9 +6,12 @@ import { StorageService } from '../services/storageService';
 import { Project, ProjectStatus, ResearchArea } from '../types';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../App';
+import { Tr } from '../components/Tr';
+import { useTranslatedText } from '../services/translationService';
 
 const Products: React.FC = () => {
   const { t } = useTranslation();
+  const searchCatalogPlaceholder = useTranslatedText("Search catalog...");
   const [products, setProducts] = useState<Project[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedArea, setSelectedArea] = useState<string>('All');
@@ -126,7 +129,7 @@ const Products: React.FC = () => {
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input 
                 type="text" 
-                placeholder="Search catalog..." 
+                placeholder={searchCatalogPlaceholder} 
                 className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-ug-teal focus:border-transparent transition-all font-bold"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -199,25 +202,25 @@ const Products: React.FC = () => {
                       </button>
                     )}
                     <div className="absolute top-4 right-4 bg-green-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-lg uppercase tracking-widest">
-                      Market Ready
+                      <Tr text="Market Ready" />
                     </div>
                   </div>
                   <div className="p-8 flex-1 flex flex-col">
-                    <span className="text-ug-teal font-black text-[10px] uppercase tracking-[0.2em] mb-3">{product.research_area}</span>
-                    <h3 className="text-2xl font-black text-gray-900 mb-4 leading-tight group-hover:text-ug-teal transition-colors">{product.title}</h3>
+                    <span className="text-ug-teal font-black text-[10px] uppercase tracking-[0.2em] mb-3"><Tr text={product.research_area} /></span>
+                    <h3 className="text-2xl font-black text-gray-900 mb-4 leading-tight group-hover:text-ug-teal transition-colors"><Tr text={product.title} /></h3>
                     <p className="text-gray-500 text-sm leading-relaxed mb-8 font-medium flex-1 line-clamp-4">
-                      {product.description}
+                      <Tr text={product.description} />
                     </p>
                     <div className="flex items-center justify-between pt-6 border-t border-gray-100 mt-auto">
                       <div className="flex items-center gap-2 text-green-600">
                         <CheckCircle size={16} />
-                        <span className="text-xs font-black uppercase tracking-wider">Licensed Validated</span>
+                        <span className="text-xs font-black uppercase tracking-wider"><Tr text="License Validated" /></span>
                       </div>
                       <button 
                         onClick={() => navigate(`/projects/${product.id}`)}
-                        className="flex items-center gap-2 text-ug-navy font-black text-xs uppercase hover:text-ug-teal transition"
+                        className="flex items-center gap-2 text-ug-navy font-black text-xs uppercase hover:text-ug-teal transition cursor-pointer"
                       >
-                        View Specs <ExternalLink size={14} />
+                        <Tr text="View Specs" /> <ExternalLink size={14} />
                       </button>
                     </div>
                   </div>

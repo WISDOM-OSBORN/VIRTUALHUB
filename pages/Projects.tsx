@@ -6,9 +6,12 @@ import { StorageService } from '../services/storageService';
 import { Project, ProjectStatus, ResearchArea } from '../types';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../App';
+import { Tr } from '../components/Tr';
+import { useTranslatedText } from '../services/translationService';
 
 const Projects: React.FC = () => {
   const { t } = useTranslation();
+  const searchProjectsPlaceholder = useTranslatedText("Search projects...");
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedArea, setSelectedArea] = useState<string>('All');
@@ -143,7 +146,7 @@ const Projects: React.FC = () => {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input 
               type="text" 
-              placeholder="Search projects..." 
+              placeholder={searchProjectsPlaceholder} 
               className="w-full pl-12 pr-28 sm:pr-36 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-ug-teal focus:border-transparent transition-all font-bold text-gray-900 placeholder:text-gray-400"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -304,32 +307,35 @@ const Projects: React.FC = () => {
                        </button>
                      )}
                      <div className="absolute bottom-4 left-6 text-white">
-                        
-                        <div className="text-xs opacity-90 font-bold uppercase tracking-widest">{project.department}</div>
+                        <div className="text-xs opacity-90 font-bold uppercase tracking-widest"><Tr text={project.department} /></div>
                      </div>
                   </div>
                   <div className="p-8 flex-1 flex flex-col">
-                    <h3 className="text-xl font-black text-gray-900 mb-3 leading-tight group-hover:text-ug-teal transition-colors">{project.title}</h3>
-                    <p className="text-gray-500 text-sm mb-6 line-clamp-3 flex-1 leading-relaxed font-medium">{project.description}</p>
+                    <h3 className="text-xl font-black text-gray-900 mb-3 leading-tight group-hover:text-ug-teal transition-colors">
+                      <Tr text={project.title} />
+                    </h3>
+                    <p className="text-gray-500 text-sm mb-6 line-clamp-3 flex-1 leading-relaxed font-medium">
+                      <Tr text={project.description} />
+                    </p>
                     
                     <div className="mt-4 space-y-4 pt-6 border-t border-gray-100">
                        <div className="flex justify-between text-xs items-center">
-                          <span className="text-gray-400 font-bold uppercase tracking-widest">Development Stage</span>
+                          <span className="text-gray-400 font-bold uppercase tracking-widest"><Tr text="Commercialization Stage" /></span>
                           <span className={`px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest ${getStatusColor(project.status)} shadow-sm`}>
-                            {project.status}
+                            <Tr text={project.status} />
                           </span>
                        </div>
                        <div className="flex justify-between text-xs items-center">
-                          <span className="text-gray-400 font-bold uppercase tracking-widest">Budget</span>
+                          <span className="text-gray-400 font-bold uppercase tracking-widest"><Tr text="Budget Range" /></span>
                           <span className="font-black text-ug-navy">{project.budget}</span>
                        </div>
                     </div>
 
                     <button 
                       onClick={() => navigate(`/projects/${project.id}`)}
-                      className="mt-8 w-full py-4 bg-ug-navy text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-ug-teal hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-ug-navy/10 flex items-center justify-center gap-2"
+                      className="mt-8 w-full py-4 bg-ug-navy text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-ug-teal hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-ug-navy/10 flex items-center justify-center gap-2 cursor-pointer"
                     >
-                       View Case Study <ArrowRight size={16} />
+                       <Tr text="View Project Details" /> <ArrowRight size={16} />
                     </button>
                   </div>
                 </div>

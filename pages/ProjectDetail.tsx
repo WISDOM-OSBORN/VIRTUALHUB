@@ -11,6 +11,7 @@ import { StorageService } from '../services/storageService';
 import { Project, ProjectStatus, User, Visibility, ResearchArea, UserRole } from '../types';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../App';
+import { Tr } from '../components/Tr';
 
 // --- CONTACT PI MODAL ---
 const ContactPIModal: React.FC<{ 
@@ -497,20 +498,20 @@ const ProjectDetail: React.FC = () => {
         <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div className="max-w-3xl">
-              <button onClick={() => navigate('/projects')} className="text-white/60 hover:text-white flex items-center gap-2 mb-6 text-xs font-black uppercase tracking-[0.2em]"><ArrowLeft size={16} /> Return to Hub</button>
+              <button onClick={() => navigate('/projects')} className="text-white/60 hover:text-white flex items-center gap-2 mb-6 text-xs font-black uppercase tracking-[0.2em] cursor-pointer"><ArrowLeft size={16} /> <Tr text="Return to Hub" /></button>
               <div className="flex flex-wrap gap-3 mb-4">
-                <span className="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/10 text-white backdrop-blur-md border border-white/20">{project.status}</span>
+                <span className="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/10 text-white backdrop-blur-md border border-white/20"><Tr text={project.status} /></span>
               </div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter drop-shadow-2xl leading-tight">{project.title}</h1>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter drop-shadow-2xl leading-tight"><Tr text={project.title} /></h1>
             </div>
             <div className="flex flex-wrap items-center gap-3 md:gap-4 animate-fade-in-up mt-4 md:mt-0">
-              <button onClick={handleShare} className="relative h-[56px] w-[56px] md:h-[64px] md:w-[64px] rounded-[18px] bg-white/10 border border-white/20 shadow-lg hover:bg-white/20 transition-all flex items-center justify-center text-white group" title="Share Project">
+              <button onClick={handleShare} className="relative h-[56px] w-[56px] md:h-[64px] md:w-[64px] rounded-[18px] bg-white/10 border border-white/20 shadow-lg hover:bg-white/20 transition-all flex items-center justify-center text-white group cursor-pointer" title="Share Project">
                 <Share2 size={24} className="group-hover:scale-110 transition" />
               </button>
               {currentUserProfile && (
                 <button 
                   onClick={handleToggleBookmark} 
-                  className={`relative h-[56px] w-[56px] md:h-[64px] md:w-[64px] rounded-[18px] border shadow-lg transition-all flex items-center justify-center group ${isBookmarked ? 'bg-ug-teal text-white border-ug-teal hover:bg-ug-teal/90' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`} 
+                  className={`relative h-[56px] w-[56px] md:h-[64px] md:w-[64px] rounded-[18px] border shadow-lg transition-all flex items-center justify-center group cursor-pointer ${isBookmarked ? 'bg-ug-teal text-white border-ug-teal hover:bg-ug-teal/90' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`} 
                   title={isBookmarked ? "Remove Bookmark" : "Bookmark Project"}
                 >
                   <Bookmark size={24} className={`transition group-hover:scale-110 ${isBookmarked ? 'fill-current' : ''}`} />
@@ -524,20 +525,20 @@ const ProjectDetail: React.FC = () => {
                     setIsContactModalOpen(true);
                   }
                 }} 
-                className="px-6 md:px-10 h-[56px] md:h-[64px] bg-[#0092B0] hover:bg-[#007C96] rounded-[22px] shadow-xl flex items-center justify-center gap-3 md:gap-4 transition-all active:scale-95 group relative overflow-hidden border border-white/10"
+                className="px-6 md:px-10 h-[56px] md:h-[64px] bg-[#0092B0] hover:bg-[#007C96] rounded-[22px] shadow-xl flex items-center justify-center gap-3 md:gap-4 transition-all active:scale-95 group relative overflow-hidden border border-white/10 cursor-pointer"
               >
                 <MessageSquare size={20} className="text-white" />
-                <span className="text-white font-black text-xs md:text-sm uppercase tracking-widest leading-tight text-left">Connect <br /> with PI</span>
+                <span className="text-white font-black text-xs md:text-sm uppercase tracking-widest leading-tight text-left"><Tr text="Connect with PI" /></span>
               </button>
               {(currentUserProfile?.id === project.owner_id || currentUserProfile?.role === UserRole.Admin) && (
                 <>
-                  <button onClick={() => setIsEditModalOpen(true)} className="px-6 md:px-8 h-[56px] md:h-[64px] bg-white text-ug-navy hover:bg-gray-100 rounded-[22px] shadow-xl flex items-center justify-center gap-2.5 transition-all active:scale-95 border border-gray-200">
+                  <button onClick={() => setIsEditModalOpen(true)} className="px-6 md:px-8 h-[56px] md:h-[64px] bg-white text-ug-navy hover:bg-gray-100 rounded-[22px] shadow-xl flex items-center justify-center gap-2.5 transition-all active:scale-95 border border-gray-200 cursor-pointer">
                     <Edit size={18} className="text-[#0092B0]" />
-                    <span className="font-black text-[10px] md:text-[11px] uppercase tracking-wider text-ug-navy text-left leading-tight">Manage <br /> Disclosure</span>
+                    <span className="font-black text-[10px] md:text-[11px] uppercase tracking-wider text-ug-navy text-left leading-tight"><Tr text="Manage Disclosure" /></span>
                   </button>
-                  <button onClick={handleDeleteProject} className="px-6 md:px-8 h-[56px] md:h-[64px] bg-red-600 hover:bg-red-700 text-white rounded-[22px] shadow-xl flex items-center justify-center gap-2.5 transition-all active:scale-95 border border-red-500">
+                  <button onClick={handleDeleteProject} className="px-6 md:px-8 h-[56px] md:h-[64px] bg-red-600 hover:bg-red-700 text-white rounded-[22px] shadow-xl flex items-center justify-center gap-2.5 transition-all active:scale-95 border border-red-500 cursor-pointer">
                     <Trash2 size={18} className="text-white" />
-                    <span className="font-black text-[10px] md:text-[11px] uppercase tracking-wider text-left leading-tight text-white">Withdraw <br /> Record</span>
+                    <span className="font-black text-[10px] md:text-[11px] uppercase tracking-wider text-left leading-tight text-white"><Tr text="Withdraw Record" /></span>
                   </button>
                 </>
               )}
@@ -554,10 +555,10 @@ const ProjectDetail: React.FC = () => {
                 <Lock size={20} />
               </span>
               <div>
-                <h4 className="font-black text-indigo-900 text-sm uppercase tracking-wider">Public Visitor Mode</h4>
+                <h4 className="font-black text-indigo-900 text-sm uppercase tracking-wider"><Tr text="Public Visitor Mode" /></h4>
                 <p className="text-gray-600 text-xs font-medium leading-relaxed mt-1">
-                  Sensitive technical specs, full blueprints, laboratory logs, and direct expression of interest actions on this research project are restricted to verified institutional members. 
-                  <span className="font-bold text-indigo-900 ml-1">Please log in to your account to request authorized disclosure or connect with the PI.</span>
+                  <Tr text="Sensitive technical specs, full blueprints, laboratory logs, and direct expression of interest actions on this research project are restricted to verified institutional members." />
+                  <span className="font-bold text-indigo-900 ml-1"><Tr text="Please log in to your account to request authorized disclosure or connect with the PI." /></span>
                 </p>
               </div>
             </div>
@@ -565,15 +566,15 @@ const ProjectDetail: React.FC = () => {
 
           {/* Executive Summary */}
           <section className="bg-white p-5 md:p-10 lg:p-12 rounded-2xl md:rounded-[2.5rem] lg:rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden">
-            <h2 className="text-2xl font-black text-ug-navy mb-6 flex items-center gap-3"><FileText className="text-ug-teal" /> Executive Summary</h2>
+            <h2 className="text-2xl font-black text-ug-navy mb-6 flex items-center gap-3"><FileText className="text-ug-teal" /> <Tr text="Executive Summary" /></h2>
             <p className="text-gray-600 leading-relaxed text-lg md:text-xl font-normal text-left sm:text-justify" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
-              {project.description?.replace(/[\u00ad\u200b\u200c\u200d\ufeff]/g, '')}
+              <Tr text={project.description?.replace(/[\u00ad\u200b\u200c\u200d\ufeff]/g, '') || ''} />
             </p>
           </section>
 
           {images[1] && (
             <section className="bg-white p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] lg:rounded-[3rem] border border-gray-100 shadow-sm">
-              <h2 className="text-2xl font-black text-ug-navy mb-6 flex items-center gap-3"><ImageIcon className="text-ug-teal" /> Visual Disclosure</h2>
+              <h2 className="text-2xl font-black text-ug-navy mb-6 flex items-center gap-3"><ImageIcon className="text-ug-teal" /> <Tr text="Visual Disclosure" /></h2>
               <img src={images[1]} alt="Evidence" className="w-full rounded-xl md:rounded-[2rem] shadow-lg" />
             </section>
           )}
@@ -581,7 +582,7 @@ const ProjectDetail: React.FC = () => {
           {project.achievements && project.achievements.length > 0 && (
             <section className="bg-white p-5 md:p-10 lg:p-12 rounded-2xl md:rounded-[2.5rem] lg:rounded-[3rem] border border-gray-100 shadow-sm">
               <h2 className="text-xl md:text-2xl font-black text-ug-navy mb-6 md:mb-8 flex items-center gap-3 md:gap-4">
-                <CheckCircle2 className="text-ug-success" size={24} /> Key Milestones & Achievements
+                <CheckCircle2 className="text-ug-success" size={24} /> <Tr text="Key Milestones & Achievements" />
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 {project.achievements.map((item, i) => {
@@ -591,7 +592,7 @@ const ProjectDetail: React.FC = () => {
                       <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-ug-teal/10 text-ug-teal font-black text-xs flex items-center justify-center shrink-0 group-hover:bg-ug-teal group-hover:text-white transition-all duration-300">
                         {i + 1}
                       </div>
-                      <p className="text-gray-600 font-bold leading-relaxed text-xs md:text-sm">{cleanedItem}</p>
+                      <p className="text-gray-600 font-bold leading-relaxed text-xs md:text-sm"><Tr text={cleanedItem} /></p>
                     </div>
                   );
                 })}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Mail, Phone, MapPin, Globe, ExternalLink, Linkedin, Twitter, Facebook } from 'lucide-react';
+import { Tr } from './Tr';
 
 const Footer: React.FC = () => {
   const { t } = useTranslation();
@@ -18,16 +19,16 @@ const Footer: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-white text-base font-bold tracking-tight leading-tight">
-                  Institute of Applied Science and Technology (IAST)
+                  <Tr text="Institute of Applied Science and Technology (IAST)" />
                 </h3>
                 <p className="text-xs text-ug-gold font-semibold tracking-wider uppercase">
-                  University of Ghana • Virtual Industry Hub
+                  <Tr text="University of Ghana • Virtual Industry Hub" />
                 </p>
               </div>
             </div>
 
             <p className="text-xs text-slate-400 leading-relaxed max-w-md">
-              Promoting industry-academic partnerships, commercialization of research, and technology transfer for sustainable national development.
+              <Tr text="Promoting industry-academic partnerships, commercialization of research, and technology transfer for sustainable national development." />
             </p>
 
             <div className="flex items-center gap-3 pt-1">
@@ -37,7 +38,7 @@ const Footer: React.FC = () => {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-ug-teal hover:text-teal-300 transition-colors"
               >
-                <span>Visit iast.ug.edu.gh</span>
+                <span><Tr text="Visit iast.ug.edu.gh" /></span>
                 <ExternalLink size={12} />
               </a>
             </div>
@@ -46,37 +47,36 @@ const Footer: React.FC = () => {
           {/* Platform Links */}
           <div className="md:col-span-3 space-y-3">
             <h4 className="text-white text-xs font-bold uppercase tracking-wider">
-              Quick Links
+              <Tr text="Quick Links" />
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
                 <a href="#/projects" className="hover:text-ug-teal transition-colors">
-                  Research Projects
+                  <Tr text="Research Projects" />
                 </a>
               </li>
               <li>
                 <a href="#/products" className="hover:text-ug-teal transition-colors">
-                  Intellectual Property & Products
+                  <Tr text="Intellectual Property & Products" />
                 </a>
               </li>
               <li>
                 <a href="#/news" className="hover:text-ug-teal transition-colors">
-                  Industry Discovery & News
+                  <Tr text="Industry Discovery & News" />
                 </a>
               </li>
-
             </ul>
           </div>
 
           {/* Contact Details */}
           <div className="md:col-span-4 space-y-3">
             <h4 className="text-white text-xs font-bold uppercase tracking-wider">
-              Contact IAST
+              <Tr text="Contact IAST" />
             </h4>
             <ul className="space-y-2.5 text-xs text-slate-300">
               <li className="flex items-start gap-2">
                 <MapPin size={14} className="text-ug-teal shrink-0 mt-0.5" />
-                <span>Legon Campus, University of Ghana, Accra, Ghana</span>
+                <span><Tr text="Legon Campus, University of Ghana, Accra, Ghana" /></span>
               </li>
               <li className="flex items-center gap-2">
                 <Mail size={14} className="text-ug-teal shrink-0" />
@@ -116,12 +116,12 @@ const Footer: React.FC = () => {
         {/* Bottom copyright line */}
         <div className="mt-8 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
           <p className="text-center sm:text-left">
-            &copy; {new Date().getFullYear()} Institute of Applied Science and Technology, University of Ghana. All rights reserved.
+            &copy; {new Date().getFullYear()} <Tr text="Institute of Applied Science and Technology, University of Ghana. All rights reserved." />
           </p>
           <div className="flex items-center gap-4 text-xs">
-            <a href="#/privacy" className="hover:text-slate-200 transition-colors">Privacy Policy</a>
+            <a href="#/privacy" className="hover:text-slate-200 transition-colors"><Tr text="Privacy Policy" /></a>
             <span>•</span>
-            <a href="#/terms" className="hover:text-slate-200 transition-colors">Terms of Service</a>
+            <a href="#/terms" className="hover:text-slate-200 transition-colors"><Tr text="Terms of Service" /></a>
           </div>
         </div>
 

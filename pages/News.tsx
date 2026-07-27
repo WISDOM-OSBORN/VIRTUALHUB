@@ -45,6 +45,8 @@ import { NewsItem } from '../types';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../App';
 import { getGeminiResponse } from '../services/geminiService';
+import { Tr } from '../components/Tr';
+import { useTranslatedText } from '../services/translationService';
 
 const News: React.FC = () => {
   const { t } = useTranslation();
@@ -52,6 +54,16 @@ const News: React.FC = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [selectedDetailedNews, setSelectedDetailedNews] = useState<NewsItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Top-level translated strings for inputs and dropdowns (must be called unconditionally before early returns)
+  const searchNewsPlaceholder = useTranslatedText("Search news, grants, breakthroughs...");
+  const filterAllLabel = useTranslatedText("Filter: All Discovery");
+  const filterAnnouncementLabel = useTranslatedText("Announcements");
+  const filterGrantLabel = useTranslatedText("Grants & Funding");
+  const filterPartnershipLabel = useTranslatedText("Partnerships");
+  const filterReleaseLabel = useTranslatedText("Research Releases");
+  const filterEcosystemLabel = useTranslatedText("Ecosystem Updates");
+
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [debouncedArchiveSearch, setDebouncedArchiveSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -1436,7 +1448,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-gray-50 text-ug-navy font-bold text-xs uppercase tracking-wider rounded-xl border border-gray-200 shadow-xs transition-all duration-200 cursor-pointer mb-6 group"
           >
             <ArrowLeft size={14} className="transform group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Discovery Feed</span>
+            <span><Tr text="Back to News" /></span>
           </button>
 
           {/* Article Container */}
@@ -1444,7 +1456,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
             <div className="flex flex-wrap items-center gap-2.5 mb-4">
               <span className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${selectedDetailedNews.is_ai_generated ? 'bg-ug-teal text-white' : 'bg-ug-navy text-white'}`}>
                 {selectedDetailedNews.is_ai_generated ? <Zap size={11} className="fill-white" /> : <Tag size={11} />} 
-                {selectedDetailedNews.category}
+                <Tr text={selectedDetailedNews.category} />
               </span>
               <span className="text-gray-300 text-xs">•</span>
               <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-500">
@@ -1454,14 +1466,14 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                 <>
                   <span className="text-gray-300 text-xs">•</span>
                   <span className="flex items-center gap-1 text-[11px] font-bold text-ug-teal bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-100">
-                     <Globe size={12} /> {selectedDetailedNews.source_name}
+                     <Globe size={12} /> <Tr text={selectedDetailedNews.source_name} />
                   </span>
                 </>
               )}
             </div>
 
             <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-ug-navy mb-6 leading-tight tracking-tight text-left">
-              {selectedDetailedNews.title}
+              <Tr text={selectedDetailedNews.title} />
             </h1>
 
             {/* Featured Image */}
@@ -1478,13 +1490,13 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
 
             {/* Content Summary (News Body) */}
             <div className="text-slate-700 font-normal text-sm sm:text-base leading-relaxed space-y-4 mb-6 whitespace-pre-line border-b border-gray-100 pb-6 text-left">
-              {selectedDetailedNews.summary}
+              <Tr text={selectedDetailedNews.summary} />
             </div>
 
             {/* Sources & Hyperlinks Section */}
             <div className="space-y-4 text-left">
               <h3 className="text-xs font-bold uppercase text-ug-navy tracking-wider flex items-center gap-2">
-                <Globe size={14} className="text-ug-teal" /> Official Sources & References
+                <Globe size={14} className="text-ug-teal" /> <Tr text="Verified Institutional Source" />
               </h3>
 
               <div className="flex flex-col gap-2.5">
@@ -1545,18 +1557,22 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                  <Microscope size={18} />
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-ug-navy tracking-tight">Discovery & Industry News</h1>
-                <p className="text-ug-teal font-extrabold text-[9px] sm:text-[10px] uppercase tracking-[0.2em]">University of Ghana • Virtual Industry Hub</p>
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-ug-navy tracking-tight">
+                  <Tr text="Discovery & Industry News" />
+                </h1>
+                <p className="text-ug-teal font-extrabold text-[9px] sm:text-[10px] uppercase tracking-[0.2em]">
+                  <Tr text="University of Ghana • Virtual Industry Hub" />
+                </p>
               </div>
             </div>
             <p className="text-gray-500 font-medium text-xs max-w-2xl leading-relaxed">
-              Monitoring research outputs, commercial spin-offs, partnerships, and global innovation trends.
+              <Tr text="Monitoring research outputs, commercial spin-offs, partnerships, and global innovation trends." />
             </p>
           </div>
           {lastSync && (
             <div className="inline-flex items-center gap-1.5 text-[10px] font-bold text-gray-400 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100 self-start md:self-auto shrink-0">
               <Clock size={11} className="text-ug-teal" />
-              <span>Synced: {lastSync.toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+              <span><Tr text="Synced:" /> {lastSync.toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
             </div>
           )}
         </div>
@@ -1570,7 +1586,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
               <input 
                 type="text" 
-                placeholder="Search news, grants, breakthroughs..." 
+                placeholder={searchNewsPlaceholder}
                 className="w-full pl-9 pr-8 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ug-teal/50 focus:border-ug-teal transition-all text-xs font-semibold text-slate-800 placeholder:text-gray-400 shadow-xs"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -1596,12 +1612,12 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   className="appearance-none w-full bg-white border border-gray-200 text-slate-800 py-2 pl-8 pr-7 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-ug-teal/50 focus:border-ug-teal cursor-pointer shadow-xs truncate"
                 >
-                  <option value="All">Filter: All Discovery</option>
-                  <option value="Announcement">Announcements</option>
-                  <option value="Grant Opportunity">Grants & Funding</option>
-                  <option value="Strategic Partnership">Partnerships</option>
-                  <option value="Research Release">Research Releases</option>
-                  <option value="Ecosystem Updates">Ecosystem Updates</option>
+                  <option value="All">{filterAllLabel}</option>
+                  <option value="Announcement">{filterAnnouncementLabel}</option>
+                  <option value="Grant Opportunity">{filterGrantLabel}</option>
+                  <option value="Strategic Partnership">{filterPartnershipLabel}</option>
+                  <option value="Research Release">{filterReleaseLabel}</option>
+                  <option value="Ecosystem Updates">{filterEcosystemLabel}</option>
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={13} />
               </div>
@@ -1636,7 +1652,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
         {loading && filteredNews.length === 0 && (
            <div className="flex flex-col items-center justify-center py-24">
               <Loader2 className="animate-spin text-ug-teal mb-4" size={40} />
-              <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Loading Intelligence...</p>
+              <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest"><Tr text="Loading Intelligence..." /></p>
            </div>
         )}
 
@@ -1644,13 +1660,13 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
         {filteredNews.length === 0 && !loading && (
           <div className="text-center py-24 border-2 border-dashed border-gray-200/80 rounded-2xl bg-slate-50/50">
              <Globe className="text-gray-300 mx-auto mb-4" size={48} />
-             <h3 className="text-lg font-bold text-ug-navy">No news items found</h3>
-             <p className="text-gray-500 font-medium mt-1 text-sm">Try clearing your search words or category filter.</p>
+             <h3 className="text-lg font-bold text-ug-navy"><Tr text="No news items found" /></h3>
+             <p className="text-gray-500 font-medium mt-1 text-sm"><Tr text="Try clearing your search words or category filter." /></p>
              <button
                onClick={() => { setSearchTerm(''); setSelectedCategory('All'); }}
-               className="mt-4 px-4 py-2 bg-ug-navy text-white rounded-xl text-xs font-bold hover:bg-ug-navy/90 transition-colors"
+               className="mt-4 px-4 py-2 bg-ug-navy text-white rounded-xl text-xs font-bold hover:bg-ug-navy/90 transition-colors cursor-pointer"
              >
-               Reset Filters
+               <Tr text="Reset Filters" />
              </button>
           </div>
         )}
@@ -1673,7 +1689,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                 />
                 <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
                   <span className={`text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-xs ${item.is_ai_generated ? 'bg-ug-teal text-white' : 'bg-ug-navy text-white'}`}>
-                    {item.category}
+                    <Tr text={item.category} />
                   </span>
                 </div>
               </div>
@@ -1691,30 +1707,30 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                         <span>•</span>
                         <span className="flex items-center gap-1 text-ug-teal font-bold truncate max-w-[140px]">
                           <Globe size={11} />
-                          <span className="truncate">{item.source_name}</span>
+                          <span className="truncate"><Tr text={item.source_name} /></span>
                         </span>
                       </>
                     )}
                   </div>
                   
                   <h2 className="text-sm sm:text-base font-bold text-ug-navy mb-2 leading-snug group-hover:text-ug-teal transition-colors line-clamp-2">
-                    {item.title}
+                    <Tr text={item.title} />
                   </h2>
                   
                   <p className="text-slate-600 text-xs leading-relaxed line-clamp-2 font-normal mb-3">
-                    {item.summary}
+                    <Tr text={item.summary} />
                   </p>
                 </div>
 
                 <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
                   <span className="text-ug-navy font-bold text-[11px] group-hover:text-ug-teal transition-colors flex items-center gap-1">
-                    <span>Read Briefing</span>
+                    <span><Tr text="Read Briefing" /></span>
                     <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
                   </span>
                   {item.external_url && (
                     <span className="text-[10px] text-gray-400 flex items-center gap-1">
                       <ExternalLink size={10} />
-                      <span>Source</span>
+                      <span><Tr text="Source" /></span>
                     </span>
                   )}
                 </div>
