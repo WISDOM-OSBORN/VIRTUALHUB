@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, ShoppingBag, CheckCircle, ExternalLink, Search, Filter, SlidersHorizontal, Loader2, Bookmark } from 'lucide-react';
+import { ArrowRight, ShoppingBag, CheckCircle, ExternalLink, Search, Filter, SlidersHorizontal, Loader2, Bookmark, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { StorageService } from '../services/storageService';
@@ -52,6 +52,24 @@ const Products: React.FC = () => {
       }
     } catch (err: any) {
       showToast(err.message || "Failed to toggle bookmark", "error");
+    }
+  };
+
+  const handleSaveSearchAlert = async () => {
+    if (!currentUser) {
+      showToast("Authentication Required. Please log in to subscribe to search alerts.", "error");
+      return;
+    }
+    const queryToSave = searchTerm.trim() || (selectedArea !== 'All' ? selectedArea : '');
+    if (!queryToSave) {
+      showToast("Please enter a keyword or select a research track first to subscribe to alerts.", "info");
+      return;
+    }
+    try {
+      await StorageService.saveSearch(currentUser.id, { query: queryToSave, category: selectedArea });
+      showToast(`Search alert saved for "${queryToSave}"! You will be notified when matching projects are posted.`, "success");
+    } catch (err: any) {
+      showToast(err.message || "Failed to save search alert.", "error");
     }
   };
 
@@ -125,15 +143,25 @@ const Products: React.FC = () => {
         {/* Search & Filters */}
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-12">
           <div className="flex flex-col xl:flex-row gap-6 items-center justify-between">
-            <div className="relative w-full xl:w-96">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <input 
-                type="text" 
-                placeholder={searchCatalogPlaceholder} 
-                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-ug-teal focus:border-transparent transition-all font-bold"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            <div className="flex items-center gap-2 w-full xl:w-auto">
+              <div className="relative w-full xl:w-96">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <input 
+                  type="text" 
+                  placeholder={searchCatalogPlaceholder} 
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-ug-teal focus:border-transparent transition-all font-bold"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <button
+                onClick={handleSaveSearchAlert}
+                className="px-4 py-3 bg-ug-teal/10 hover:bg-ug-teal hover:text-white text-ug-teal font-black text-xs uppercase tracking-wider rounded-2xl border border-ug-teal/20 transition cursor-pointer flex items-center gap-2 shrink-0"
+                title="Save this search and receive alert notifications on new matching disclosures or projects"
+              >
+                <Bell size={16} />
+                <span className="hidden sm:inline"><Tr text="Save Search Alert" /></span>
+              </button>
             </div>
             
             <div className="flex flex-wrap gap-4 w-full xl:w-auto">

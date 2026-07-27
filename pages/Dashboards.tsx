@@ -11,7 +11,7 @@ import {
   ChevronRight, ChevronDown, ChevronUp, Globe, Lock, X, Check, Award, GraduationCap, Eye, Search, Loader2, Star, Trash, Inbox, Archive, MoreVertical, CornerUpLeft, Paperclip, Maximize2, Minimize2, ChevronLeft,
   Briefcase, BookOpen, Handshake, Image as ImageIcon, Upload, DollarSign, FileCode,
   Home as HomeIcon,
-  ShoppingBag, Bookmark, ArrowRight, User as UserIcon, Link as LinkIcon, Camera, AlertCircle, Info,
+  ShoppingBag, Bookmark, ArrowRight, User as UserIcon, Link as LinkIcon, Camera, AlertCircle, AlertTriangle, Info,
   Pencil, Trash2, FileUp, MessageSquare, MailOpen, Clock, Zap, Send as SendIcon, Calendar, File, LayoutGrid, Target, Sparkles, LogOut, Rocket, Activity
 } from 'lucide-react';
 import { useToast } from '../App';
@@ -34,41 +34,47 @@ interface DashboardProps {
 const MobileNav: React.FC<{ activeTab: string; setActiveTab: (t: any) => void; role: UserRole; unreadCount: number }> = ({ activeTab, setActiveTab, role, unreadCount }) => {
   const tabs = [
     { id: 'overview', icon: LayoutGrid, label: 'Overview' },
-    { id: 'matches', icon: Target, label: 'MY MATCHES' },
+    { id: 'matches', icon: Target, label: 'Matches' },
     { id: 'messages', icon: MessageSquare, label: 'Chat' },
-    { id: 'profile', icon: UserIcon, label: 'Me' },
+    { id: 'profile', icon: UserIcon, label: 'Profile' },
   ];
 
   return (
-    <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] md:w-[80%] lg:w-auto bg-white/95 backdrop-blur-xl border border-gray-100 z-[100] flex items-center justify-around pb-2 pt-2 px-2 h-20 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[2rem]">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          onClick={() => setActiveTab(tab.id as any)}
-          className={`flex flex-1 flex-col items-center justify-center gap-1 h-full transition-all duration-300 relative ${
-            activeTab === tab.id ? 'text-ug-teal' : 'text-gray-400'
-          }`}
-        >
-          <div className={`p-2 rounded-2xl transition-all duration-300 ${activeTab === tab.id ? 'bg-ug-teal/10 scale-110' : 'bg-transparent'}`}>
-            <tab.icon size={22} strokeWidth={activeTab === tab.id ? 2.5 : 2} />
-          </div>
-          {tab.id === 'messages' && unreadCount > 0 && (
-             <span className="absolute top-2 right-1/2 translate-x-4 w-5 h-5 bg-ug-teal text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-white shadow-lg">
-               {unreadCount > 9 ? '9+' : unreadCount}
-             </span>
-          )}
-          <span className={`text-[9px] font-black tracking-tight uppercase ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`}>
-            {tab.label}
-          </span>
-          {activeTab === tab.id && (
-            <motion.div 
-              layoutId="mobile-indicator"
-              className="absolute -bottom-1 h-1 w-6 bg-ug-teal rounded-full"
-            />
-          )}
-        </button>
-      ))}
-    </div>
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 w-full bg-white/95 backdrop-blur-md border-t border-gray-200/80 z-40 flex items-center justify-around px-2 py-2 shadow-[0_-4px_25px_rgba(0,0,0,0.06)]">
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`flex flex-1 flex-col items-center justify-center gap-1 py-1 px-1 rounded-2xl transition-all duration-200 relative cursor-pointer ${
+              isActive ? 'text-ug-teal' : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            {isActive && (
+              <motion.div 
+                layoutId="mobile-nav-active"
+                className="absolute inset-0 bg-ug-teal/10 rounded-2xl -z-10"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            
+            <div className="relative flex items-center justify-center">
+              <tab.icon size={20} strokeWidth={isActive ? 2.2 : 1.8} className="transition-transform duration-200" />
+              {tab.id === 'messages' && unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 bg-ug-teal text-white text-[9px] font-black flex items-center justify-center rounded-full shadow-sm">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </div>
+
+            <span className={`text-[10px] tracking-tight capitalize ${isActive ? 'text-ug-navy font-black' : 'text-gray-400 font-bold'}`}>
+              {tab.label}
+            </span>
+          </button>
+        );
+      })}
+    </nav>
   );
 };
 
@@ -1938,13 +1944,27 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
       />
       
       <div className="flex-1 flex flex-col min-w-0 relative h-full overflow-hidden">
-        <header className="bg-ug-navy text-white flex items-center justify-between px-3 sm:px-8 py-3.5 sm:py-5 shrink-0 shadow-2xl z-50">
-          <nav className="flex items-center gap-2.5 xs:gap-4 sm:gap-6 lg:gap-10 ml-0 lg:ml-8">
+        <header className="bg-ug-navy text-white flex items-center justify-between px-4 sm:px-8 py-3 sm:py-4 shrink-0 shadow-xl z-50 border-b border-white/10">
+          {/* Mobile Brand Identity */}
+          <div className="flex sm:hidden items-center gap-2 cursor-pointer group" onClick={() => navigate('/')} title="Return to Home">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-ug-teal via-teal-600 to-teal-800 flex items-center justify-center font-black text-white text-xs shadow-md shadow-teal-900/40 ring-1 ring-white/20 group-hover:scale-105 transition-transform shrink-0">
+              <HomeIcon size={16} />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-black text-xs tracking-tight text-white leading-none group-hover:text-ug-teal transition-colors">UG Industry Hub</span>
+              <span className="text-[8px] text-ug-teal font-black uppercase tracking-widest mt-0.5 flex items-center gap-1">
+                Return Home <ChevronRight size={8} />
+              </span>
+            </div>
+          </div>
+
+          {/* Desktop/Tablet Navigation Links */}
+          <nav className="hidden sm:flex items-center gap-6 lg:gap-8 ml-0 lg:ml-8">
              {role !== UserRole.Admin && ['Home', 'Projects', 'Products', 'News'].map(link => (
                <button 
                  key={link} 
                  onClick={() => navigate(link === 'Home' ? '/' : `/${link.toLowerCase()}`)}
-                 className="text-[8px] xs:text-[9px] lg:text-[10px] font-black uppercase tracking-[0.05em] xs:tracking-[0.1em] lg:tracking-[0.25em] hover:text-ug-teal transition-all cursor-pointer opacity-80 hover:opacity-100"
+                 className="text-xs font-black uppercase tracking-wider hover:text-ug-teal transition-colors cursor-pointer text-white/80 hover:text-white"
                >
                  {link}
                </button>
@@ -1952,7 +1972,7 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
           </nav>
 
           {(localUser?.name || user?.name) && (
-            <div className="hidden md:flex items-center gap-2.5 px-4 py-2 bg-white/5 rounded-full border border-white/10 text-xs shadow-inner">
+            <div className="hidden md:flex items-center gap-2.5 px-4 py-1.5 bg-white/5 rounded-full border border-white/10 text-xs shadow-inner">
               <span className="font-light text-white/50">Welcome,</span>
               <span className="font-extrabold text-ug-teal">{getWelcomeName(localUser?.name || user?.name || '')}</span>
               <span className="animate-bounce inline-block">👋</span>
@@ -1960,11 +1980,22 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
             </div>
           )}
 
-          <div className="flex items-center gap-1 sm:gap-6">
+          <div className="flex items-center gap-1.5 sm:gap-6">
+            {/* Mobile Home Shortcut Button */}
+            <button 
+              onClick={() => navigate('/')}
+              className="sm:hidden p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-all flex items-center gap-1 active:scale-95"
+              title="Return to Home"
+            >
+              <HomeIcon size={18} className="text-ug-teal" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Home</span>
+            </button>
+
             {role !== UserRole.Admin && (
               <button 
                 onClick={() => setActiveTab('messages')}
-                className={`p-1.5 sm:p-2 transition-all relative group rounded-xl hover:bg-white/10 ${activeTab === 'messages' ? 'text-ug-teal' : 'text-white/70 hover:text-white'}`}
+                className={`p-2 transition-all relative group rounded-xl hover:bg-white/10 ${activeTab === 'messages' ? 'text-ug-teal' : 'text-white/70 hover:text-white'}`}
+                title="Messages & Notifications"
               >
                 <Bell size={18} className="sm:w-[20px] sm:h-[20px]" />
                 {internalUnread > 0 && (
@@ -1975,34 +2006,17 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
                     <span className="absolute -top-1 -right-1 sm:top-0.5 sm:right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-ug-teal rounded-full border border-ug-navy animate-ping opacity-75"></span>
                   </>
                 )}
-                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1.5 bg-gray-900 text-[9px] font-black uppercase rounded shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
-                  Messages
-                </span>
               </button>
             )}
 
-            <div className="flex items-center gap-1 sm:gap-4 pl-1.5 sm:pl-6 border-l border-white/10">
-              {/* Home Icon - Only show on mobile header as a symbol */}
-              {role !== UserRole.Admin && (
-                <button 
-                  onClick={() => navigate('/')}
-                  className="sm:hidden p-1.5 text-white/70 hover:text-white transition-all group relative rounded-xl hover:bg-white/10"
-                >
-                  <HomeIcon size={18} />
-                  <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1.5 bg-gray-900 text-[9px] font-black uppercase rounded shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
-                    Home
-                  </span>
-                </button>
-              )}
-
+            <div className="flex items-center gap-2 sm:gap-4 pl-2 sm:pl-6 border-l border-white/10">
               <button 
                 onClick={handleLogout}
-                className="p-1.5 sm:p-2 text-white/50 hover:text-red-400 transition-all group relative rounded-xl hover:bg-white/5"
+                className="p-2 text-white/60 hover:text-red-400 transition-all group relative rounded-xl hover:bg-white/10 flex items-center gap-1.5"
+                title="Logout"
               >
                 <LogOut size={18} className="sm:w-[20px] sm:h-[20px]" />
-                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1.5 bg-gray-900 text-[9px] font-black uppercase rounded shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
-                  Logout
-                </span>
+                <span className="hidden md:inline text-xs font-bold">Logout</span>
               </button>
             </div>
           </div>
@@ -4868,6 +4882,14 @@ const ProfileSettings: React.FC<{
   const [confirmPassword, setConfirmPassword] = useState('');
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
+  // Delete Account Modal States
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteReasonCategory, setDeleteReasonCategory] = useState('No longer using the platform / Found an alternative');
+  const [deleteReasonDetails, setDeleteReasonDetails] = useState('');
+  const [deleteConfirmedCheck, setDeleteConfirmedCheck] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
   useEffect(() => {
     if (user) {
       setName(user.name || '');
@@ -4971,6 +4993,57 @@ const ProfileSettings: React.FC<{
       showToast("Your core profile data has been downloaded successfully.", "success");
     } catch (err: any) {
       showToast(`Data packaging failed: ${err.message}`, "error");
+    }
+  };
+
+  const handleConfirmDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    if (!deletePassword.trim()) {
+      showToast("Please enter your current password to confirm deletion.", "error");
+      return;
+    }
+    if (!deleteConfirmedCheck) {
+      showToast("Please acknowledge account deletion confirmation.", "error");
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      // Verify password with Supabase auth
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: deletePassword
+      });
+
+      if (signInErr) {
+        showToast("Incorrect password. Please verify your current password.", "error");
+        setDeletingAccount(false);
+        return;
+      }
+
+      // Record deletion log for admin dashboard records
+      await StorageService.recordAccountDeletion({
+        user_id: user.id,
+        user_email: user.email,
+        user_name: user.name || 'Anonymous User',
+        user_role: user.role || UserRole.Researcher,
+        reason_category: deleteReasonCategory,
+        reason_details: deleteReasonDetails.trim() || undefined
+      });
+
+      // Execute account deletion and clean profile
+      await StorageService.deleteAccount(user.id);
+
+      showToast("Your account has been permanently deleted. Session terminated.", "info");
+      setIsDeleteModalOpen(false);
+      
+      // Navigate to homepage
+      window.location.href = '/';
+    } catch (err: any) {
+      showToast(`Account deletion failed: ${err.message}`, "error");
+    } finally {
+      setDeletingAccount(false);
     }
   };
 
@@ -5315,7 +5388,17 @@ const ProfileSettings: React.FC<{
                 </div>
               </button>
               
-              <button type="button" className="w-full flex items-center justify-between p-3 hover:bg-red-50 rounded-xl transition group text-left border border-transparent hover:border-red-100 cursor-pointer">
+              <button 
+                type="button" 
+                onClick={() => {
+                  setDeletePassword('');
+                  setDeleteReasonCategory('No longer using the platform / Found an alternative');
+                  setDeleteReasonDetails('');
+                  setDeleteConfirmedCheck(false);
+                  setIsDeleteModalOpen(true);
+                }}
+                className="w-full flex items-center justify-between p-3 hover:bg-red-50 rounded-xl transition group text-left border border-transparent hover:border-red-100 cursor-pointer"
+              >
                 <div className="flex items-center gap-3">
                   <Trash2 size={16} className="text-gray-400 group-hover:text-red-500 transition" />
                   <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest group-hover:text-red-600 transition">Delete Account</span>
@@ -5426,6 +5509,142 @@ const ProfileSettings: React.FC<{
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-[10000] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 md:p-6 my-0">
+          <div className="bg-white rounded-[2rem] border border-gray-100 shadow-2xl relative w-full max-w-lg overflow-hidden animate-fade-in my-auto flex flex-col max-h-[85vh] sm:max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 pb-4 border-b border-gray-100 flex justify-between items-start shrink-0 bg-white z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center text-red-500 shrink-0">
+                  <Trash2 size={22} />
+                </div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-black text-ug-navy">Delete Account</h3>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 mt-0.5">Permanent Offboarding & Data Erasure</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                disabled={deletingAccount}
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="w-8 h-8 bg-gray-50 text-gray-400 hover:text-ug-navy rounded-full flex items-center justify-center transition text-xl font-bold cursor-pointer disabled:opacity-50 shrink-0"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Scrollable Modal Content */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-5 custom-scrollbar">
+              <div className="p-3.5 sm:p-4 bg-red-50/70 rounded-2xl border border-red-100/90 text-red-800 text-xs space-y-1">
+                <p className="font-bold flex items-center gap-1.5">
+                  <AlertTriangle size={14} className="text-red-600 shrink-0" />
+                  Warning: This action cannot be undone.
+                </p>
+                <p className="text-[11px] text-red-700/90 leading-relaxed">
+                  Deleting your account will permanently remove your profile, project associations, watchlist, and saved alert preferences.
+                </p>
+              </div>
+
+              <form onSubmit={handleConfirmDeleteAccount} className="space-y-5">
+                {/* Reason Category Selection */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-gray-500 block">
+                    Why are you deleting your account? <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={deleteReasonCategory}
+                    onChange={(e) => setDeleteReasonCategory(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-ug-navy focus:outline-none focus:ring-2 focus:ring-ug-teal/50 cursor-pointer"
+                    required
+                  >
+                    <option value="No longer using the platform / Found an alternative">No longer using the platform / Found an alternative</option>
+                    <option value="Privacy or data security concerns">Privacy or data security concerns</option>
+                    <option value="Too many notifications or alerts">Too many notifications or alerts</option>
+                    <option value="Created a duplicate or test account">Created a duplicate or test account</option>
+                    <option value="Difficulty navigating or using the hub">Difficulty navigating or using the hub</option>
+                    <option value="Other reason (please specify below)">Other reason (please specify below)</option>
+                  </select>
+                </div>
+
+                {/* Additional Details */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-gray-500 block">
+                    Additional Details / Feedback (Optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={deleteReasonDetails}
+                    onChange={(e) => setDeleteReasonDetails(e.target.value)}
+                    placeholder="Please tell us how we could improve the Virtual Industry Hub..."
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-ug-navy focus:outline-none focus:ring-2 focus:ring-ug-teal/50 resize-none"
+                  />
+                </div>
+
+                {/* Password Confirmation */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-gray-500 block">
+                    Confirm Current Password <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Enter your current password"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-ug-navy focus:outline-none focus:ring-2 focus:ring-ug-teal/50"
+                  />
+                </div>
+
+                {/* Confirmation Checkbox */}
+                <div className="flex items-start gap-2.5 pt-1">
+                  <input
+                    type="checkbox"
+                    id="confirmDeleteCheck"
+                    checked={deleteConfirmedCheck}
+                    onChange={(e) => setDeleteConfirmedCheck(e.target.checked)}
+                    className="mt-0.5 rounded border-gray-300 text-red-600 focus:ring-red-500 cursor-pointer"
+                    required
+                  />
+                  <label htmlFor="confirmDeleteCheck" className="text-[11px] font-bold text-gray-600 cursor-pointer leading-tight">
+                    I understand that deleting my account is permanent and cannot be reversed.
+                  </label>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                  <button
+                    type="button"
+                    disabled={deletingAccount}
+                    onClick={() => setIsDeleteModalOpen(false)}
+                    className="px-5 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-black uppercase tracking-wider rounded-xl transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={deletingAccount || !deletePassword || !deleteConfirmedCheck}
+                    className="px-5 py-3 bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-wider rounded-xl transition shadow-lg shadow-red-500/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {deletingAccount ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Deleting Account...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 size={16} />
+                        Permanently Delete Account
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

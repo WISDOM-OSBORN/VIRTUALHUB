@@ -298,3 +298,37 @@ export interface ChallengeMatch {
   };
 }
 
+export interface SavedSearch {
+  id: string;
+  user_id: string;
+  query: string;
+  category?: string;
+  notify_email?: boolean;
+  notify_in_app?: boolean;
+  created_at: string;
+}
+
+export interface AlertNotification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: 'saved_search_match' | 'system' | 'grant_alert';
+  item_type?: 'project' | 'news';
+  item_id?: string;
+  query_matched?: string;
+  read: boolean;
+  created_at: string;
+}
+
+export interface AccountDeletionRecord {
+  id: string;
+  user_id: string;
+  user_email: string;
+  user_name: string;
+  user_role: string;
+  reason_category: string;
+  reason_details?: string;
+  deleted_at: string;
+}
+

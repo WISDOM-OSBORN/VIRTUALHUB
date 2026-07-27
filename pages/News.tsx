@@ -17,6 +17,8 @@ import {
   Clock, 
   Search, 
   Filter, 
+  Settings,
+  Bell,
   ChevronDown,
   Link2,
   LayoutGrid,
@@ -33,9 +35,7 @@ import {
   MoreVertical,
   Plus,
   Users,
-  ShieldCheck,
-  Settings,
-  Bell
+  ShieldCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StorageService } from '../services/storageService';
@@ -63,6 +63,34 @@ const News: React.FC = () => {
   const filterPartnershipLabel = useTranslatedText("Partnerships");
   const filterReleaseLabel = useTranslatedText("Research Releases");
   const filterEcosystemLabel = useTranslatedText("Ecosystem Updates");
+
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setCurrentUser(session.user);
+      }
+    });
+  }, []);
+
+  const handleSaveNewsSearchAlert = async () => {
+    if (!currentUser) {
+      showToast("Authentication Required. Please log in to subscribe to search alerts.", "error");
+      return;
+    }
+    const queryToSave = searchTerm.trim() || (selectedCategory !== 'All' ? selectedCategory : '');
+    if (!queryToSave) {
+      showToast("Please enter a keyword or choose a category first to subscribe to alerts.", "info");
+      return;
+    }
+    try {
+      await StorageService.saveSearch(currentUser.id, { query: queryToSave, category: selectedCategory });
+      showToast(`Search alert saved for "${queryToSave}"! You will be notified of new matching news and grants.`, "success");
+    } catch (err: any) {
+      showToast(err.message || "Failed to save search alert.", "error");
+    }
+  };
 
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [debouncedArchiveSearch, setDebouncedArchiveSearch] = useState('');
@@ -1582,24 +1610,34 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
           <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
             
             {/* Search Input Box (Compact) */}
-            <div className="relative flex-1 max-w-md w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
-              <input 
-                type="text" 
-                placeholder={searchNewsPlaceholder}
-                className="w-full pl-9 pr-8 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ug-teal/50 focus:border-ug-teal transition-all text-xs font-semibold text-slate-800 placeholder:text-gray-400 shadow-xs"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {searchTerm && (
-                <button 
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
-                  title="Clear search"
-                >
-                  <X size={13} />
-                </button>
-              )}
+            <div className="flex items-center gap-2 flex-1 max-w-lg w-full">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+                <input 
+                  type="text" 
+                  placeholder={searchNewsPlaceholder}
+                  className="w-full pl-9 pr-8 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ug-teal/50 focus:border-ug-teal transition-all text-xs font-semibold text-slate-800 placeholder:text-gray-400 shadow-xs"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                  <button 
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                    title="Clear search"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={handleSaveNewsSearchAlert}
+                className="px-3 py-2 bg-ug-teal/10 hover:bg-ug-teal hover:text-white text-ug-teal font-black text-xs uppercase tracking-wider rounded-xl border border-ug-teal/20 transition cursor-pointer flex items-center gap-1.5 shrink-0"
+                title="Save search query to receive alerts when matching announcements or grants are published"
+              >
+                <Bell size={14} />
+                <span className="hidden md:inline"><Tr text="Alert Me" /></span>
+              </button>
             </div>
 
             {/* Filter Dropdown & View Mode Controls */}

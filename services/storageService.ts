@@ -1,5 +1,5 @@
 
-import { Project, NewsItem, User, UserRole } from '../types';
+import { Project, NewsItem, User, UserRole, SavedSearch, AlertNotification, AccountDeletionRecord } from '../types';
 import { supabase } from '../lib/supabase';
 import { EmbeddingService } from './embeddingService';
 
@@ -1752,5 +1752,197 @@ export const StorageService = {
       program: data.program
     });
     if (error) throw error;
+  },
+
+  // --- SAVED SEARCHES & ALERTS ---
+  getSavedSearches: async (userId: string): Promise<SavedSearch[]> => {
+    if (!userId) return [];
+    try {
+      const raw = localStorage.getItem(`saved_searches_${userId}`);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      console.error("Error reading saved searches:", e);
+    }
+    return [];
+  },
+
+  getAllSavedSearches: async (): Promise<SavedSearch[]> => {
+    try {
+      const allSearches: SavedSearch[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('saved_searches_')) {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const list: SavedSearch[] = JSON.parse(raw);
+            allSearches.push(...list);
+          }
+        }
+      }
+      return allSearches;
+    } catch (e) {
+      return [];
+    }
+  },
+
+  saveSearch: async (userId: string, searchData: { query: string; category?: string }): Promise<SavedSearch> => {
+    if (!userId) throw new Error("User must be logged in to save search queries.");
+    const searches = await StorageService.getSavedSearches(userId);
+    
+    // Check duplicate
+    const existing = searches.find(s => s.query.toLowerCase().trim() === searchData.query.toLowerCase().trim() && (s.category || 'All') === (searchData.category || 'All'));
+    if (existing) {
+      return existing;
+    }
+
+    const newSearch: SavedSearch = {
+      id: `search_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      user_id: userId,
+      query: searchData.query.trim(),
+      category: searchData.category || 'All',
+      notify_email: true,
+      notify_in_app: true,
+      created_at: new Date().toISOString()
+    };
+
+    const updated = [newSearch, ...searches];
+    localStorage.setItem(`saved_searches_${userId}`, JSON.stringify(updated));
+    return newSearch;
+  },
+
+  deleteSavedSearch: async (userId: string, searchId: string): Promise<void> => {
+    if (!userId) return;
+    const searches = await StorageService.getSavedSearches(userId);
+    const updated = searches.filter(s => s.id !== searchId);
+    localStorage.setItem(`saved_searches_${userId}`, JSON.stringify(updated));
+  },
+
+  getAlertNotifications: async (userId: string): Promise<AlertNotification[]> => {
+    if (!userId) return [];
+    try {
+      const raw = localStorage.getItem(`alerts_${userId}`);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      console.error("Error reading alert notifications:", e);
+    }
+    return [];
+  },
+
+  markAlertAsRead: async (userId: string, alertId: string): Promise<void> => {
+    if (!userId) return;
+    const alerts = await StorageService.getAlertNotifications(userId);
+    const updated = alerts.map(a => a.id === alertId ? { ...a, read: true } : a);
+    localStorage.setItem(`alerts_${userId}`, JSON.stringify(updated));
+  },
+
+  clearAllAlerts: async (userId: string): Promise<void> => {
+    if (!userId) return;
+    localStorage.setItem(`alerts_${userId}`, JSON.stringify([]));
+  },
+
+  triggerSavedSearchMatchAlerts: async (item: { id: string; title: string; description?: string; summary?: string; category?: string; type: 'project' | 'news' }) => {
+    try {
+      const allSearches = await StorageService.getAllSavedSearches();
+      if (!allSearches.length) return;
+
+      const fullText = `${item.title} ${item.description || ''} ${item.summary || ''} ${item.category || ''}`.toLowerCase();
+
+      for (const s of allSearches) {
+        if (!s.query || s.query.trim().length < 2) continue;
+        const q = s.query.toLowerCase().trim();
+
+        if (fullText.includes(q)) {
+          const existingAlerts = await StorageService.getAlertNotifications(s.user_id);
+          if (existingAlerts.some(a => a.item_id === item.id && a.query_matched === s.query)) continue;
+
+          const alertObj: AlertNotification = {
+            id: `alert_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            user_id: s.user_id,
+            title: `Match for Saved Search "${s.query}"`,
+            message: `New ${item.type === 'project' ? 'Research Project' : 'Discovery / Grant'}: "${item.title}"`,
+            type: 'saved_search_match',
+            item_type: item.type,
+            item_id: item.id,
+            query_matched: s.query,
+            read: false,
+            created_at: new Date().toISOString()
+          };
+
+          const updated = [alertObj, ...existingAlerts];
+          localStorage.setItem(`alerts_${s.user_id}`, JSON.stringify(updated));
+        }
+      }
+    } catch (e) {
+      console.error("Error triggering search match alerts:", e);
+    }
+  },
+
+  // --- ACCOUNT DELETION LOGS & OFFBOARDING ---
+  getAccountDeletions: async (): Promise<AccountDeletionRecord[]> => {
+    try {
+      const { data, error } = await supabase.from('account_deletions').select('*').order('deleted_at', { ascending: false });
+      if (!error && data && data.length > 0) {
+        return data as AccountDeletionRecord[];
+      }
+    } catch (e) {
+      // Fallback to local storage if table doesn't exist
+    }
+
+    try {
+      const raw = localStorage.getItem('global_account_deletions');
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      console.error("Error loading account deletions:", e);
+    }
+    return [];
+  },
+
+  recordAccountDeletion: async (record: Omit<AccountDeletionRecord, 'id' | 'deleted_at'>): Promise<AccountDeletionRecord> => {
+    const newRecord: AccountDeletionRecord = {
+      id: `del_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      ...record,
+      deleted_at: new Date().toISOString()
+    };
+
+    try {
+      await supabase.from('account_deletions').insert([newRecord]);
+    } catch (e) {
+      console.warn("Could not insert to Supabase account_deletions table:", e);
+    }
+
+    try {
+      const existing = await StorageService.getAccountDeletions();
+      const updated = [newRecord, ...existing.filter(item => item.id !== newRecord.id)];
+      localStorage.setItem('global_account_deletions', JSON.stringify(updated));
+    } catch (e) {
+      console.error("Error saving account deletion to localStorage:", e);
+    }
+
+    return newRecord;
+  },
+
+  deleteAccount: async (userId: string): Promise<void> => {
+    if (!userId) return;
+    try {
+      await supabase.from('profiles').delete().eq('id', userId);
+      await supabase.from('student_profiles').delete().eq('user_id', userId);
+      await supabase.from('researcher_profiles').delete().eq('user_id', userId);
+      await supabase.from('investor_profiles').delete().eq('user_id', userId);
+      await supabase.from('industry_profiles').delete().eq('user_id', userId);
+    } catch (e) {
+      console.error("Error removing profile records from Supabase:", e);
+    }
+
+    try {
+      localStorage.removeItem(`saved_searches_${userId}`);
+      localStorage.removeItem(`alerts_${userId}`);
+      localStorage.removeItem(`onboarding_skipped_${userId}`);
+    } catch (e) {
+      // Ignore
+    }
+
+    await supabase.auth.signOut();
   }
 };
+
+
