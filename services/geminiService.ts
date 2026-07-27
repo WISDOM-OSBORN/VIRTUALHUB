@@ -1,7 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
 
 const getApiKey = () => {
-  return (import.meta as any).env.VITE_GEMINI_API_KEY || (import.meta as any).env.GEMINI_API_KEY || '';
+  return (
+    (typeof process !== 'undefined' && process.env && (process.env.GEMINI_API_KEY || process.env.API_KEY)) ||
+    (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+    (import.meta as any).env?.GEMINI_API_KEY ||
+    ''
+  );
 };
 
 export const getGeminiResponse = async (

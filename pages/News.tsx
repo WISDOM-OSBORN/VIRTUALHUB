@@ -485,45 +485,66 @@ const News: React.FC = () => {
   };
 
   // Write announcement draft with Gemini assistance
-  const handleGenerateAIPressRelease = async () => {
-    if (!aiTopic) {
-      showToast("Please enter a topic first to guide the AI news writer.", "error");
+  const handleGenerateAIPressRelease = async (overrideTopic?: string, overrideKeywords?: string) => {
+    const topicToUse = (overrideTopic !== undefined ? overrideTopic : aiTopic) || newsTitle;
+    const keywordsToUse = overrideKeywords !== undefined ? overrideKeywords : aiKeywords;
+
+    if (!topicToUse || !topicToUse.trim()) {
+      showToast("Please enter a core topic or title first to guide the Gemini Copywriter.", "error");
       return;
     }
+
     setIsGeneratingAI(true);
-    showToast("AI Agent: Writing descriptive press release headline and content...", "info");
+    showToast("Gemini Copywriter: Drafting announcement headline and brief...", "info");
+
     try {
       const prompt = `Act as an elite Academic Public Relations Officer at the University of Ghana.
-Write a professional, highly engaging press release based on:
-Topic: "${aiTopic}"
-Keywords: "${aiKeywords}"
+Write an authoritative, highly engaging public announcement/press release based on:
+Topic: "${topicToUse.trim()}"
+Keywords/Context: "${keywordsToUse.trim() || 'University of Ghana, Research Innovation, Academic Excellence'}"
 Category: "${newsCategory}"
 
-You MUST output exactly in the following JSON format:
+You MUST output strictly in the following valid JSON format:
 {
-  "title": "A highly professional, captivating academic headline",
-  "summary": "An authoritative, well-written article summary (around 120-150 words) highlighting the research breakthrough, strategic ecosystem funding, or institutional partnership."
+  "title": "A highly professional, captivating academic headline (max 180 chars)",
+  "summary": "An authoritative, well-written article summary (around 120-180 words) highlighting the research breakthrough, strategic ecosystem funding, or institutional partnership."
 }
 
-Do NOT include any extra text or markdown codeblocks in your response. Just return the raw JSON object.`;
+Do NOT include any extra text or markdown codeblock wrappers. Just return the raw JSON object.`;
 
       const responseText = await getGeminiResponse(prompt, []);
-      try {
-        const jsonText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const result = JSON.parse(jsonText);
-        if (result.title) setNewsTitle(result.title);
-        if (result.summary) setNewsSummary(result.summary);
-        showToast("AI Agent: Draft generated successfully!", "success");
-        setAiTopic('');
-        setAiKeywords('');
-        setShowAIWriteModal(false);
-      } catch (jsonErr) {
-        setNewsSummary(responseText.trim());
-        showToast("AI Agent: Generated draft (text only).", "success");
-        setShowAIWriteModal(false);
+      let title = '';
+      let summary = '';
+
+      const cleanedText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+
+      if (jsonMatch) {
+        try {
+          const result = JSON.parse(jsonMatch[0]);
+          if (result.title) title = result.title;
+          if (result.summary) summary = result.summary;
+        } catch (jsonErr) {
+          console.warn("JSON parse fallback:", jsonErr);
+        }
       }
+
+      if (title) setNewsTitle(title);
+      if (summary) setNewsSummary(summary);
+
+      if (!title && !summary) {
+        setNewsTitle(topicToUse);
+        setNewsSummary(cleanedText);
+      }
+
+      showToast("Gemini Copywriter: Draft generated successfully!", "success");
+      setAiTopic('');
+      setAiKeywords('');
+      setShowAIWriteModal(false);
+      setActiveTab(1);
     } catch (err: any) {
-      showToast("Failed to draft with Gemini", "error");
+      console.error("Gemini Copywriter error:", err);
+      showToast("Failed to draft content with Gemini AI", "error");
     } finally {
       setIsGeneratingAI(false);
     }
@@ -1343,12 +1364,12 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                         <button 
                           type="button"
                           onClick={async () => {
-                            if (!aiTopic.trim()) {
-                              showToast("Please enter a core topic for the AI generator.", "error");
+                            const topicToUse = aiTopic.trim() || newsTitle.trim();
+                            if (!topicToUse) {
+                              showToast("Please enter a core topic or title for the AI generator.", "error");
                               return;
                             }
-                            await handleGenerateAIPressRelease();
-                            setActiveTab(1); // Auto-navigate back to Tab 1 so they see the result!
+                            await handleGenerateAIPressRelease(topicToUse, aiKeywords);
                           }}
                           disabled={isGeneratingAI}
                           className="w-full mt-6 bg-purple-600 hover:bg-purple-700 text-white rounded-xl py-3 font-black text-[10px] uppercase tracking-widest transition duration-150 flex items-center justify-center gap-2 shadow-lg shadow-purple-600/15"

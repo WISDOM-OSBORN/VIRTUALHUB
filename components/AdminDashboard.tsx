@@ -77,6 +77,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [aiTopic, setAiTopic] = useState('');
   const [aiKeywords, setAiKeywords] = useState('');
+  const [aiTone, setAiTone] = useState<string>('Academic Press Release');
   const [showAIWriteModal, setShowAIWriteModal] = useState(false);
   const [newsTags, setNewsTags] = useState('');
   const [newsRelevanceScore, setNewsRelevanceScore] = useState<number>(0);
@@ -513,45 +514,70 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  const handleGenerateAIPressRelease = async () => {
-    if (!aiTopic) {
-      showToast("Please enter a topic first to guide the AI news writer.", "error");
+  const handleGenerateAIPressRelease = async (overrideTopic?: string, overrideKeywords?: string, overrideTone?: string) => {
+    const topicToUse = (overrideTopic !== undefined ? overrideTopic : aiTopic) || newsTitle;
+    const keywordsToUse = overrideKeywords !== undefined ? overrideKeywords : aiKeywords;
+    const toneToUse = overrideTone !== undefined ? overrideTone : aiTone;
+
+    if (!topicToUse || !topicToUse.trim()) {
+      showToast("Please enter a core topic or title first to guide the Gemini Copywriter.", "error");
       return;
     }
-    setIsGeneratingAI(true);
-    showToast("AI Agent: Writing descriptive press release headline and content...", "info");
-    try {
-      const prompt = `Act as an elite Academic Public Relations Officer at the University of Ghana.
-Write a professional, highly engaging press release based on:
-Topic: "${aiTopic}"
-Keywords: "${aiKeywords}"
-Category: "${newsCategory}"
 
-You MUST output exactly in the following JSON format:
+    setIsGeneratingAI(true);
+    showToast("Gemini Copywriter: Drafting announcement headline and brief...", "info");
+
+    try {
+      const prompt = `Act as an elite Academic Public Relations Officer and Senior Communications Specialist at the University of Ghana.
+Write an authoritative, highly engaging public announcement/press release based on:
+Topic: "${topicToUse.trim()}"
+Keywords/Context: "${keywordsToUse.trim() || 'University of Ghana, Research Innovation, Academic Excellence'}"
+Category: "${newsCategory}"
+Tone & Copywriting Style: "${toneToUse}"
+
+You MUST output strictly in the following valid JSON format:
 {
-  "title": "A highly professional, captivating academic headline",
-  "summary": "An authoritative, well-written article summary (around 120-150 words) highlighting the research breakthrough, strategic ecosystem funding, or institutional partnership."
+  "title": "A highly professional, captivating academic headline (max 180 chars)",
+  "summary": "An authoritative, well-written article summary (around 120-180 words) highlighting the research breakthrough, strategic ecosystem funding, impact, or institutional partnership."
 }
 
-Do NOT include any extra text or markdown codeblocks in your response. Just return the raw JSON object.`;
+Do NOT include any extra conversational text or markdown codeblock wrappers around your response. Return ONLY the raw JSON object.`;
 
       const responseText = await getGeminiResponse(prompt, []);
-      try {
-        const jsonText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const result = JSON.parse(jsonText);
-        if (result.title) setNewsTitle(result.title);
-        if (result.summary) setNewsSummary(result.summary);
-        showToast("AI Agent: Draft generated successfully!", "success");
-        setAiTopic('');
-        setAiKeywords('');
-        setShowAIWriteModal(false);
-      } catch (jsonErr) {
-        setNewsSummary(responseText.trim());
-        showToast("AI Agent: Generated draft (text only).", "success");
-        setShowAIWriteModal(false);
+      let title = '';
+      let summary = '';
+
+      const cleanedText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+      const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const result = JSON.parse(jsonMatch[0]);
+          if (result.title) title = result.title;
+          if (result.summary) summary = result.summary;
+        } catch (jsonErr) {
+          console.warn("Gemini Copywriter JSON parse fallback:", jsonErr);
+        }
       }
+
+      if (title) setNewsTitle(title);
+      if (summary) setNewsSummary(summary);
+
+      if (!title && !summary) {
+        setNewsTitle(topicToUse);
+        setNewsSummary(cleanedText);
+      }
+
+      showToast("Gemini Copywriter: Draft generated successfully!", "success");
+      setAiTopic('');
+      setAiKeywords('');
+      setShowAIWriteModal(false);
+      
+      // Switch back to Tab 1 so the admin immediately sees the populated fields
+      setActiveTab(1);
     } catch (err: any) {
-      showToast("Failed to draft with Gemini", "error");
+      console.error("Gemini Copywriter error:", err);
+      showToast("Failed to draft with Gemini Copywriter", "error");
     } finally {
       setIsGeneratingAI(false);
     }
@@ -2972,7 +2998,7 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                                 Authoritatively draft elite academic public announcements and breakthroughs instantly. Guided by Gemini intelligence to optimize readability.
                               </p>
 
-                              <div className="space-y-3 pt-2 text-left">
+                              <div className="space-y-3.5 pt-2 text-left">
                                 <div>
                                   <label className="text-[9px] font-black text-gray-500 uppercase tracking-wider block mb-1">Broadcast Title / Main Topic *</label>
                                   <input
@@ -2980,43 +3006,52 @@ Do NOT include any extra text or markdown codeblocks in your response. Just retu
                                     placeholder="e.g., Malaria immunology breakthrough in ORID department"
                                     value={aiTopic || newsTitle}
                                     onChange={e => setAiTopic(e.target.value)}
-                                    className="w-full bg-white border border-gray-200 focus:border-purple-500 rounded-xl px-3 py-2.5 text-xs font-bold outline-none"
+                                    className="w-full bg-white border border-gray-200 focus:border-purple-500 rounded-xl px-3 py-2.5 text-xs font-bold outline-none text-slate-900"
                                   />
                                 </div>
 
                                 <div>
-                                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-wider block mb-1">Focus Keywords / Context Indicators (The Key) *</label>
+                                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-wider block mb-1">Focus Keywords / Context Indicators</label>
                                   <input
                                     type="text"
                                     placeholder="e.g., Prof. G. Awandare, Nature Medicine journal, clinical trial"
                                     value={aiKeywords}
                                     onChange={e => setAiKeywords(e.target.value)}
-                                    className="w-full bg-white border border-gray-200 focus:border-purple-500 rounded-xl px-3 py-2.5 text-xs font-bold outline-none"
+                                    className="w-full bg-white border border-gray-200 focus:border-purple-500 rounded-xl px-3 py-2.5 text-xs font-bold outline-none text-slate-900"
                                   />
+                                </div>
+
+                                <div>
+                                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-wider block mb-1">Tone & Copywriting Style</label>
+                                  <select
+                                    value={aiTone}
+                                    onChange={e => setAiTone(e.target.value)}
+                                    className="w-full bg-white border border-gray-200 focus:border-purple-500 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 outline-none cursor-pointer"
+                                  >
+                                    <option value="Academic Press Release">Academic Press Release (Formal & Authoritative)</option>
+                                    <option value="Breakthrough & Discovery">Breakthrough & Discovery (Exciting & High Impact)</option>
+                                    <option value="Strategic Partnership & Funding">Strategic Partnership & Funding (Commercial & Professional)</option>
+                                    <option value="Impact Story">Impact Story (Accessible & Engaging)</option>
+                                  </select>
                                 </div>
 
                                 <button
                                   type="button"
                                   onClick={async () => {
-                                    // Use aiTopic, or fall back to newsTitle if they typed it in Tab 1
                                     const topicToUse = aiTopic.trim() || newsTitle.trim();
                                     if (!topicToUse) {
                                       showToast("Please enter a core topic or title for the AI generator.", "error");
                                       return;
                                     }
-                                    if (!aiTopic.trim()) {
-                                      setAiTopic(topicToUse);
-                                    }
-                                    await handleGenerateAIPressRelease();
-                                    setActiveTab(1);
+                                    await handleGenerateAIPressRelease(topicToUse, aiKeywords, aiTone);
                                   }}
                                   disabled={isGeneratingAI}
-                                  className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-xl py-3 font-black text-[10px] uppercase tracking-widest transition duration-150 flex items-center justify-center gap-2 shadow-lg shadow-purple-600/15 cursor-pointer mt-3 h-11"
+                                  className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-xl py-3 font-black text-[10px] uppercase tracking-widest transition duration-150 flex items-center justify-center gap-2 shadow-lg shadow-purple-600/15 cursor-pointer mt-3 h-11 disabled:opacity-50"
                                 >
                                   {isGeneratingAI ? (
                                     <>
                                       <Loader2 className="animate-spin" size={12} />
-                                      <span>Drafting Release...</span>
+                                      <span>Gemini Drafting Release...</span>
                                     </>
                                   ) : (
                                     <>
