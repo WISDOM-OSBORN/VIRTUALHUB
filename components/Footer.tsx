@@ -14,8 +14,12 @@ const Footer: React.FC = () => {
           {/* Brand & Institution Info */}
           <div className="md:col-span-5 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-ug-teal flex items-center justify-center font-black text-white text-base shadow-md">
-                UG
+              <div className="h-10 px-1.5 py-0.5 rounded-xl bg-white flex items-center justify-center shadow-md border border-white/20 shrink-0 overflow-hidden">
+                <img 
+                  src="/logo.svg" 
+                  alt="University of Ghana Logo" 
+                  className="h-full w-auto max-w-[120px] object-contain"
+                />
               </div>
               <div>
                 <h3 className="text-white text-base font-bold tracking-tight leading-tight">

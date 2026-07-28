@@ -40,8 +40,8 @@ const ForgotPassword: React.FC = () => {
         <div className="bg-ug-navy p-8 text-center relative overflow-hidden">
           <div className="absolute inset-0 opacity-10 bg-[url('https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=800&q=80')] bg-cover bg-center"></div>
           <div className="relative z-10">
-            <div className="w-12 h-12 bg-ug-teal rounded-full flex items-center justify-center font-bold text-white text-xl mx-auto mb-4 shadow-lg border-2 border-white">
-              UG
+            <div className="h-12 px-2 py-1 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg border-2 border-white object-contain w-fit">
+              <img src="/logo.svg" alt="University of Ghana Logo" className="h-full w-auto max-w-[120px] object-contain" />
             </div>
             <h1 className="text-white font-black text-2xl tracking-tight">Recover Access</h1>
             <p className="text-gray-300 text-xs font-bold uppercase tracking-widest mt-2">Identity Verification</p>

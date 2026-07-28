@@ -36,13 +36,17 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
         <div className="flex items-center justify-between h-16 md:h-18">
           
           {/* Logo & Brand */}
-          <Link to="/" className="flex-shrink-0 flex items-center gap-3 cursor-pointer group">
-             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-ug-teal via-teal-600 to-teal-800 flex items-center justify-center font-black text-white text-sm shadow-md shadow-teal-900/40 ring-2 ring-white/15 group-hover:scale-105 transition-transform duration-200">
-                UG
+          <Link to="/" className="flex-shrink-0 flex items-center gap-2.5 sm:gap-3 cursor-pointer group">
+             <div className="h-9 sm:h-10 px-1 py-0.5 rounded-xl bg-white flex items-center justify-center shadow-md shadow-black/20 ring-1 ring-white/30 group-hover:scale-105 transition-transform duration-200 shrink-0 overflow-hidden">
+                <img 
+                  src="/logo.svg" 
+                  alt="University of Ghana Logo" 
+                  className="h-full w-auto max-w-[110px] sm:max-w-[130px] object-contain"
+                />
              </div>
              <div className="flex flex-col">
                <div className="flex items-center gap-1.5">
-                 <span className="font-black text-base md:text-lg tracking-tight text-white group-hover:text-ug-teal transition-colors">
+                 <span className="font-black text-sm sm:text-base md:text-lg tracking-tight text-white group-hover:text-ug-teal transition-colors">
                    {t('nav.brand')}
                  </span>
                  <span className="hidden sm:inline-block text-[9px] font-extrabold uppercase tracking-widest px-1.5 py-0.5 rounded bg-ug-gold/20 text-ug-gold border border-ug-gold/30">
