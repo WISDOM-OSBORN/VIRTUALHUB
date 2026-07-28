@@ -189,7 +189,7 @@ app.post('/api/translate', async (req: express.Request, res: express.Response) =
 Input: ${JSON.stringify(texts)}`;
 
         let response;
-        const models = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+        const models = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
         for (const modelName of models) {
           try {
             response = await ai.models.generateContent({
@@ -213,7 +213,7 @@ Text: "${text}"
 Output ONLY the translated text string with no extra explanations or markdown quotes.`;
 
         let response;
-        const models = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+        const models = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
         for (const modelName of models) {
           try {
             response = await ai.models.generateContent({
@@ -337,7 +337,7 @@ Be professional, academic yet accessible, and helpful. Keep answers concise (und
 
     let result;
     let chatError;
-    const chatModels = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+    const chatModels = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
     for (const chatModel of chatModels) {
       try {
         const chat = ai.chats.create({
@@ -506,7 +506,7 @@ ${text.slice(0, 12000)}
 
     let response;
     let extractError;
-    const extractModels = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+    const extractModels = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
     for (const modelName of extractModels) {
       try {
         response = await ai.models.generateContent({
@@ -652,7 +652,7 @@ Provide semantic_summary (2-3 sentences) summarizing the profile, and embedding_
       });
       let response;
       let extractError;
-      const extractModels = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+      const extractModels = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
       for (const modelName of extractModels) {
         try {
           response = await ai.models.generateContent({
@@ -863,7 +863,7 @@ app.post('/api/ai-scout/sync', throttleLimit(5, 60 * 1000), async (req, res) => 
 
         let researchResponse;
         let scoutError;
-        const scoutModels = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+        const scoutModels = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
         for (const modelName of scoutModels) {
           try {
             researchResponse = await ai.models.generateContent({
@@ -1168,7 +1168,7 @@ app.post('/api/ai-match', authenticateUser, throttleLimit(20, 60 * 1000), async 
         httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
       });
       let response;
-      const rankModels = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+      const rankModels = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
       for (const modelName of rankModels) {
         try {
           response = await ai.models.generateContent({

@@ -31,7 +31,7 @@ export const getGeminiResponse = async (
     ];
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.6-flash',
       contents,
       config: {
         systemInstruction: "You are the AI Research & Innovation Assistant for the University of Ghana Virtual Industry Hub. Provide helpful, accurate, concise, and professional guidance on academic research, tech transfer, industry challenges, and collaborations in West Africa."
