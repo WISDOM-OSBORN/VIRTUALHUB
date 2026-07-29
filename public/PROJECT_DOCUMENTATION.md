@@ -8,7 +8,7 @@
 **Prepared by:** Senior AI Engineering & Systems Architecture Team  
 **Institution:** Institute of Applied Science and Technology (IAST), University of Ghana, Legon  
 **Date:** July 29, 2026  
-**Document Owner:** Director of Technology Transfer & Research Commercialization  
+**Document Owner:** AI/DATA SCIENCE AND DIGITALIZATION HUB 
 
 ---
 
@@ -19,8 +19,10 @@
 | Version | Date | Author | Description |
 | :--- | :--- | :--- | :--- |
 | **0.1.0** | May 12, 2026 | System Architecture Team | Initial system architecture & requirements draft |
-| **0.9.0** | July 15, 2026 | Lead Frontend & Backend Engineers | Feature freeze, Gemini 3.6 Flash integration & cryptographic security specification |
-| **1.0.0** | July 29, 2026 | IAST Systems Governance Committee | Production release documentation & enterprise operational sign-off |
+| **0.9.0** | July 15, 2026 | Lead Frontend & Backend Engineers - Wisdom & Gelam| Feature freeze, Gemini 3.6 Flash integration & cryptographic security specification |
+| **1.9.5** | July 29, 2026 | Emmanuel | lead the development of the Innoguide bot |
+| **1.0.0** | July 29, 2026 | IAST NSPs | Production release documentation & enterprise operational sign-off |
+
 
 ### 2.2 Review & Approval
 
@@ -621,7 +623,7 @@ flowchart LR
     B -->|Passed| C[Compile Vite Client SPA & Server Bundle]
     C --> D[Containerize Cloud Run Image]
     D --> E[Deploy to Staging Environment]
-    E -->|TTO Verification| F[Promote to Production]
+    E -->|Team Verification| F[Promote to Production]
 ```
 
 ---
@@ -719,7 +721,6 @@ The system is fully built, compiled, tested, and validated for operational deplo
 | Term | Full Definition |
 | :--- | :--- |
 | **IAST** | Institute of Applied Science and Technology, University of Ghana |
-| **TTO** | Technology Transfer Office |
 | **RAG** | Retrieval-Augmented Generation |
 | **IP** | Intellectual Property |
 | **AES-256-GCM** | Advanced Encryption Standard with 256-bit key in Galois/Counter Mode |
