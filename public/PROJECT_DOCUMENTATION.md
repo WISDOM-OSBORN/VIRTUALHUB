@@ -26,10 +26,7 @@
 
 | Role | Name | Signature / Verification | Date |
 | :--- | :--- | :--- | :--- |
-| **Project Lead** | Prof. G. Awandare | *Signed (Digital Verification)* | July 29, 2026 |
-| **Technical Lead** | Lead AI Architect, IAST | *Signed (Digital Verification)* | July 29, 2026 |
-| **Director of IAST** | Executive Director, IAST | *Approved* | July 29, 2026 |
-| **TTO Governance Officer** | Senior Tech Transfer Officer | *Approved* | July 29, 2026 |
+
 
 ---
 
@@ -174,9 +171,8 @@ To empower University of Ghana researchers and students to commercialize scienti
 
 | Item | Reason for Exclusion | Alternative Strategy |
 | :--- | :--- | :--- |
-| **In-App Direct Payment Gateway** | High regulatory/banking variance across industrial currencies | Managed via formal legal university invoices |
 | **Automated Patent Office Filing** | Requires physical/governmental registrar signatures | Exportable verified PDF disclosure dossier |
-| **Built-in Video Teleconferencing** | Avoid replicating complex video server infrastructure | Deep-linked Google Meet / Teams integration |
+
 
 ---
 
