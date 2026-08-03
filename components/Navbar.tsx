@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Menu, X, User, LogIn, LogOut, Sparkles, LayoutDashboard, ChevronRight } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 import LanguageSwitcher from './LanguageSwitcher';
+import ThemeSwitcher from './ThemeSwitcher';
 import { User as UserType } from '../types';
 
 interface NavbarProps {
@@ -86,6 +87,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
 
           {/* User & Controls Right Side */}
           <div className="hidden md:flex items-center gap-3">
+             <ThemeSwitcher />
              <LanguageSwitcher />
 
              {isAuthenticated && (
@@ -133,6 +135,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, user, onUserIconClick,
 
           {/* Mobile menu toggle & quick controls */}
           <div className="-mr-1 flex md:hidden items-center gap-2">
+             <ThemeSwitcher />
              <LanguageSwitcher dropdownPosition="right" />
 
              {isAuthenticated && (

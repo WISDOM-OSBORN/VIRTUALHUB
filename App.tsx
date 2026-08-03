@@ -25,6 +25,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from './lib/supabase';
 import { StorageService } from './services/storageService';
 import { AIScoutService } from './services/aiScoutService';
+import { useSystemTheme } from './hooks/useSystemTheme';
 
 // --- TOAST SYSTEM ---
 interface Toast {
@@ -89,6 +90,8 @@ const ProtectedRoute: React.FC<{
 };
 
 const AppContent: React.FC = () => {
+  useSystemTheme();
+
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
