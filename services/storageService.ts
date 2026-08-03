@@ -288,7 +288,46 @@ export const StorageService = {
         return p;
       });
 
-      return await StorageService.signProjectUrls(sanitizedAndFiltered);
+      // Fetch owner profile metadata for researcher search filtering
+      const ownerIds = Array.from(new Set(sanitizedAndFiltered.map((p: Project) => p.owner_id).filter((id): id is string => Boolean(id))));
+      let profileMap: Record<string, any> = {};
+      
+      if (ownerIds.length > 0) {
+        try {
+          const { data: ownerProfiles } = await supabase
+            .from('profiles')
+            .select('id, name, email, avatar_url, department, company')
+            .in('id', ownerIds);
+            
+          if (ownerProfiles) {
+            ownerProfiles.forEach((prof: any) => {
+              profileMap[prof.id] = prof;
+            });
+          }
+        } catch (err) {
+          console.warn("Error fetching project owner profiles:", err);
+        }
+      }
+
+      const projectsWithOwners = sanitizedAndFiltered.map((p: Project) => {
+        if (p.owner_id && profileMap[p.owner_id]) {
+          const prof = profileMap[p.owner_id];
+          return {
+            ...p,
+            owner_name: prof.name || 'University Researcher',
+            owner_email: prof.email || '',
+            owner_avatar: prof.avatar_url || '',
+            owner_department: prof.department || p.department || '',
+            owner_company: prof.company || ''
+          };
+        }
+        return {
+          ...p,
+          owner_name: p.owner_name || 'University Researcher'
+        };
+      });
+
+      return await StorageService.signProjectUrls(projectsWithOwners);
     } catch (e) {
       return [];
     }

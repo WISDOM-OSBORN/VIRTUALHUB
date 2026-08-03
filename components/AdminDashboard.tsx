@@ -17,6 +17,7 @@ import { AIScoutService } from '../services/aiScoutService';
 import { getGeminiResponse } from '../services/geminiService';
 import { DocumentExtractionService } from '../services/documentExtractionService';
 import { inspectMessageEnvelope, isMessageEncrypted, computeSHA256 } from '../lib/cryptoService';
+import { ThemeSwitcher } from './ThemeSwitcher';
 
 interface AdminDashboardProps {
   user: User | null;
@@ -914,28 +915,31 @@ Do NOT include any extra conversational text or markdown codeblock wrappers arou
   const totalExpressionsOfInterests = eois.length;
 
   return (
-    <div className="space-y-6 animate-fade-in text-gray-900">
+    <div className="space-y-6 animate-fade-in text-gray-900 dark:text-gray-100">
       {/* Title Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-800 pb-4">
         <div>
           <div className="flex items-center gap-2 text-ug-teal mb-2">
             <Lock size={14} className="animate-pulse" />
             <span className="text-[10px] font-bold uppercase tracking-widest">Platform Core Governance System</span>
           </div>
-          <h1 className="text-3xl font-extrabold text-ug-navy tracking-tight">ADMINISTRATIVE HUB</h1>
+          <h1 className="text-3xl font-extrabold text-ug-navy dark:text-white tracking-tight">ADMINISTRATIVE HUB</h1>
           <p className="text-xs text-gray-400 font-medium tracking-wide mt-1">
             Integrate university registries, examine match metrics, curate institutional announcements, and moderate innovation projects.
           </p>
         </div>
         
-        <button 
-          onClick={loadAdminData}
-          disabled={loading}
-          className="flex items-center gap-2 px-5 py-3 h-12 bg-gray-50 border border-gray-100 font-bold hover:bg-gray-100 text-[10px] text-ug-navy uppercase tracking-widest rounded-xl transition disabled:opacity-50"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'Re-Syncing...' : 'Force System Re-Sync'}
-        </button>
+        <div className="flex items-center gap-3">
+          <ThemeSwitcher />
+          <button 
+            onClick={loadAdminData}
+            disabled={loading}
+            className="flex items-center gap-2 px-5 py-3 h-12 bg-gray-50 dark:bg-gray-800/80 border border-gray-100 dark:border-gray-700 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 text-[10px] text-ug-navy dark:text-gray-200 uppercase tracking-widest rounded-xl transition disabled:opacity-50 cursor-pointer"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            {loading ? 'Re-Syncing...' : 'Force System Re-Sync'}
+          </button>
+        </div>
       </div>
 
       {/* Sub-tabs removed as they are driven by the modern left sidebar navigation menu */}

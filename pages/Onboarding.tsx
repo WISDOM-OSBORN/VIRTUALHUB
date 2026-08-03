@@ -52,6 +52,39 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
     ecosystemStrength: ''
   });
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
+
+  const clearFieldError = (key: string) => {
+    if (fieldErrors[key]) {
+      setFieldErrors(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const navigateToStep = (nextStep: OnboardingStep) => {
+    setFieldErrors({});
+    setStep(nextStep);
+  };
+
+  const getFieldInputStyle = (key: string, defaultBorder = "border-gray-100") => {
+    if (fieldErrors[key]) {
+      return "border-red-500 ring-4 ring-red-500/15 bg-red-50/40 text-red-900 placeholder-red-300 transition-all font-bold";
+    }
+    return `${defaultBorder} transition-all`;
+  };
+
+  const renderFieldLabel = (text: string, fieldKey: string, isRequired = true) => (
+    <label className="text-[10px] font-black tracking-widest mb-2.5 flex items-center justify-between uppercase block">
+      <span className={fieldErrors[fieldKey] ? "text-red-600 font-black flex items-center gap-1" : "text-gray-400"}>
+        {text} {isRequired && <span className="text-red-500 font-black text-sm ml-0.5">*</span>}
+      </span>
+      {fieldErrors[fieldKey] && (
+        <span className="text-[10px] text-red-600 font-extrabold uppercase tracking-wider animate-pulse flex items-center gap-1">
+          Required Field
+        </span>
+      )}
+    </label>
+  );
+
   const [customSector, setCustomSector] = useState('');
   const [customOffer, setCustomOffer] = useState('');
   const [customNeed, setCustomNeed] = useState('');
@@ -337,34 +370,40 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
 
   const renderEntityIdentity = () => (
     <div className="max-w-2xl mx-auto p-8">
-      <button onClick={() => setStep('role')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors font-sans focus:outline-none">
+      <button onClick={() => navigateToStep('role')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors font-sans focus:outline-none cursor-pointer">
         <ChevronLeft size={16} /> Back
       </button>
 
       <div className="mb-10">
         <span className="text-xs font-black text-ug-teal tracking-[0.2em] mb-2 block">Step 1 of 5: Identity</span>
         <h2 className="text-3xl font-black text-ug-navy tracking-tight">Organization Profile</h2>
-        <p className="text-gray-400 text-sm font-medium mt-2">Tell us about your organization or fund.</p>
+        <p className="text-gray-400 text-sm font-medium mt-2">Tell us about your organization or fund. Mandatory fields are marked with (<span className="text-red-500 font-bold">*</span>).</p>
       </div>
 
       <div className="space-y-6">
         <div>
-          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Organization / Company Name *</label>
+          {renderFieldLabel("Organization / Company Name", "orgName")}
           <input 
             type="text" 
             placeholder="e.g. Ghana Health NGO, Delta Fund..."
             value={answers.orgName || ''}
-            onChange={(e) => setAnswers({...answers, orgName: e.target.value})}
-            className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+            onChange={(e) => {
+              setAnswers({...answers, orgName: e.target.value});
+              clearFieldError("orgName");
+            }}
+            className={`w-full bg-gray-50 border-2 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal text-sm font-bold ${getFieldInputStyle("orgName", "border-gray-100")}`}
           />
         </div>
 
         <div>
-          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Organization Type *</label>
+          {renderFieldLabel("Organization Type", "orgType")}
           <select 
             value={answers.orgType || ''}
-            onChange={(e) => setAnswers({...answers, orgType: e.target.value})}
-            className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold appearance-none"
+            onChange={(e) => {
+              setAnswers({...answers, orgType: e.target.value});
+              clearFieldError("orgType");
+            }}
+            className={`w-full bg-gray-50 border-2 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal text-sm font-bold appearance-none cursor-pointer ${getFieldInputStyle("orgType", "border-gray-100")}`}
           >
             <option value="">Select Type</option>
             <option value="Private Company">Private Company / Enterprise</option>
@@ -380,17 +419,20 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Primary Office Location *</label>
+            {renderFieldLabel("Primary Office Location", "location")}
             <input 
               type="text" 
               placeholder="e.g. Accra, Kumasi"
               value={answers.location || ''}
-              onChange={(e) => setAnswers({...answers, location: e.target.value})}
-              className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+              onChange={(e) => {
+                setAnswers({...answers, location: e.target.value});
+                clearFieldError("location");
+              }}
+              className={`w-full bg-gray-50 border-2 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal text-sm font-bold ${getFieldInputStyle("location", "border-gray-100")}`}
             />
           </div>
           <div>
-            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Website URL</label>
+            {renderFieldLabel("Website URL", "website", false)}
             <input 
               type="url" 
               placeholder="e.g. www.firm.com"
@@ -403,46 +445,64 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Contact Person Email *</label>
+            {renderFieldLabel("Contact Person Email", "contactEmail")}
             <input 
               type="email" 
               placeholder="e.g. executive@firm.com"
               value={answers.contactEmail || ''}
-              onChange={(e) => setAnswers({...answers, contactEmail: e.target.value})}
-              className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+              onChange={(e) => {
+                setAnswers({...answers, contactEmail: e.target.value});
+                clearFieldError("contactEmail");
+              }}
+              className={`w-full bg-gray-50 border-2 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal text-sm font-bold ${getFieldInputStyle("contactEmail", "border-gray-100")}`}
             />
           </div>
           <div>
-            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Contact Phone Number *</label>
+            {renderFieldLabel("Contact Phone Number", "contactPhone")}
             <input 
               type="tel" 
               placeholder="e.g. +233 24 000 0000"
               value={answers.contactPhone || ''}
-              onChange={(e) => setAnswers({...answers, contactPhone: e.target.value})}
-              className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+              onChange={(e) => {
+                setAnswers({...answers, contactPhone: e.target.value});
+                clearFieldError("contactPhone");
+              }}
+              className={`w-full bg-gray-50 border-2 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal text-sm font-bold ${getFieldInputStyle("contactPhone", "border-gray-100")}`}
             />
           </div>
         </div>
 
         <div>
-          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Brief Organization Overview *</label>
+          {renderFieldLabel("Brief Organization Overview", "orgOverview")}
           <textarea 
             placeholder="Describe what your organization represents, does, and offers..."
             value={answers.orgOverview || ''}
-            onChange={(e) => setAnswers({...answers, orgOverview: e.target.value})}
-            className="w-full h-32 bg-gray-50 border-2 border-gray-100 rounded-[2rem] p-6 outline-none focus:bg-white focus:border-ug-teal transition-all text-xs font-medium leading-relaxed resize-none shadow-sm"
+            onChange={(e) => {
+              setAnswers({...answers, orgOverview: e.target.value});
+              clearFieldError("orgOverview");
+            }}
+            className={`w-full h-32 bg-gray-50 border-2 rounded-[2rem] p-6 outline-none focus:bg-white focus:border-ug-teal text-xs font-medium leading-relaxed resize-none shadow-sm ${getFieldInputStyle("orgOverview", "border-gray-100")}`}
           />
         </div>
 
         <button 
           onClick={() => {
-            if (!answers.orgName || !answers.orgType || !answers.location || !answers.contactEmail || !answers.contactPhone || !answers.orgOverview) {
-              showToast("Please fill in all required (*) fields", "error");
+            const errs: Record<string, boolean> = {};
+            if (!answers.orgName || !answers.orgName.trim()) errs.orgName = true;
+            if (!answers.orgType) errs.orgType = true;
+            if (!answers.location || !answers.location.trim()) errs.location = true;
+            if (!answers.contactEmail || !answers.contactEmail.trim()) errs.contactEmail = true;
+            if (!answers.contactPhone || !answers.contactPhone.trim()) errs.contactPhone = true;
+            if (!answers.orgOverview || !answers.orgOverview.trim()) errs.orgOverview = true;
+
+            if (Object.keys(errs).length > 0) {
+              setFieldErrors(errs);
+              showToast("Please fill in all mandatory fields highlighted in red.", "error");
               return;
             }
-            setStep('entity_focus');
+            navigateToStep('entity_focus');
           }}
-          className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3"
+          className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3 cursor-pointer"
         >
           Next: Focus & Intentions <ChevronRight size={18} />
         </button>
@@ -457,6 +517,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
       const current = answers.sectorVector || [];
       const next = current.includes(sector) ? current.filter((s: string) => s !== sector) : [...current, sector];
       setAnswers({ ...answers, sectorVector: next });
+      clearFieldError("sectorVector");
     };
 
     const addCustomSector = () => {
@@ -464,6 +525,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
       const clean = customSector.trim().toLowerCase();
       if (!answers.sectorVector?.includes(clean)) {
         setAnswers({ ...answers, sectorVector: [...(answers.sectorVector || []), clean] });
+        clearFieldError("sectorVector");
       }
       setCustomSector('');
     };
@@ -482,6 +544,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
       const current = answers.offerVector || [];
       const next = current.includes(offer) ? current.filter((o: string) => o !== offer) : [...current, offer];
       setAnswers({ ...answers, offerVector: next });
+      clearFieldError("offerVector");
     };
 
     const addCustomOffer = () => {
@@ -489,6 +552,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
       const clean = customOffer.trim();
       if (!answers.offerVector?.includes(clean)) {
         setAnswers({ ...answers, offerVector: [...(answers.offerVector || []), clean] });
+        clearFieldError("offerVector");
       }
       setCustomOffer('');
     };
@@ -507,6 +571,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
       const current = answers.needVector || [];
       const next = current.includes(need) ? current.filter((n: string) => n !== need) : [...current, need];
       setAnswers({ ...answers, needVector: next });
+      clearFieldError("needVector");
     };
 
     const addCustomNeed = () => {
@@ -514,32 +579,33 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
       const clean = customNeed.trim();
       if (!answers.needVector?.includes(clean)) {
         setAnswers({ ...answers, needVector: [...(answers.needVector || []), clean] });
+        clearFieldError("needVector");
       }
       setCustomNeed('');
     };
 
     return (
       <div className="max-w-2xl mx-auto p-8">
-        <button onClick={() => setStep('entity_identity')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors font-sans focus:outline-none">
+        <button onClick={() => navigateToStep('entity_identity')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors font-sans focus:outline-none cursor-pointer">
           <ChevronLeft size={16} /> Back
         </button>
 
         <div className="mb-10">
           <span className="text-xs font-black text-ug-teal tracking-[0.2em] mb-2 block">Step 2 of 5: Intentions</span>
           <h2 className="text-3xl font-black text-ug-navy tracking-tight">Focus & Core Capabilities</h2>
-          <p className="text-gray-400 text-sm font-medium mt-2">Define focus tracks and resource exchanges.</p>
+          <p className="text-gray-400 text-sm font-medium mt-2">Define focus tracks and resource exchanges. Mandatory fields are marked with (<span className="text-red-500 font-bold">*</span>).</p>
         </div>
 
         <div className="space-y-8 max-h-[60vh] overflow-y-auto pr-4 scroll-smooth pb-6">
           {/* SECTOR VECTOR TRACKS */}
-          <div>
-            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Focus Tracks *</label>
+          <div className={`p-4 rounded-3xl transition-all ${fieldErrors.sectorVector ? 'border-2 border-red-500 bg-red-50/20' : ''}`}>
+            {renderFieldLabel("Focus Tracks", "sectorVector")}
             <div className="flex flex-wrap gap-2.5 mb-4">
               {defaultSectors.map(sector => (
                 <button
                   key={sector}
                   onClick={() => toggleSector(sector)}
-                  className={`py-2 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all ${
+                  className={`py-2 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                     answers.sectorVector?.includes(sector) ? 'bg-ug-navy text-white border-ug-navy' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
                   }`}
                 >
@@ -550,7 +616,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
                 <button
                   key={custom}
                   onClick={() => toggleSector(custom)}
-                  className="py-2 px-4 rounded-xl border-2 bg-ug-teal text-white border-ug-teal text-[10px] font-black uppercase tracking-wider transition-all"
+                  className="py-2 px-4 rounded-xl border-2 bg-ug-teal text-white border-ug-teal text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
                 >
                   {custom}
                 </button>
@@ -566,19 +632,19 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
                 onKeyDown={(e) => e.key === 'Enter' && addCustomSector()}
                 className="flex-1 bg-gray-50 border-2 border-gray-100 rounded-xl py-2 px-4 outline-none focus:bg-white focus:border-ug-teal text-xs font-bold"
               />
-              <button onClick={addCustomSector} className="px-4 py-2 bg-ug-navy text-white rounded-xl text-xs font-black uppercase tracking-wider">Add</button>
+              <button onClick={addCustomSector} className="px-4 py-2 bg-ug-navy text-white rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer">Add</button>
             </div>
           </div>
 
           {/* Core Value Offerings */}
-          <div>
-            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">What Can You Offer the Ecosystem? *</label>
+          <div className={`p-4 rounded-3xl transition-all ${fieldErrors.offerVector ? 'border-2 border-red-500 bg-red-50/20' : ''}`}>
+            {renderFieldLabel("What Can You Offer the Ecosystem?", "offerVector")}
             <div className="flex flex-wrap gap-2 mb-4">
               {offersOptions.map(offer => (
                 <button
                   key={offer}
                   onClick={() => toggleOffer(offer)}
-                  className={`py-2.5 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all ${
+                  className={`py-2.5 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                     answers.offerVector?.includes(offer) ? 'bg-ug-navy text-white border-ug-navy' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
                   }`}
                 >
@@ -589,7 +655,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
                 <button
                   key={custom}
                   onClick={() => toggleOffer(custom)}
-                  className="py-2.5 px-4 rounded-xl border-2 bg-ug-teal text-white border-ug-teal text-[10px] font-black uppercase tracking-wider transition-all"
+                  className="py-2.5 px-4 rounded-xl border-2 bg-ug-teal text-white border-ug-teal text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
                 >
                   {custom}
                 </button>
@@ -605,19 +671,19 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
                 onKeyDown={(e) => e.key === 'Enter' && addCustomOffer()}
                 className="flex-1 bg-gray-50 border-2 border-gray-100 rounded-xl py-2 px-4 outline-none focus:bg-white focus:border-ug-teal text-xs font-bold"
               />
-              <button onClick={addCustomOffer} className="px-4 py-2 bg-ug-navy text-white rounded-xl text-xs font-black uppercase tracking-wider font-sans">Add</button>
+              <button onClick={addCustomOffer} className="px-4 py-2 bg-ug-navy text-white rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer">Add</button>
             </div>
           </div>
 
           {/* Looking For (Needs) */}
-          <div>
-            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">What Are You Actively Looking For? *</label>
+          <div className={`p-4 rounded-3xl transition-all ${fieldErrors.needVector ? 'border-2 border-red-500 bg-red-50/20' : ''}`}>
+            {renderFieldLabel("What Are You Actively Looking For?", "needVector")}
             <div className="flex flex-wrap gap-2 mb-4">
               {needsOptions.map(need => (
                 <button
                   key={need}
                   onClick={() => toggleNeed(need)}
-                  className={`py-2.5 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all ${
+                  className={`py-2.5 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                     answers.needVector?.includes(need) ? 'bg-ug-navy text-white border-ug-navy' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
                   }`}
                 >
@@ -628,7 +694,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
                 <button
                   key={custom}
                   onClick={() => toggleNeed(custom)}
-                  className="py-2.5 px-4 rounded-xl border-2 bg-ug-teal text-white border-ug-teal text-[10px] font-black uppercase tracking-wider transition-all"
+                  className="py-2.5 px-4 rounded-xl border-2 bg-ug-teal text-white border-ug-teal text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
                 >
                   {custom}
                 </button>
@@ -644,19 +710,25 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
                 onKeyDown={(e) => e.key === 'Enter' && addCustomNeed()}
                 className="flex-1 bg-gray-50 border-2 border-gray-100 rounded-xl py-2 px-4 outline-none focus:bg-white focus:border-ug-teal text-xs font-bold"
               />
-              <button onClick={addCustomNeed} className="px-4 py-2 bg-ug-navy text-white rounded-xl text-xs font-black uppercase tracking-wider font-sans">Add</button>
+              <button onClick={addCustomNeed} className="px-4 py-2 bg-ug-navy text-white rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer">Add</button>
             </div>
           </div>
 
           <button 
             onClick={() => {
-              if (!answers.sectorVector?.length || !answers.offerVector?.length || !answers.needVector?.length) {
-                showToast("Please choose at least one item from focus, offer, and looking fields.", "error");
+              const errs: Record<string, boolean> = {};
+              if (!answers.sectorVector?.length) errs.sectorVector = true;
+              if (!answers.offerVector?.length) errs.offerVector = true;
+              if (!answers.needVector?.length) errs.needVector = true;
+
+              if (Object.keys(errs).length > 0) {
+                setFieldErrors(errs);
+                showToast("Please choose at least one item for each compulsory field highlighted in red.", "error");
                 return;
               }
-              setStep('entity_model');
+              navigateToStep('entity_model');
             }}
-            className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3"
+            className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3 cursor-pointer"
           >
             Next: Operation Model <ChevronRight size={18} />
           </button>
@@ -678,6 +750,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
       const current = answers.collaborationVector || [];
       const next = current.includes(collab) ? current.filter((c: string) => c !== collab) : [...current, collab];
       setAnswers({ ...answers, collaborationVector: next });
+      clearFieldError("collaborationVector");
     };
 
     const readinessOptions = [
@@ -693,6 +766,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
       const current = answers.readinessVector || [];
       const next = current.includes(readiness) ? current.filter((r: string) => r !== readiness) : [...current, readiness];
       setAnswers({ ...answers, readinessVector: next });
+      clearFieldError("readinessVector");
     };
 
     const fundingRangeOptions = [
@@ -706,24 +780,25 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
       const current = answers.fundingStage || [];
       const next = current.includes(stage) ? current.filter((s: string) => s !== stage) : [...current, stage];
       setAnswers({ ...answers, fundingStage: next });
+      clearFieldError("fundingStage");
     };
 
     return (
       <div className="max-w-2xl mx-auto p-8">
-        <button onClick={() => setStep('entity_focus')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors font-sans focus:outline-none">
+        <button onClick={() => navigateToStep('entity_focus')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors font-sans focus:outline-none cursor-pointer">
           <ChevronLeft size={16} /> Back
         </button>
 
         <div className="mb-10">
           <span className="text-xs font-black text-ug-teal tracking-[0.2em] mb-2 block">Step 3 of 5: Model</span>
           <h2 className="text-3xl font-black text-ug-navy tracking-tight">Collaboration Model</h2>
-          <p className="text-gray-400 text-sm font-medium mt-2">Specify engagement workflows and target readiness.</p>
+          <p className="text-gray-400 text-sm font-medium mt-2">Specify engagement workflows and target readiness. Mandatory fields are marked with (<span className="text-red-500 font-bold">*</span>).</p>
         </div>
 
         <div className="space-y-8 max-h-[60vh] overflow-y-auto pr-4 scroll-smooth pb-6">
           {/* Collaboration Models */}
-          <div>
-            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Preferred Collaboration Models *</label>
+          <div className={`p-4 rounded-3xl transition-all ${fieldErrors.collaborationVector ? 'border-2 border-red-500 bg-red-50/20' : ''}`}>
+            {renderFieldLabel("Preferred Collaboration Models", "collaborationVector")}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {collaborationOptions.map(collab => {
                 const isSelected = answers.collaborationVector?.includes(collab);
@@ -731,7 +806,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
                   <button
                     key={collab}
                     onClick={() => toggleCollab(collab)}
-                    className={`py-3.5 px-6 rounded-xl border-2 text-[10px] font-black uppercase text-left tracking-wide transition-all ${
+                    className={`py-3.5 px-6 rounded-xl border-2 text-[10px] font-black uppercase text-left tracking-wide transition-all cursor-pointer ${
                       isSelected ? 'bg-ug-navy text-white border-ug-navy shadow-md' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
                     }`}
                   >
@@ -743,8 +818,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
           </div>
 
           {/* Innovation Readiness Preferences */}
-          <div>
-            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Target Maturity Stages *</label>
+          <div className={`p-4 rounded-3xl transition-all ${fieldErrors.readinessVector ? 'border-2 border-red-500 bg-red-50/20' : ''}`}>
+            {renderFieldLabel("Target Maturity Stages", "readinessVector")}
             <div className="space-y-3">
               {readinessOptions.map(readiness => {
                 const isSelected = answers.readinessVector?.includes(readiness);
@@ -752,7 +827,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
                   <button
                     key={readiness}
                     onClick={() => toggleReadiness(readiness)}
-                    className={`w-full py-3.5 px-6 rounded-xl border-2 text-[10px] font-black uppercase text-left tracking-wide transition-all flex justify-between items-center ${
+                    className={`w-full py-3.5 px-6 rounded-xl border-2 text-[10px] font-black uppercase text-left tracking-wide transition-all flex justify-between items-center cursor-pointer ${
                       isSelected ? 'bg-ug-navy text-white border-ug-navy' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
                     }`}
                   >
@@ -767,14 +842,17 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
           {/* INVESTOR ADDITIONAL CRITERIA */}
           {selectedRole === UserRole.Investor && (
             <div className="pt-6 border-t border-gray-100 space-y-6">
-              <div>
-                <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Investment Ticket Range *</label>
+              <div className={`p-4 rounded-3xl transition-all ${fieldErrors.investmentRange ? 'border-2 border-red-500 bg-red-50/20' : ''}`}>
+                {renderFieldLabel("Investment Ticket Range", "investmentRange")}
                 <div className="grid grid-cols-2 gap-3">
                   {fundingRangeOptions.map(option => (
                     <button
                       key={option.id}
-                      onClick={() => setAnswers({...answers, investmentRange: option.val})}
-                      className={`py-3 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all ${
+                      onClick={() => {
+                        setAnswers({...answers, investmentRange: option.val});
+                        clearFieldError("investmentRange");
+                      }}
+                      className={`py-3 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                         answers.investmentRange === option.val ? 'bg-ug-navy text-white border-ug-navy' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
                       }`}
                     >
@@ -784,8 +862,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
                 </div>
               </div>
 
-              <div>
-                <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Active Funding Stages *</label>
+              <div className={`p-4 rounded-3xl transition-all ${fieldErrors.fundingStage ? 'border-2 border-red-500 bg-red-50/20' : ''}`}>
+                {renderFieldLabel("Active Funding Stages", "fundingStage")}
                 <div className="flex flex-wrap gap-2.5">
                   {['Pre-Seed', 'Seed Stage', 'Venture Funding', 'Grant/Philanthropy Aid'].map(stage => {
                     const isSelected = answers.fundingStage?.includes(stage);
@@ -793,7 +871,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
                       <button
                         key={stage}
                         onClick={() => toggleFundingStage(stage)}
-                        className={`py-2 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all ${
+                        className={`py-2 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                           isSelected ? 'bg-ug-navy text-white border-ug-navy' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
                         }`}
                       >
@@ -808,17 +886,22 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
 
           <button 
             onClick={() => {
-              if (!answers.collaborationVector?.length || !answers.readinessVector?.length) {
-                showToast("Please select collaboration models and innovation readiness preferences.", "error");
+              const errs: Record<string, boolean> = {};
+              if (!answers.collaborationVector?.length) errs.collaborationVector = true;
+              if (!answers.readinessVector?.length) errs.readinessVector = true;
+              if (selectedRole === UserRole.Investor) {
+                if (!answers.investmentRange) errs.investmentRange = true;
+                if (!answers.fundingStage?.length) errs.fundingStage = true;
+              }
+
+              if (Object.keys(errs).length > 0) {
+                setFieldErrors(errs);
+                showToast("Please complete all compulsory selections highlighted in red.", "error");
                 return;
               }
-              if (selectedRole === UserRole.Investor && (!answers.investmentRange || !answers.fundingStage?.length)) {
-                showToast("Investor entities must configure investment ranges and staging.", "error");
-                return;
-              }
-              setStep('entity_competencies');
+              navigateToStep('entity_competencies');
             }}
-            className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3"
+            className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3 cursor-pointer"
           >
             Next: Match Competencies <ChevronRight size={18} />
           </button>
@@ -844,6 +927,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
       const current = answers.capabilityVector || [];
       const next = current.includes(cap) ? current.filter((c: string) => c !== cap) : [...current, cap];
       setAnswers({ ...answers, capabilityVector: next });
+      clearFieldError("capabilityVector");
     };
 
     const addCustomCapability = () => {
@@ -851,25 +935,26 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
       const clean = customCapability.trim();
       if (!answers.capabilityVector?.includes(clean)) {
         setAnswers({ ...answers, capabilityVector: [...(answers.capabilityVector || []), clean] });
+        clearFieldError("capabilityVector");
       }
       setCustomCapability('');
     };
 
     return (
       <div className="max-w-2xl mx-auto p-8">
-        <button onClick={() => setStep('entity_model')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors font-sans focus:outline-none">
+        <button onClick={() => navigateToStep('entity_model')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors font-sans focus:outline-none cursor-pointer">
           <ChevronLeft size={16} /> Back
         </button>
 
         <div className="mb-10">
           <span className="text-xs font-black text-ug-teal tracking-[0.2em] mb-2 block">Step 4 of 5: Competencies</span>
           <h2 className="text-3xl font-black text-ug-navy tracking-tight">Ecosystem Competencies</h2>
-          <p className="text-gray-400 text-sm font-medium mt-2">Select capabilities your organization values or validates.</p>
+          <p className="text-gray-400 text-sm font-medium mt-2">Select capabilities your organization values or validates. Mandatory fields marked with (<span className="text-red-500 font-bold">*</span>).</p>
         </div>
 
         <div className="space-y-8 max-h-[60vh] overflow-y-auto pr-4 scroll-smooth pb-6">
-          <div>
-            <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Specific Competencies We Support / Value *</label>
+          <div className={`p-4 rounded-3xl transition-all ${fieldErrors.capabilityVector ? 'border-2 border-red-500 bg-red-50/20' : ''}`}>
+            {renderFieldLabel("Specific Competencies We Support / Value", "capabilityVector")}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
               {competenciesList.map(comp => {
                 const isSelected = answers.capabilityVector?.includes(comp);
@@ -877,7 +962,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
                   <button
                     key={comp}
                     onClick={() => toggleCapability(comp)}
-                    className={`py-3 px-4 rounded-xl border-2 text-[10px] text-left font-black uppercase tracking-wide transition-all ${
+                    className={`py-3 px-4 rounded-xl border-2 text-[10px] text-left font-black uppercase tracking-wide transition-all cursor-pointer ${
                       isSelected ? 'bg-ug-navy text-white border-ug-navy shadow-inner' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
                     }`}
                   >
@@ -889,7 +974,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
                 <button
                   key={custom}
                   onClick={() => toggleCapability(custom)}
-                  className="py-3 px-4 rounded-xl border-2 bg-ug-teal text-white border-ug-teal text-[10px] text-left font-black uppercase tracking-wide transition-all"
+                  className="py-3 px-4 rounded-xl border-2 bg-ug-teal text-white border-ug-teal text-[10px] text-left font-black uppercase tracking-wide transition-all cursor-pointer"
                 >
                   {custom}
                 </button>
@@ -905,19 +990,20 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
                 onKeyDown={(e) => e.key === 'Enter' && addCustomCapability()}
                 className="flex-1 bg-gray-50 border-2 border-gray-100 rounded-xl py-2 px-4 outline-none focus:bg-white focus:border-ug-teal text-xs font-bold"
               />
-              <button onClick={addCustomCapability} className="px-4 py-2 bg-ug-navy text-white rounded-xl text-xs font-black uppercase tracking-wider font-sans">Add</button>
+              <button onClick={addCustomCapability} className="px-4 py-2 bg-ug-navy text-white rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer">Add</button>
             </div>
           </div>
 
           <button 
             onClick={() => {
               if (!answers.capabilityVector?.length) {
+                setFieldErrors({ capabilityVector: true });
                 showToast("Please choose or add at least one competency tag.", "error");
                 return;
               }
-              setStep('entity_ai_questions');
+              navigateToStep('entity_ai_questions');
             }}
-            className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3"
+            className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3 cursor-pointer"
           >
             Next: AI Setup Questions <ChevronRight size={18} />
           </button>
@@ -928,62 +1014,71 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
 
   const renderEntityAIQuestions = () => (
     <div className="max-w-2xl mx-auto p-8">
-      <button onClick={() => setStep('entity_competencies')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors font-sans focus:outline-none font-black text-xs uppercase tracking-widest">
+      <button onClick={() => navigateToStep('entity_competencies')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors font-sans focus:outline-none cursor-pointer">
         <ChevronLeft size={16} /> Back
       </button>
 
       <div className="mb-10">
         <span className="text-xs font-black text-ug-teal tracking-[0.2em] mb-2 block">Step 5 of 5: AI Core Matching</span>
         <h2 className="text-3xl font-black text-ug-navy tracking-tight">Smart Match Synthesis</h2>
-        <p className="text-gray-400 text-sm font-medium mt-2">Fill out these open-ended statements to power high-fidelity semantic re-ranking.</p>
+        <p className="text-gray-400 text-sm font-medium mt-2">Fill out these open-ended statements to power high-fidelity semantic re-ranking. Mandatory fields marked with (<span className="text-red-500 font-bold">*</span>).</p>
       </div>
 
       <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-4 scroll-smooth pb-6">
         <div>
-          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">
-            What specific medical diagnostics, drugs, or healthcare problems does your organization actively seek to solve? *
-          </label>
+          {renderFieldLabel("What specific medical diagnostics, drugs, or healthcare problems does your organization actively seek to solve?", "problemStatement")}
           <textarea 
             placeholder="Describe the medical, diagnostics or pharmaceutical problems you want to work on..."
             value={answers.problemStatement || ''}
-            onChange={(e) => setAnswers({...answers, problemStatement: e.target.value})}
-            className="w-full h-28 bg-gray-50 border-2 border-gray-100 rounded-2xl p-6 outline-none focus:bg-white focus:border-ug-teal transition-all text-xs font-medium leading-relaxed"
+            onChange={(e) => {
+              setAnswers({...answers, problemStatement: e.target.value});
+              clearFieldError("problemStatement");
+            }}
+            className={`w-full h-28 bg-gray-50 border-2 rounded-2xl p-6 outline-none focus:bg-white focus:border-ug-teal text-xs font-medium leading-relaxed ${getFieldInputStyle("problemStatement", "border-gray-100")}`}
           />
         </div>
 
         <div>
-          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">
-            Describe your ideal research/student matches. What qualities/technologies make them ideal? *
-          </label>
+          {renderFieldLabel("Describe your ideal research/student matches. What qualities/technologies make them ideal?", "idealCandidate")}
           <textarea 
             placeholder="For example: academic labs with molecular diagnostic device prototypes..."
             value={answers.idealCandidate || ''}
-            onChange={(e) => setAnswers({...answers, idealCandidate: e.target.value})}
-            className="w-full h-28 bg-gray-50 border-2 border-gray-100 rounded-2xl p-6 outline-none focus:bg-white focus:border-ug-teal transition-all text-xs font-medium leading-relaxed"
+            onChange={(e) => {
+              setAnswers({...answers, idealCandidate: e.target.value});
+              clearFieldError("idealCandidate");
+            }}
+            className={`w-full h-28 bg-gray-50 border-2 rounded-2xl p-6 outline-none focus:bg-white focus:border-ug-teal text-xs font-medium leading-relaxed ${getFieldInputStyle("idealCandidate", "border-gray-100")}`}
           />
         </div>
 
         <div>
-          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">
-            What makes your organization/firm a strong partner for University of Ghana research teams? *
-          </label>
+          {renderFieldLabel("What makes your organization/firm a strong partner for University of Ghana research teams?", "ecosystemStrength")}
           <textarea 
             placeholder="For example: robust NGO field network across Ghana cities, access to bio-safety labs, funding ticket scaling..."
             value={answers.ecosystemStrength || ''}
-            onChange={(e) => setAnswers({...answers, ecosystemStrength: e.target.value})}
-            className="w-full h-28 bg-gray-50 border-2 border-gray-100 rounded-2xl p-6 outline-none focus:bg-white focus:border-ug-teal transition-all text-xs font-medium leading-relaxed"
+            onChange={(e) => {
+              setAnswers({...answers, ecosystemStrength: e.target.value});
+              clearFieldError("ecosystemStrength");
+            }}
+            className={`w-full h-28 bg-gray-50 border-2 rounded-2xl p-6 outline-none focus:bg-white focus:border-ug-teal text-xs font-medium leading-relaxed ${getFieldInputStyle("ecosystemStrength", "border-gray-100")}`}
           />
         </div>
 
         <button 
           onClick={() => {
-            if (!answers.problemStatement || !answers.idealCandidate || !answers.ecosystemStrength) {
-              showToast("Please answer all open-ended questions for deep matching alignment.", "error");
+            const errs: Record<string, boolean> = {};
+            if (!answers.problemStatement || !answers.problemStatement.trim()) errs.problemStatement = true;
+            if (!answers.idealCandidate || !answers.idealCandidate.trim()) errs.idealCandidate = true;
+            if (!answers.ecosystemStrength || !answers.ecosystemStrength.trim()) errs.ecosystemStrength = true;
+
+            if (Object.keys(errs).length > 0) {
+              setFieldErrors(errs);
+              showToast("Please answer all compulsory open-ended questions highlighted in red.", "error");
               return;
             }
             processAIProfile();
           }}
-          className="w-full bg-ug-navy text-white py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3"
+          className="w-full bg-ug-navy text-white py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3 cursor-pointer"
         >
           Initialize AI Matching Twin <Sparkles size={18} />
         </button>
@@ -993,31 +1088,34 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
 
   const renderQuestionnaire = () => (
     <div className="max-w-2xl mx-auto p-8">
-      <button onClick={() => setStep('role')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors">
+      <button onClick={() => navigateToStep('role')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer">
         <ChevronLeft size={16} /> Back
       </button>
 
       <div className="mb-10">
         <span className="text-xs font-black text-ug-teal tracking-[0.2em] mb-2 block">Step 2 of 4</span>
         <h2 className="text-3xl font-black text-ug-navy tracking-tight">Your Intentions</h2>
-        <p className="text-gray-400 text-sm font-medium mt-2">Tell us what you want to achieve today.</p>
+        <p className="text-gray-400 text-sm font-medium mt-2">Tell us what you want to achieve today. Mandatory fields are marked with (<span className="text-red-500 font-bold">*</span>).</p>
       </div>
 
       <div className="space-y-8 max-h-[60vh] overflow-y-auto pr-4 scroll-smooth">
         {/* COMMON QUESTIONS */}
         <div>
-          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Primary Focus</label>
+          {renderFieldLabel("Primary Focus / Area of Expertise", "expertise")}
           <input 
             type="text" 
             placeholder="e.g. Molecular Biology, FinTech, Robotics..."
             value={answers.expertise || ''}
-            onChange={(e) => setAnswers({...answers, expertise: e.target.value})}
-            className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+            onChange={(e) => {
+              setAnswers({...answers, expertise: e.target.value});
+              clearFieldError("expertise");
+            }}
+            className={`w-full bg-gray-50 border-2 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal text-sm font-bold ${getFieldInputStyle("expertise", "border-gray-100")}`}
           />
         </div>
 
-        <div>
-          <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">What are you currently looking for?</label>
+        <div className={`p-4 rounded-3xl transition-all ${fieldErrors.looking_for ? 'border-2 border-red-500 bg-red-50/20' : ''}`}>
+          {renderFieldLabel("What are you currently looking for? (Select at least one)", "looking_for")}
           <div className="grid grid-cols-2 gap-3">
             {(selectedRole === UserRole.Researcher 
               ? ['Funding', 'Industry Partner', 'Student Assistants', 'Commercialization'] 
@@ -1034,8 +1132,11 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
               return (
                 <button
                   key={option}
-                  onClick={() => handleLookingForToggle(option)}
-                  className={`py-3 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all ${
+                  onClick={() => {
+                    handleLookingForToggle(option);
+                    clearFieldError("looking_for");
+                  }}
+                  className={`py-3 px-4 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                     isSelected ? 'bg-ug-navy text-white border-ug-navy' : 'bg-white border-gray-100 text-gray-400 hover:border-ug-teal'
                   }`}
                 >
@@ -1050,21 +1151,27 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
         {selectedRole === UserRole.Student && (
           <div className="space-y-6 pt-4 border-t border-gray-50">
             <div>
-              <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Current Program</label>
+              {renderFieldLabel("Current Academic Program / Degree", "program")}
               <input 
                 type="text" 
-                placeholder="e.g. BSc Computer Science"
+                placeholder="e.g. BSc Computer Science, MPhil Biochemistry"
                 value={answers.program || ''}
-                onChange={(e) => setAnswers({...answers, program: e.target.value})}
-                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+                onChange={(e) => {
+                  setAnswers({...answers, program: e.target.value});
+                  clearFieldError("program");
+                }}
+                className={`w-full bg-gray-50 border-2 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal text-sm font-bold ${getFieldInputStyle("program", "border-gray-100")}`}
               />
             </div>
             <div>
-              <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Availability</label>
+              {renderFieldLabel("Availability", "availability")}
               <select 
                 value={answers.availability || ''}
-                onChange={(e) => setAnswers({...answers, availability: e.target.value})}
-                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold appearance-none"
+                onChange={(e) => {
+                  setAnswers({...answers, availability: e.target.value});
+                  clearFieldError("availability");
+                }}
+                className={`w-full bg-gray-50 border-2 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal text-sm font-bold appearance-none cursor-pointer ${getFieldInputStyle("availability", "border-gray-100")}`}
               >
                 <option value="">Select Availability</option>
                 <option value="immediate">Immediate</option>
@@ -1079,11 +1186,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
         {selectedRole === UserRole.Researcher && (
           <div className="space-y-6 pt-4 border-t border-gray-50">
             <div>
-              <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Research Stage</label>
+              {renderFieldLabel("Research Stage", "research_stage")}
               <select 
                 value={answers.research_stage || ''}
-                onChange={(e) => setAnswers({...answers, research_stage: e.target.value})}
-                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold appearance-none"
+                onChange={(e) => {
+                  setAnswers({...answers, research_stage: e.target.value});
+                  clearFieldError("research_stage");
+                }}
+                className={`w-full bg-gray-50 border-2 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal text-sm font-bold appearance-none cursor-pointer ${getFieldInputStyle("research_stage", "border-gray-100")}`}
               >
                 <option value="">Select Stage</option>
                 <option value="conceptual">Conceptual / Literature Review</option>
@@ -1098,7 +1208,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
                 id="needs_funding"
                 checked={!!answers.funding_needed}
                 onChange={(e) => setAnswers({...answers, funding_needed: e.target.checked})}
-                className="w-5 h-5 rounded-lg border-2 border-ug-teal text-ug-teal focus:ring-ug-teal"
+                className="w-5 h-5 rounded-lg border-2 border-ug-teal text-ug-teal focus:ring-ug-teal cursor-pointer"
               />
               <label htmlFor="needs_funding" className="text-xs font-black text-ug-navy uppercase tracking-widest cursor-pointer">Seeking External Funding</label>
             </div>
@@ -1108,11 +1218,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
         {selectedRole === UserRole.Investor && (
           <div className="space-y-6 pt-4 border-t border-gray-50">
             <div>
-              <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Funding Range (USD)</label>
+              {renderFieldLabel("Funding Range (USD)", "funding_range")}
               <select 
                 value={answers.funding_range || ''}
-                onChange={(e) => setAnswers({...answers, funding_range: e.target.value})}
-                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold appearance-none"
+                onChange={(e) => {
+                  setAnswers({...answers, funding_range: e.target.value});
+                  clearFieldError("funding_range");
+                }}
+                className={`w-full bg-gray-50 border-2 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal text-sm font-bold appearance-none cursor-pointer ${getFieldInputStyle("funding_range", "border-gray-100")}`}
               >
                 <option value="">Select Range</option>
                 <option value="seed">Seed: $10k - $50k</option>
@@ -1121,13 +1234,16 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Investment Focus</label>
+              {renderFieldLabel("Investment Focus", "investment_focus")}
               <input 
                 type="text" 
                 placeholder="e.g. Biotech, AI, Agri-tech"
                 value={answers.investment_focus || ''}
-                onChange={(e) => setAnswers({...answers, investment_focus: e.target.value})}
-                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+                onChange={(e) => {
+                  setAnswers({...answers, investment_focus: e.target.value});
+                  clearFieldError("investment_focus");
+                }}
+                className={`w-full bg-gray-50 border-2 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal text-sm font-bold ${getFieldInputStyle("investment_focus", "border-gray-100")}`}
               />
             </div>
           </div>
@@ -1136,21 +1252,27 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
         {selectedRole === UserRole.IndustryPartner && (
           <div className="space-y-6 pt-4 border-t border-gray-50">
             <div>
-              <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Industry Sector</label>
+              {renderFieldLabel("Industry Sector", "sector")}
               <input 
                 type="text" 
-                placeholder="e.g. Manufacturing, Logistics, Retail"
+                placeholder="e.g. Manufacturing, Logistics, Healthcare"
                 value={answers.sector || ''}
-                onChange={(e) => setAnswers({...answers, sector: e.target.value})}
-                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold"
+                onChange={(e) => {
+                  setAnswers({...answers, sector: e.target.value});
+                  clearFieldError("sector");
+                }}
+                className={`w-full bg-gray-50 border-2 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal text-sm font-bold ${getFieldInputStyle("sector", "border-gray-100")}`}
               />
             </div>
             <div>
-              <label className="text-[10px] font-black text-gray-400 tracking-widest mb-3 block">Preferred Collaboration</label>
+              {renderFieldLabel("Preferred Collaboration", "collab_type")}
               <select 
                 value={answers.collab_type || ''}
-                onChange={(e) => setAnswers({...answers, collab_type: e.target.value})}
-                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-sm font-bold appearance-none"
+                onChange={(e) => {
+                  setAnswers({...answers, collab_type: e.target.value});
+                  clearFieldError("collab_type");
+                }}
+                className={`w-full bg-gray-50 border-2 rounded-2xl py-4 px-8 outline-none focus:bg-white focus:border-ug-teal text-sm font-bold appearance-none cursor-pointer ${getFieldInputStyle("collab_type", "border-gray-100")}`}
               >
                 <option value="">Select Type</option>
                 <option value="internship">Internship Programs</option>
@@ -1163,8 +1285,49 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
         )}
 
         <button 
-          onClick={() => setStep('resume')}
-          className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3"
+          onClick={() => {
+            const errs: Record<string, boolean> = {};
+
+            if (!answers.expertise || !answers.expertise.trim()) {
+              errs.expertise = true;
+            }
+
+            const hasLookingFor = Array.isArray(answers.looking_for) 
+              ? answers.looking_for.length > 0 
+              : Boolean(answers.looking_for);
+
+            if (!hasLookingFor) {
+              errs.looking_for = true;
+            }
+
+            if (selectedRole === UserRole.Student) {
+              if (!answers.program || !answers.program.trim()) errs.program = true;
+              if (!answers.availability) errs.availability = true;
+            }
+
+            if (selectedRole === UserRole.Researcher) {
+              if (!answers.research_stage) errs.research_stage = true;
+            }
+
+            if (selectedRole === UserRole.Investor) {
+              if (!answers.funding_range) errs.funding_range = true;
+              if (!answers.investment_focus || !answers.investment_focus.trim()) errs.investment_focus = true;
+            }
+
+            if (selectedRole === UserRole.IndustryPartner) {
+              if (!answers.sector || !answers.sector.trim()) errs.sector = true;
+              if (!answers.collab_type) errs.collab_type = true;
+            }
+
+            if (Object.keys(errs).length > 0) {
+              setFieldErrors(errs);
+              showToast("Please fill in all mandatory fields highlighted in red.", "error");
+              return;
+            }
+
+            navigateToStep('resume');
+          }}
+          className="w-full bg-ug-navy text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3 cursor-pointer"
         >
           Next Step <ChevronRight size={18} />
         </button>
@@ -1172,68 +1335,113 @@ export const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete, onSkip
     </div>
   );
 
-  const renderResumeStep = () => (
-    <div className="max-w-2xl mx-auto p-8">
-      <button onClick={() => setStep('questionnaire')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors text-gradient-to-r">
-        <ChevronLeft size={16} /> Back
-      </button>
+  const renderResumeStep = () => {
+    const isCvRequired = selectedRole === UserRole.Student || selectedRole === UserRole.Researcher;
+    const hasCvError = Boolean(fieldErrors.cvText);
 
-      <div className="mb-10">
-        <span className="text-xs font-black text-ug-teal tracking-[0.2em] mb-2 block">Step 3 of 4</span>
-        <h2 className="text-3xl font-black text-ug-navy tracking-tight">Experience Import</h2>
-        <p className="text-gray-400 text-sm font-medium mt-2">
-          Upload your CV to the <strong className="text-ug-teal font-black">AI Parser</strong> in PDF or TXT format for instant extraction, or paste your text/bio in the field below.
-        </p>
-      </div>
-
-      <div className="space-y-8">
-        <div className="relative group">
-          <input 
-            type="file" 
-            id="cv-upload"
-            className="hidden"
-            onChange={handleFileUpload}
-            accept=".pdf,.txt"
-          />
-          <label 
-            htmlFor="cv-upload"
-            className={`w-full aspect-video border-4 border-dashed rounded-[3rem] flex flex-col items-center justify-center gap-4 cursor-pointer transition-all ${
-              cvText ? 'bg-ug-teal/5 border-ug-teal' : 'bg-gray-50 border-gray-100 hover:border-gray-200'
-            }`}
-          >
-            <div className={`p-6 rounded-3xl ${cvText ? 'bg-ug-teal text-white' : 'bg-white text-gray-300 shadow-sm'} transition-colors`}>
-              {isUploading ? <Loader2 className="animate-spin" size={32} /> : (cvText ? <Check size={32} /> : <Upload size={32} />)}
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-black text-ug-navy uppercase tracking-widest">
-                {isUploading ? 'Extracting Data...' : (cvText ? 'Payload Registered' : 'Drop CV / Resume')}
-              </p>
-              <p className="text-[10px] text-ug-teal font-bold uppercase tracking-widest mt-1">Direct Extraction: PDF & TXT</p>
-            </div>
-          </label>
-        </div>
-
-        <div className="text-center">
-            <span className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">Or paste content below</span>
-        </div>
-
-        <textarea 
-          placeholder="Paste CV text or a detailed bio here..."
-          value={cvText}
-          onChange={(e) => setCvText(e.target.value)}
-          className="w-full h-48 bg-gray-50 border-2 border-gray-100 rounded-[2rem] p-8 outline-none focus:bg-white focus:border-ug-teal transition-all text-xs font-medium leading-relaxed resize-none shadow-inner"
-        />
-
-        <button 
-          onClick={processAIProfile}
-          disabled={!cvText && !answers.expertise}
-          className="w-full bg-ug-navy text-white py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3 disabled:opacity-50"
-        >
-          Initialize Intelligence <Sparkles size={18} />
+    return (
+      <div className="max-w-2xl mx-auto p-8">
+        <button onClick={() => navigateToStep('questionnaire')} className="mb-8 flex items-center gap-2 text-gray-400 hover:text-ug-navy font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer">
+          <ChevronLeft size={16} /> Back
         </button>
+
+        <div className="mb-10">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-black text-ug-teal tracking-[0.2em] block">Step 3 of 4</span>
+            {isCvRequired && (
+              <span className="px-3 py-1 bg-red-100 text-red-700 font-black text-[9px] uppercase tracking-wider rounded-full border border-red-200">
+                Mandatory Step *
+              </span>
+            )}
+          </div>
+          <h2 className="text-3xl font-black text-ug-navy tracking-tight">Experience Import & CV Parse</h2>
+          <p className="text-gray-400 text-sm font-medium mt-2">
+            {isCvRequired ? (
+              <strong className="text-red-600 font-extrabold">CV Submission Required (*): </strong>
+            ) : null}
+            Upload your CV to the <strong className="text-ug-teal font-black">AI Parser</strong> in PDF or TXT format for instant extraction, or paste your complete CV/resume text in the area below.
+          </p>
+        </div>
+
+        {hasCvError && (
+          <div className="mb-6 p-4 bg-red-50 border-2 border-red-500 rounded-2xl flex items-center gap-3 text-red-700 text-xs font-bold animate-pulse">
+            <span className="w-2.5 h-2.5 bg-red-600 rounded-full shrink-0" />
+            <span>CV Submission is mandatory for {selectedRole === UserRole.Student ? 'Students' : 'Researchers'}. Please upload a PDF/TXT CV or paste your resume text below.</span>
+          </div>
+        )}
+
+        <div className="space-y-8">
+          <div className="relative group">
+            <input 
+              type="file" 
+              id="cv-upload"
+              className="hidden"
+              onChange={(e) => {
+                handleFileUpload(e);
+                clearFieldError("cvText");
+              }}
+              accept=".pdf,.txt"
+            />
+            <label 
+              htmlFor="cv-upload"
+              className={`w-full aspect-video border-4 border-dashed rounded-[3rem] flex flex-col items-center justify-center gap-4 cursor-pointer transition-all ${
+                hasCvError 
+                  ? 'bg-red-50/40 border-red-500 ring-4 ring-red-500/15'
+                  : cvText 
+                  ? 'bg-ug-teal/5 border-ug-teal' 
+                  : 'bg-gray-50 border-gray-100 hover:border-gray-200'
+              }`}
+            >
+              <div className={`p-6 rounded-3xl ${hasCvError ? 'bg-red-500 text-white' : cvText ? 'bg-ug-teal text-white' : 'bg-white text-gray-300 shadow-sm'} transition-colors`}>
+                {isUploading ? <Loader2 className="animate-spin" size={32} /> : (cvText ? <Check size={32} /> : <Upload size={32} />)}
+              </div>
+              <div className="text-center">
+                <p className={`text-sm font-black uppercase tracking-widest ${hasCvError ? 'text-red-600 font-extrabold' : 'text-ug-navy'}`}>
+                  {isUploading ? 'Extracting Data...' : (cvText ? 'CV Payload Registered' : 'Drop CV / Resume File *')}
+                </p>
+                <p className="text-[10px] text-ug-teal font-bold uppercase tracking-widest mt-1">Direct Extraction: PDF & TXT</p>
+              </div>
+            </label>
+          </div>
+
+          <div className="text-center">
+            <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${hasCvError ? 'text-red-600 font-extrabold' : 'text-gray-400'}`}>
+              Or paste CV text directly below <span className="text-red-500 font-bold">*</span>
+            </span>
+          </div>
+
+          <textarea 
+            placeholder="Paste CV text or a detailed bio/experience summary here (required)..."
+            value={cvText}
+            onChange={(e) => {
+              setCvText(e.target.value);
+              clearFieldError("cvText");
+            }}
+            className={`w-full h-48 bg-gray-50 border-2 rounded-[2rem] p-8 outline-none focus:bg-white focus:border-ug-teal text-xs font-medium leading-relaxed resize-none shadow-inner ${getFieldInputStyle("cvText", "border-gray-100")}`}
+          />
+
+          <button 
+            onClick={() => {
+              if (isCvRequired && (!cvText || cvText.trim().length < 20)) {
+                setFieldErrors({ cvText: true });
+                showToast("A CV / Resume is mandatory for Students and Researchers. Please upload a PDF/TXT or paste your CV text.", "error");
+                return;
+              }
+              if (!cvText && !answers.expertise) {
+                setFieldErrors({ cvText: true });
+                showToast("Please provide your CV or primary area of expertise before continuing.", "error");
+                return;
+              }
+              processAIProfile();
+            }}
+            className="w-full bg-ug-navy text-white py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-ug-navy/20 hover:scale-[1.02] active:scale-95 transition-all mt-4 flex items-center justify-center gap-3 cursor-pointer"
+          >
+            Initialize Intelligence <Sparkles size={18} />
+          </button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderProcessing = () => (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-12">

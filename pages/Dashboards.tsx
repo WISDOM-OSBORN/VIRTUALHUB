@@ -12,7 +12,7 @@ import {
   Briefcase, BookOpen, Handshake, Image as ImageIcon, Upload, DollarSign, FileCode,
   Home as HomeIcon,
   ShoppingBag, Bookmark, ArrowRight, User as UserIcon, Link as LinkIcon, Camera, AlertCircle, AlertTriangle, Info,
-  Pencil, Trash2, FileUp, MessageSquare, MailOpen, Clock, Zap, Send as SendIcon, Calendar, File, LayoutGrid, Target, Sparkles, LogOut, Rocket, Activity
+  Pencil, Trash2, FileUp, MessageSquare, MailOpen, Clock, Zap, Send as SendIcon, Calendar, File, LayoutGrid, Target, Sparkles, LogOut, Rocket, Activity, FileSpreadsheet
 } from 'lucide-react';
 import { useToast } from '../App';
 import { Onboarding } from './Onboarding';
@@ -84,8 +84,8 @@ const Sidebar: React.FC<{
   setActiveTab: (t: any) => void; 
   role: UserRole; 
   user: User | null;
-  adminSubTab?: 'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs';
-  setAdminSubTab?: (t: 'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs') => void;
+  adminSubTab?: 'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'reports' | 'logs';
+  setAdminSubTab?: (t: 'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'reports' | 'logs') => void;
   isCollapsed: boolean;
   setIsCollapsed: (c: boolean) => void;
 }> = ({ activeTab, setActiveTab, role, user, adminSubTab = 'metrics', setAdminSubTab, isCollapsed, setIsCollapsed }) => {
@@ -102,6 +102,7 @@ const Sidebar: React.FC<{
     { id: 'disclosures', icon: FileText, label: 'Disclosure' },
     { id: 'projects', icon: ShieldCheck, label: 'Project Screener' },
     { id: 'news', icon: Globe, label: 'News Curator' },
+    { id: 'reports', icon: FileSpreadsheet, label: 'Report Center' },
     { id: 'logs', icon: Activity, label: 'Governance Audit' },
   ] as const;
 

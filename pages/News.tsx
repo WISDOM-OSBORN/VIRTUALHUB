@@ -1651,14 +1651,7 @@ Do NOT include any extra text or markdown codeblock wrappers. Just return the ra
                   </button>
                 )}
               </div>
-              <button
-                onClick={handleSaveNewsSearchAlert}
-                className="px-3 py-2 bg-ug-teal/10 hover:bg-ug-teal hover:text-white text-ug-teal font-black text-xs uppercase tracking-wider rounded-xl border border-ug-teal/20 transition cursor-pointer flex items-center gap-1.5 shrink-0"
-                title="Save search query to receive alerts when matching announcements or grants are published"
-              >
-                <Bell size={14} />
-                <span className="hidden md:inline"><Tr text="Alert Me" /></span>
-              </button>
+
             </div>
 
             {/* Filter Dropdown & View Mode Controls */}

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Filter, SlidersHorizontal, ArrowRight, Loader2, Bookmark, X, ChevronDown, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Filter, SlidersHorizontal, ArrowRight, Loader2, Bookmark, X, ChevronDown, RotateCcw, UserCheck, User } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { StorageService } from '../services/storageService';
@@ -11,11 +11,13 @@ import { useTranslatedText } from '../services/translationService';
 
 const Projects: React.FC = () => {
   const { t } = useTranslation();
-  const searchProjectsPlaceholder = useTranslatedText("Search projects...");
-  const [searchParams] = useSearchParams();
+  const searchProjectsPlaceholder = useTranslatedText("Search projects, topics, or researcher names...");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedArea, setSelectedArea] = useState<string>('All');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
+  const [selectedResearcher, setSelectedResearcher] = useState<string>('All');
+  const [researcherQuery, setResearcherQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('newest');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -65,10 +67,15 @@ const Projects: React.FC = () => {
         const data = await StorageService.getProjects();
         setProjects(data);
 
-        // Check for track parameter in URL
+        // Check for track or researcher parameter in URL
         const trackParam = searchParams.get('track');
         if (trackParam && Object.values(ResearchArea).includes(trackParam as ResearchArea)) {
           setSelectedArea(trackParam);
+        }
+        
+        const researcherParam = searchParams.get('researcher') || searchParams.get('author');
+        if (researcherParam) {
+          setSelectedResearcher(researcherParam);
         }
       } catch (err) {
         console.error("Projects Load Error:", err);
@@ -79,19 +86,35 @@ const Projects: React.FC = () => {
     fetchProjects();
   }, [searchParams]);
 
+  // Extract unique researchers from loaded projects
+  const uniqueResearchers = useMemo(() => {
+    const names = new Set<string>();
+    projects.forEach(p => {
+      if (p.owner_name && p.owner_name.trim() !== '') {
+        names.add(p.owner_name.trim());
+      }
+    });
+    return Array.from(names).sort();
+  }, [projects]);
+
   // Reset to page 1 on filter/search change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedArea, selectedStatus, sortBy]);
+  }, [searchTerm, selectedArea, selectedStatus, selectedResearcher, sortBy]);
 
   const filteredProjects = projects.filter(project => {
-    const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          project.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          project.department.toLowerCase().includes(searchTerm.toLowerCase());
+    const sTerm = searchTerm.toLowerCase();
+    const matchesSearch = project.title.toLowerCase().includes(sTerm) || 
+                          project.description.toLowerCase().includes(sTerm) ||
+                          project.department.toLowerCase().includes(sTerm) ||
+                          (project.owner_name && project.owner_name.toLowerCase().includes(sTerm));
+
     const matchesArea = selectedArea === 'All' || project.research_area === selectedArea;
     const matchesStatus = selectedStatus === 'All' || project.status === selectedStatus;
+    const matchesResearcher = selectedResearcher === 'All' || 
+      (project.owner_name && project.owner_name.toLowerCase().includes(selectedResearcher.toLowerCase()));
     
-    return matchesSearch && matchesArea && matchesStatus;
+    return matchesSearch && matchesArea && matchesStatus && matchesResearcher;
   });
 
   // Sorting Logic
@@ -132,6 +155,13 @@ const Projects: React.FC = () => {
 
   const getThumbnail = (urlStr: string) => urlStr && urlStr.trim() !== '' ? urlStr.split('|')[0] : 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80';
 
+  const activeFiltersCount = [
+    selectedArea !== 'All',
+    selectedStatus !== 'All',
+    selectedResearcher !== 'All',
+    sortBy !== 'newest'
+  ].filter(Boolean).length;
+
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -141,7 +171,7 @@ const Projects: React.FC = () => {
         </div>
 
         {/* Filters & Search */}
-        <div className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-gray-100 mb-12 relative">
+        <div className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-gray-100 mb-8 relative">
           <div className="relative w-full">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input 
@@ -155,35 +185,92 @@ const Projects: React.FC = () => {
               type="button"
               onClick={() => setShowFilters(!showFilters)}
               className={`absolute right-2 top-1/2 transform -translate-y-1/2 py-2 px-3 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 ${
-                showFilters || selectedArea !== 'All' || selectedStatus !== 'All' || sortBy !== 'newest'
+                showFilters || activeFiltersCount > 0
                   ? 'bg-ug-teal text-white shadow-sm'
                   : 'bg-ug-navy hover:bg-ug-teal text-white'
               }`}
             >
               <Filter size={14} className={showFilters ? 'scale-110' : ''} />
               <span className="hidden sm:inline"><Tr text="Filters" /></span>
-              {(selectedArea !== 'All' || selectedStatus !== 'All' || sortBy !== 'newest') && (
+              {activeFiltersCount > 0 && (
                 <span className="w-4 h-4 bg-white text-ug-navy rounded-full flex items-center justify-center text-[9px] font-black leading-none shrink-0">
-                  { [selectedArea !== 'All', selectedStatus !== 'All', sortBy !== 'newest'].filter(Boolean).length }
+                  {activeFiltersCount}
                 </span>
               )}
             </button>
           </div>
 
+          {/* Active Filter Chips */}
+          {activeFiltersCount > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 mr-1"><Tr text="Active Filters:" /></span>
+              
+              {selectedResearcher !== 'All' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-ug-teal/10 text-ug-teal border border-ug-teal/20 text-xs font-bold">
+                  <UserCheck size={13} />
+                  <span><Tr text="Researcher:" /> {selectedResearcher}</span>
+                  <button 
+                    onClick={() => {
+                      setSelectedResearcher('All');
+                      setSearchParams(prev => { prev.delete('researcher'); return prev; });
+                    }}
+                    className="hover:bg-ug-teal/20 rounded-full p-0.5 transition cursor-pointer"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+
+              {selectedArea !== 'All' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold">
+                  <span>{selectedArea}</span>
+                  <button onClick={() => setSelectedArea('All')} className="hover:bg-blue-100 rounded-full p-0.5 transition cursor-pointer">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+
+              {selectedStatus !== 'All' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 text-xs font-bold">
+                  <span>{selectedStatus}</span>
+                  <button onClick={() => setSelectedStatus('All')} className="hover:bg-purple-100 rounded-full p-0.5 transition cursor-pointer">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+
+              <button 
+                onClick={() => {
+                  setSelectedArea('All');
+                  setSelectedStatus('All');
+                  setSelectedResearcher('All');
+                  setSortBy('newest');
+                  setSearchTerm('');
+                  setSearchParams({});
+                }}
+                className="text-xs font-bold text-gray-400 hover:text-red-500 underline ml-2 cursor-pointer"
+              >
+                <Tr text="Clear All" />
+              </button>
+            </div>
+          )}
+
           {/* Floating Dropdown Filter Panel */}
           {showFilters && (
-            <div className="absolute right-4 md:right-6 top-full mt-3 w-[calc(100%-2rem)] sm:w-[450px] bg-white rounded-2xl shadow-xl border border-gray-200 p-5 z-50 transition-all duration-200">
-              <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-100">
-                <span className="text-xs font-black uppercase tracking-widest text-ug-navy"><Tr text="Filter Research Pipeline" /></span>
+            <div className="absolute right-4 md:right-6 top-full mt-3 w-[calc(100%-2rem)] sm:w-[460px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 p-5 z-50 transition-all duration-200">
+              <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-100 dark:border-gray-800">
+                <span className="text-xs font-black uppercase tracking-widest text-ug-navy dark:text-white"><Tr text="Filter Research Pipeline" /></span>
                 <div className="flex items-center gap-2">
-                  {(selectedArea !== 'All' || selectedStatus !== 'All' || sortBy !== 'newest') && (
+                  {activeFiltersCount > 0 && (
                     <button 
                       onClick={() => {
                         setSelectedArea('All');
                         setSelectedStatus('All');
+                        setSelectedResearcher('All');
                         setSortBy('newest');
+                        setResearcherQuery('');
                       }}
-                      className="text-[10px] font-bold text-gray-400 hover:text-red-500 uppercase tracking-wider flex items-center gap-1 transition-colors"
+                      className="text-[10px] font-bold text-gray-400 hover:text-red-500 uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer"
                     >
                       <RotateCcw size={10} />
                       <Tr text="Reset" />
@@ -191,7 +278,7 @@ const Projects: React.FC = () => {
                   )}
                   <button 
                     onClick={() => setShowFilters(false)}
-                    className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                   >
                     <X size={14} />
                   </button>
@@ -199,12 +286,51 @@ const Projects: React.FC = () => {
               </div>
 
               <div className="space-y-4">
+                {/* Search by Researcher / Author Name */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block flex items-center gap-1">
+                    <User size={12} className="text-ug-teal" />
+                    <Tr text="Search by Lead Researcher / Author" />
+                  </label>
+                  
+                  {/* Researcher Select Dropdown */}
+                  <div className="relative mb-2">
+                    <select 
+                      className="appearance-none w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 py-2.5 px-4 pr-10 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
+                      value={selectedResearcher}
+                      onChange={(e) => setSelectedResearcher(e.target.value)}
+                    >
+                      <option value="All">All Researchers & Authors</option>
+                      {uniqueResearchers.map(rName => (
+                        <option key={rName} value={rName}>{rName}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+                      <ChevronDown size={14} />
+                    </div>
+                  </div>
+
+                  {/* Or Manual Name Input search */}
+                  <div className="relative">
+                    <input 
+                      type="text"
+                      placeholder="Or type researcher name..."
+                      className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 py-2 px-3 text-xs font-semibold rounded-xl focus:outline-none focus:ring-2 focus:ring-ug-teal"
+                      value={researcherQuery}
+                      onChange={(e) => {
+                        setResearcherQuery(e.target.value);
+                        setSelectedResearcher(e.target.value.trim() === '' ? 'All' : e.target.value);
+                      }}
+                    />
+                  </div>
+                </div>
+
                 {/* Research track */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block"><Tr text="Research Track" /></label>
                   <div className="relative">
                     <select 
-                      className="appearance-none w-full bg-gray-50 border border-gray-200 text-gray-700 py-2.5 px-4 pr-10 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
+                      className="appearance-none w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 py-2.5 px-4 pr-10 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
                       value={selectedArea}
                       onChange={(e) => setSelectedArea(e.target.value)}
                     >
@@ -224,7 +350,7 @@ const Projects: React.FC = () => {
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block"><Tr text="Development Stage" /></label>
                   <div className="relative">
                     <select 
-                      className="appearance-none w-full bg-gray-50 border border-gray-200 text-gray-700 py-2.5 px-4 pr-10 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
+                      className="appearance-none w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 py-2.5 px-4 pr-10 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
                       value={selectedStatus}
                       onChange={(e) => setSelectedStatus(e.target.value)}
                     >
@@ -244,7 +370,7 @@ const Projects: React.FC = () => {
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block"><Tr text="Sort Projects" /></label>
                   <div className="relative">
                     <select 
-                      className="appearance-none w-full bg-gray-50 border border-gray-200 text-gray-700 py-2.5 px-4 pr-10 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
+                      className="appearance-none w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 py-2.5 px-4 pr-10 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
                     >
@@ -259,10 +385,10 @@ const Projects: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-5 pt-3 border-t border-gray-100">
+              <div className="mt-5 pt-3 border-t border-gray-100 dark:border-gray-800">
                 <button 
                   onClick={() => setShowFilters(false)}
-                  className="w-full bg-ug-navy hover:bg-ug-teal text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-colors shadow-sm"
+                  className="w-full bg-ug-navy hover:bg-ug-teal text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-colors shadow-sm cursor-pointer"
                 >
                   <Tr text="Apply Filters" />
                 </button>
@@ -314,6 +440,35 @@ const Projects: React.FC = () => {
                     <h3 className="text-xl font-black text-gray-900 mb-3 leading-tight group-hover:text-ug-teal transition-colors">
                       <Tr text={project.title} />
                     </h3>
+
+                    {/* Researcher / Author Name Badge */}
+                    {project.owner_name && (
+                      <div className="mb-4 flex items-center gap-2">
+                        {project.owner_avatar ? (
+                          <img 
+                            src={project.owner_avatar} 
+                            alt={project.owner_name} 
+                            className="w-6 h-6 rounded-full object-cover border border-ug-teal/30"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-ug-teal/10 text-ug-teal flex items-center justify-center font-bold text-[10px]">
+                            {project.owner_name.charAt(0)}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedResearcher(project.owner_name || '')}
+                          className="text-xs font-bold text-gray-600 hover:text-ug-teal transition-colors flex items-center gap-1 group/author cursor-pointer"
+                          title={`Click to view all projects by ${project.owner_name}`}
+                        >
+                          <span>{project.owner_name}</span>
+                          <span className="text-[10px] text-ug-teal opacity-0 group-hover/author:opacity-100 transition-opacity font-semibold">
+                            (Filter)
+                          </span>
+                        </button>
+                      </div>
+                    )}
+
                     <p className="text-gray-500 text-sm mb-6 line-clamp-3 flex-1 leading-relaxed font-medium">
                       <Tr text={project.description} />
                     </p>
@@ -348,7 +503,7 @@ const Projects: React.FC = () => {
                 <button 
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  className="px-6 py-3.5 bg-white hover:bg-gray-100 rounded-xl border border-gray-200 text-gray-700 hover:text-ug-teal font-black text-xs uppercase tracking-widest disabled:opacity-40 transition shadow-sm"
+                  className="px-6 py-3.5 bg-white hover:bg-gray-100 rounded-xl border border-gray-200 text-gray-700 hover:text-ug-teal font-black text-xs uppercase tracking-widest disabled:opacity-40 transition shadow-sm cursor-pointer"
                 >
                   <Tr text="Previous" />
                 </button>
@@ -358,7 +513,7 @@ const Projects: React.FC = () => {
                 <button 
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  className="px-6 py-3.5 bg-white hover:bg-gray-100 rounded-xl border border-gray-200 text-gray-700 hover:text-ug-teal font-black text-xs uppercase tracking-widest disabled:opacity-40 transition shadow-sm"
+                  className="px-6 py-3.5 bg-white hover:bg-gray-100 rounded-xl border border-gray-200 text-gray-700 hover:text-ug-teal font-black text-xs uppercase tracking-widest disabled:opacity-40 transition shadow-sm cursor-pointer"
                 >
                   <Tr text="Next" />
                 </button>
@@ -372,7 +527,7 @@ const Projects: React.FC = () => {
                      <Search size={48} className="text-gray-400" />
                   </div>
                   <h3 className="text-2xl font-black text-ug-navy"><Tr text="No results found" /></h3>
-                  <p className="text-gray-500 mt-2 font-medium"><Tr text="Try refining your research keywords or changing filters." /></p>
+                  <p className="text-gray-500 mt-2 font-medium"><Tr text="Try refining your research keywords, author names, or changing filters." /></p>
                </div>
             )}
           </>

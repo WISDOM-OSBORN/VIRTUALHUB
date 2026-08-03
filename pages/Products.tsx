@@ -154,14 +154,7 @@ const Products: React.FC = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <button
-                onClick={handleSaveSearchAlert}
-                className="px-4 py-3 bg-ug-teal/10 hover:bg-ug-teal hover:text-white text-ug-teal font-black text-xs uppercase tracking-wider rounded-2xl border border-ug-teal/20 transition cursor-pointer flex items-center gap-2 shrink-0"
-                title="Save this search and receive alert notifications on new matching disclosures or projects"
-              >
-                <Bell size={16} />
-                <span className="hidden sm:inline"><Tr text="Save Search Alert" /></span>
-              </button>
+
             </div>
             
             <div className="flex flex-wrap gap-4 w-full xl:w-auto">

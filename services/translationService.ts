@@ -108,7 +108,6 @@ export const TRANSLATION_DICTIONARY: Record<string, Record<string, string>> = {
     "Submit Research Proposal": "Soumettre une proposition de recherche",
     "Explore Research": "Explorer la recherche",
     "Innovation Catalog": "Catalogue d'innovations",
-    "Industry Challenges": "Défis industriels",
     "Partner Portal": "Portail des partenaires",
     "Active Research Projects": "Projets de recherche actifs",
     "Commercially Validated Technologies": "Technologies validées commercialement",

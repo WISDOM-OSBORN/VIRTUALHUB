@@ -88,6 +88,11 @@ export interface Project {
   budget: string;
   start_date: string;
   owner_id?: string;
+  owner_name?: string;
+  owner_email?: string;
+  owner_avatar?: string;
+  owner_department?: string;
+  owner_company?: string;
   created_at?: string;
   
   funding_amount_usd?: string;
