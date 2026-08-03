@@ -22,6 +22,7 @@ interface ReportCenterProps {
   news: NewsItem[];
   eois: any[];
   accountDeletions: AccountDeletionRecord[];
+  onClose?: () => void;
 }
 
 export const ReportCenter: React.FC<ReportCenterProps> = ({
@@ -30,7 +31,8 @@ export const ReportCenter: React.FC<ReportCenterProps> = ({
   projects,
   news,
   eois,
-  accountDeletions
+  accountDeletions,
+  onClose
 }) => {
   const { showToast } = useToast();
 
@@ -86,8 +88,8 @@ export const ReportCenter: React.FC<ReportCenterProps> = ({
       try {
         setLoadingData(true);
         const [chList, mList] = await Promise.all([
-          ChallengeService.getChallenges(),
-          ChallengeService.getAllMatches ? ChallengeService.getAllMatches() : Promise.resolve([])
+          ChallengeService.getIndustryChallenges(),
+          ChallengeService.getChallengeMatches ? ChallengeService.getChallengeMatches('all', 'Admin') : Promise.resolve([])
         ]);
         setChallenges(chList || []);
         setMatches(mList || []);
@@ -680,6 +682,15 @@ Return ONLY raw JSON without markdown syntax wrappers.`;
               {isGeneratingAi ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
               <span>{isGeneratingAi ? 'Synthesizing...' : 'Re-Generate AI Insights'}</span>
             </button>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-2xl transition cursor-pointer"
+                title="Close Report Center"
+              >
+                <X size={20} />
+              </button>
+            )}
           </div>
         </div>
       </div>

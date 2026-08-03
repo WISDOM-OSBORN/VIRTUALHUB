@@ -17,7 +17,7 @@ import { AIScoutService } from '../services/aiScoutService';
 import { getGeminiResponse } from '../services/geminiService';
 import { DocumentExtractionService } from '../services/documentExtractionService';
 import { inspectMessageEnvelope, isMessageEncrypted, computeSHA256 } from '../lib/cryptoService';
-import { ThemeSwitcher } from './ThemeSwitcher';
+import { ReportCenter } from './ReportCenter';
 
 interface AdminDashboardProps {
   user: User | null;
@@ -50,6 +50,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [news, setNews] = useState<NewsItem[]>([]);
   const [eois, setEois] = useState<any[]>([]);
   const [accountDeletions, setAccountDeletions] = useState<AccountDeletionRecord[]>([]);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [deletionSearch, setDeletionSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -930,7 +931,6 @@ Do NOT include any extra conversational text or markdown codeblock wrappers arou
         </div>
         
         <div className="flex items-center gap-3">
-          <ThemeSwitcher />
           <button 
             onClick={loadAdminData}
             disabled={loading}
@@ -969,33 +969,42 @@ Do NOT include any extra conversational text or markdown codeblock wrappers arou
                   </div>
                   <h2 className="text-xl font-black text-ug-navy">Platform Performance & Engagement Dashboard</h2>
                 </div>
-                <button
-                  onClick={() => {
-                    const csvRows = [
-                      ["Metric", "Value"],
-                      ["Total Registrants", profiles.length],
-                      ["Total Projects", projects.length],
-                      ["Total Disclosure Views", projects.reduce((acc, p) => acc + (p.views || 0), 0) || 1240],
-                      ["Total Expression of Interest Clicks", eois.length || 86],
-                      ["Public Projects Count", publicProjectsCount],
-                      ["Researchers Count", totalResearchers],
-                      ["Investors Count", totalInvestors]
-                    ];
-                    const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.join(",")).join("\n");
-                    const encodedUri = encodeURI(csvContent);
-                    const link = document.createElement("a");
-                    link.setAttribute("href", encodedUri);
-                    link.setAttribute("download", `UG_Hub_Analytics_${new Date().toISOString().split('T')[0]}.csv`);
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    showToast("Analytics summary CSV exported successfully!", "success");
-                  }}
-                  className="px-4 py-2.5 bg-ug-navy hover:bg-ug-navy/90 text-white font-black text-xs uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center gap-2 shrink-0 self-start sm:self-auto"
-                >
-                  <Download size={14} />
-                  Export Executive CSV
-                </button>
+                <div className="flex items-center gap-3 shrink-0 self-start sm:self-auto">
+                  <button
+                    onClick={() => setIsReportModalOpen(true)}
+                    className="px-5 py-2.5 bg-ug-teal hover:bg-teal-600 text-white font-black text-xs uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center gap-2 shadow-md shadow-ug-teal/10"
+                  >
+                    <FileSpreadsheet size={15} />
+                    <span>Generate Report</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const csvRows = [
+                        ["Metric", "Value"],
+                        ["Total Registrants", profiles.length],
+                        ["Total Projects", projects.length],
+                        ["Total Disclosure Views", projects.reduce((acc, p) => acc + (p.views || 0), 0) || 1240],
+                        ["Total Expression of Interest Clicks", eois.length || 86],
+                        ["Public Projects Count", publicProjectsCount],
+                        ["Researchers Count", totalResearchers],
+                        ["Investors Count", totalInvestors]
+                      ];
+                      const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.join(",")).join("\n");
+                      const encodedUri = encodeURI(csvContent);
+                      const link = document.createElement("a");
+                      link.setAttribute("href", encodedUri);
+                      link.setAttribute("download", `UG_Hub_Analytics_${new Date().toISOString().split('T')[0]}.csv`);
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      showToast("Analytics summary CSV exported successfully!", "success");
+                    }}
+                    className="px-4 py-2.5 bg-[#0a0b2c] hover:bg-[#0a0b2c]/90 text-white font-black text-xs uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center gap-2"
+                  >
+                    <Download size={14} />
+                    Export CSV
+                  </button>
+                </div>
               </div>
 
               {/* Core Analytics Cards */}
@@ -3532,6 +3541,37 @@ Do NOT include any extra conversational text or markdown codeblock wrappers arou
           )}
         </AnimatePresence>
       )}
+
+      {/* REPORT CENTER MODAL FROM OVERVIEW PAGE */}
+      <AnimatePresence>
+        {isReportModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-6xl w-full shadow-2xl relative my-8 max-h-[90vh] overflow-y-auto"
+            >
+              <button
+                onClick={() => setIsReportModalOpen(false)}
+                className="absolute top-6 right-6 p-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-300 rounded-full transition cursor-pointer z-20"
+                title="Close Report Center"
+              >
+                <X size={20} />
+              </button>
+              <ReportCenter
+                user={user}
+                profiles={profiles}
+                projects={projects}
+                news={news}
+                eois={eois}
+                accountDeletions={accountDeletions}
+                onClose={() => setIsReportModalOpen(false)}
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

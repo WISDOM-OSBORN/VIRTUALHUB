@@ -23,6 +23,7 @@ import { EmbeddingService } from '../services/embeddingService';
 import { IndustryChallengesMatcher } from '../components/IndustryChallengesMatcher';
 import { CreateChallengeModal } from '../components/CreateChallengeModal';
 import { PartnerChallengesTracker } from '../components/PartnerChallengesTracker';
+import ThemeSwitcher from '../components/ThemeSwitcher';
 
 
 interface DashboardProps {
@@ -84,8 +85,8 @@ const Sidebar: React.FC<{
   setActiveTab: (t: any) => void; 
   role: UserRole; 
   user: User | null;
-  adminSubTab?: 'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'reports' | 'logs';
-  setAdminSubTab?: (t: 'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'reports' | 'logs') => void;
+  adminSubTab?: 'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs';
+  setAdminSubTab?: (t: 'metrics' | 'users' | 'disclosures' | 'projects' | 'news' | 'logs') => void;
   isCollapsed: boolean;
   setIsCollapsed: (c: boolean) => void;
 }> = ({ activeTab, setActiveTab, role, user, adminSubTab = 'metrics', setAdminSubTab, isCollapsed, setIsCollapsed }) => {
@@ -102,7 +103,6 @@ const Sidebar: React.FC<{
     { id: 'disclosures', icon: FileText, label: 'Disclosure' },
     { id: 'projects', icon: ShieldCheck, label: 'Project Screener' },
     { id: 'news', icon: Globe, label: 'News Curator' },
-    { id: 'reports', icon: FileSpreadsheet, label: 'Report Center' },
     { id: 'logs', icon: Activity, label: 'Governance Audit' },
   ] as const;
 
@@ -1989,23 +1989,23 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
               <span className="text-[10px] font-bold uppercase tracking-wider">Home</span>
             </button>
 
-            {role !== UserRole.Admin && (
-              <button 
-                onClick={() => setActiveTab('messages')}
-                className={`p-2 transition-all relative group rounded-xl hover:bg-white/10 ${activeTab === 'messages' ? 'text-ug-teal' : 'text-white/70 hover:text-white'}`}
-                title="Messages & Notifications"
-              >
-                <Bell size={18} className="sm:w-[20px] sm:h-[20px]" />
-                {internalUnread > 0 && (
-                  <>
-                    <span className="absolute -top-1 -right-1 sm:top-0.5 sm:right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-ug-teal text-white text-[8px] sm:text-[9px] font-black flex items-center justify-center rounded-full border border-ug-navy z-10 shadow-lg animate-pulse">
-                      {internalUnread > 9 ? '9+' : internalUnread}
-                    </span>
-                    <span className="absolute -top-1 -right-1 sm:top-0.5 sm:right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-ug-teal rounded-full border border-ug-navy animate-ping opacity-75"></span>
-                  </>
-                )}
-              </button>
-            )}
+            <button 
+              onClick={() => setActiveTab('messages')}
+              className={`p-2 transition-all relative group rounded-xl hover:bg-white/10 ${activeTab === 'messages' ? 'text-ug-teal' : 'text-white/70 hover:text-white'}`}
+              title="Messages & Notifications"
+            >
+              <Bell size={18} className="sm:w-[20px] sm:h-[20px]" />
+              {internalUnread > 0 && (
+                <>
+                  <span className="absolute -top-1 -right-1 sm:top-0.5 sm:right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-ug-teal text-white text-[8px] sm:text-[9px] font-black flex items-center justify-center rounded-full border border-ug-navy z-10 shadow-lg animate-pulse">
+                    {internalUnread > 9 ? '9+' : internalUnread}
+                  </span>
+                  <span className="absolute -top-1 -right-1 sm:top-0.5 sm:right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-ug-teal rounded-full border border-ug-navy animate-ping opacity-75"></span>
+                </>
+              )}
+            </button>
+
+            <ThemeSwitcher />
 
             <div className="flex items-center gap-2 sm:gap-4 pl-2 sm:pl-6 border-l border-white/10">
               <button 
