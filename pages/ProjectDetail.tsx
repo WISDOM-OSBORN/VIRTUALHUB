@@ -605,19 +605,19 @@ const ProjectDetail: React.FC = () => {
         <div className="lg:col-span-4 space-y-8">
           {/* PI CARD */}
           <section className="bg-white p-5 md:p-8 lg:p-10 rounded-2xl md:rounded-[2.5rem] lg:rounded-[3rem] border border-gray-100 shadow-sm">
-            <h3 className="text-base md:text-lg font-black text-ug-navy mb-4 md:mb-6 flex items-center gap-2"><UserIcon size={18} className="text-ug-teal" /> Lead Investigator</h3>
+            <h3 className="text-base md:text-lg font-black text-ug-navy mb-4 md:mb-6 flex items-center gap-2"><UserIcon size={18} className="text-ug-teal" /> <Tr text="Lead Investigator" /></h3>
             {ownerProfile ? (
               <div className="space-y-4 md:space-y-6">
                 <div className="flex items-center gap-3 md:gap-4">
                   <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl overflow-hidden border-2 border-ug-teal/20 shadow-sm"><img src={ownerProfile.avatar_url} className="w-full h-full object-cover" /></div>
                   <div>
                     <h4 className="font-black text-ug-navy text-base md:text-lg leading-tight">{ownerProfile.name}</h4>
-                    <p className="text-[9px] md:text-[10px] font-black text-ug-teal uppercase tracking-widest mt-1">{ownerProfile.role}</p>
+                    <p className="text-[9px] md:text-[10px] font-black text-ug-teal uppercase tracking-widest mt-1"><Tr text={ownerProfile.role} /></p>
                   </div>
                 </div>
-                <Link to={`/researcher/${ownerProfile.id}`} className="w-full py-3 md:py-4 bg-ug-navy text-white font-black text-[9px] md:text-[10px] uppercase tracking-[0.25em] md:tracking-[0.3em] rounded-xl md:rounded-2xl flex items-center justify-center gap-2 hover:bg-ug-teal transition-all shadow-lg text-center">Access Full Portfolio <ExternalLink size={12} /></Link>
+                <Link to={`/researcher/${ownerProfile.id}`} className="w-full py-3 md:py-4 bg-ug-navy text-white font-black text-[9px] md:text-[10px] uppercase tracking-[0.25em] md:tracking-[0.3em] rounded-xl md:rounded-2xl flex items-center justify-center gap-2 hover:bg-ug-teal transition-all shadow-lg text-center"><Tr text="Access Full Portfolio" /> <ExternalLink size={12} /></Link>
               </div>
-            ) : <div className="text-center py-4 md:py-6 text-gray-400 font-bold text-xs">Bio Loading...</div>}
+            ) : <div className="text-center py-4 md:py-6 text-gray-400 font-bold text-xs"><Tr text="Bio Loading..." /></div>}
           </section>
 
           {/* DEDICATED DOWNLOAD BLOCK - If Available */}

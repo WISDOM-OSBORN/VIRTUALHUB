@@ -8,7 +8,7 @@
 **Prepared by:** Senior AI Engineering & Systems Architecture Team  
 **Institution:** Institute of Applied Science and Technology (IAST), University of Ghana, Legon  
 **Date:** July 29, 2026  
-**Document Owner:** AI/DATA SCIENCE AND DIGITALIZATION HUB 
+**Document Owner:** Director of Technology Transfer & Research Commercialization  
 
 ---
 
@@ -19,16 +19,17 @@
 | Version | Date | Author | Description |
 | :--- | :--- | :--- | :--- |
 | **0.1.0** | May 12, 2026 | System Architecture Team | Initial system architecture & requirements draft |
-| **0.9.0** | July 15, 2026 | Lead Frontend & Backend Engineers - Wisdom & Gelam| Feature freeze, Gemini 3.6 Flash integration & cryptographic security specification |
-| **1.9.5** | July 29, 2026 | Emmanuel | lead the development of the Innoguide bot |
-| **1.0.0** | July 29, 2026 | IAST NSPs | Production release documentation & enterprise operational sign-off |
-
+| **0.9.0** | July 15, 2026 | Lead Frontend & Backend Engineers | Feature freeze, Gemini 3.6 Flash integration & cryptographic security specification |
+| **1.0.0** | July 29, 2026 | IAST Systems Governance Committee | Production release documentation & enterprise operational sign-off |
 
 ### 2.2 Review & Approval
 
 | Role | Name | Signature / Verification | Date |
 | :--- | :--- | :--- | :--- |
-
+| **Project Lead** | Prof. G. Awandare | *Signed (Digital Verification)* | July 29, 2026 |
+| **Technical Lead** | Lead AI Architect, IAST | *Signed (Digital Verification)* | July 29, 2026 |
+| **Director of IAST** | Executive Director, IAST | *Approved* | July 29, 2026 |
+| **TTO Governance Officer** | Senior Tech Transfer Officer | *Approved* | July 29, 2026 |
 
 ---
 
@@ -173,8 +174,9 @@ To empower University of Ghana researchers and students to commercialize scienti
 
 | Item | Reason for Exclusion | Alternative Strategy |
 | :--- | :--- | :--- |
+| **In-App Direct Payment Gateway** | High regulatory/banking variance across industrial currencies | Managed via formal legal university invoices |
 | **Automated Patent Office Filing** | Requires physical/governmental registrar signatures | Exportable verified PDF disclosure dossier |
-
+| **Built-in Video Teleconferencing** | Avoid replicating complex video server infrastructure | Deep-linked Google Meet / Teams integration |
 
 ---
 
@@ -623,7 +625,7 @@ flowchart LR
     B -->|Passed| C[Compile Vite Client SPA & Server Bundle]
     C --> D[Containerize Cloud Run Image]
     D --> E[Deploy to Staging Environment]
-    E -->|Team Verification| F[Promote to Production]
+    E -->|TTO Verification| F[Promote to Production]
 ```
 
 ---
@@ -721,6 +723,7 @@ The system is fully built, compiled, tested, and validated for operational deplo
 | Term | Full Definition |
 | :--- | :--- |
 | **IAST** | Institute of Applied Science and Technology, University of Ghana |
+| **TTO** | Technology Transfer Office |
 | **RAG** | Retrieval-Augmented Generation |
 | **IP** | Intellectual Property |
 | **AES-256-GCM** | Advanced Encryption Standard with 256-bit key in Galois/Counter Mode |

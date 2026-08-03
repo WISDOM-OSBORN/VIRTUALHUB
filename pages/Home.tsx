@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { HERO_IMAGES } from '../constants';
 import { ProjectStatus, Project, ResearchArea, NewsItem } from '../types';
 import { StorageService } from '../services/storageService';
+import { Tr } from '../components/Tr';
 
 const Home: React.FC = () => {
   const { t } = useTranslation();
@@ -72,17 +73,17 @@ const Home: React.FC = () => {
           <div className="md:w-2/3 mt-12 sm:mt-20">
             <div className="flex items-center gap-3 mb-4 sm:mb-6 animate-fade-in">
                <span className="h-0.5 w-8 sm:w-12 bg-ug-teal"></span>
-               <span className="text-[10px] sm:text-xs font-black text-ug-teal uppercase tracking-[0.3em] sm:tracking-[0.4em]">LIVE TRACK: Innovation Hub</span>
+               <span className="text-[10px] sm:text-xs font-black text-ug-teal uppercase tracking-[0.3em] sm:tracking-[0.4em]"><Tr text="LIVE TRACK: Innovation Hub" /></span>
             </div>
             <h1 className="text-3xl sm:text-5xl md:text-7xl font-black text-white tracking-tight leading-tight mb-3 sm:mb-4">
-              {heroCaptions[currentImageIndex].title}
+              <Tr text={heroCaptions[currentImageIndex].title} />
             </h1>
             <p className="text-sm sm:text-xl md:text-2xl text-gray-100 mb-6 sm:mb-10 max-w-2xl font-medium leading-relaxed drop-shadow-md">
-              {heroCaptions[currentImageIndex].text}
+              <Tr text={heroCaptions[currentImageIndex].text} />
             </p>
             <div className="flex flex-wrap gap-4">
               <Link to="/projects" className="bg-ug-teal text-white px-6 py-3.5 sm:px-10 sm:py-5 rounded-xl font-black text-xs sm:text-sm uppercase tracking-widest hover:bg-white hover:text-ug-teal transition-all shadow-2xl flex items-center gap-2 sm:gap-3">
-                Explore The Pipeline <ArrowRight size={18} />
+                <Tr text="Explore The Pipeline" /> <ArrowRight size={18} />
               </Link>
             </div>
           </div>
@@ -93,9 +94,9 @@ const Home: React.FC = () => {
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-ug-navy tracking-tight">Accelerating Regional Health</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-ug-navy tracking-tight"><Tr text="Accelerating Regional Health" /></h2>
             <p className="mt-4 text-gray-500 max-w-2xl mx-auto font-medium text-lg">
-              Connecting African ingenuity with global markets through cloud-first collaboration.
+              <Tr text="Connecting African ingenuity with global markets through cloud-first collaboration." />
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-10">
@@ -115,10 +116,10 @@ const Home: React.FC = () => {
                   <Microscope size={30} className="group-hover:text-white transition-colors" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black mb-2 tracking-tight">Diagnostics</h3>
-                  <p className="text-gray-200 text-sm font-medium leading-relaxed mb-6 group-hover:text-white transition duration-300">Stage 4+ clinical diagnostic platforms for rapid high-throughput screening.</p>
+                  <h3 className="text-2xl font-black mb-2 tracking-tight"><Tr text="Diagnostics" /></h3>
+                  <p className="text-gray-200 text-sm font-medium leading-relaxed mb-6 group-hover:text-white transition duration-300"><Tr text="Stage 4+ clinical diagnostic platforms for rapid high-throughput screening." /></p>
                   <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-ug-teal group-hover:text-white transition-colors">
-                    View Pipeline <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform duration-300" />
+                    <Tr text="View Pipeline" /> <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform duration-300" />
                   </div>
                 </div>
               </div>
@@ -140,10 +141,10 @@ const Home: React.FC = () => {
                   <Pill size={30} className="group-hover:text-white transition-colors" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black mb-2 tracking-tight">Pharmaceutical</h3>
-                  <p className="text-gray-200 text-sm font-medium leading-relaxed mb-6 group-hover:text-white transition duration-300">Standardizing and validating indigenous traditional herbal medicine profiles.</p>
+                  <h3 className="text-2xl font-black mb-2 tracking-tight"><Tr text="Pharmaceutical" /></h3>
+                  <p className="text-gray-200 text-sm font-medium leading-relaxed mb-6 group-hover:text-white transition duration-300"><Tr text="Standardizing and validating indigenous traditional herbal medicine profiles." /></p>
                   <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-ug-teal group-hover:text-white transition-colors">
-                    View Pipeline <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform duration-300" />
+                    <Tr text="View Pipeline" /> <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform duration-300" />
                   </div>
                 </div>
               </div>
@@ -165,10 +166,10 @@ const Home: React.FC = () => {
                   <Syringe size={30} className="group-hover:text-white transition-colors" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black mb-2 tracking-tight">Vaccines</h3>
-                  <p className="text-gray-200 text-sm font-medium leading-relaxed mb-6 group-hover:text-white transition duration-300">Thermostable antigen delivery and advanced formulations for local immunization.</p>
+                  <h3 className="text-2xl font-black mb-2 tracking-tight"><Tr text="Vaccines" /></h3>
+                  <p className="text-gray-200 text-sm font-medium leading-relaxed mb-6 group-hover:text-white transition duration-300"><Tr text="Thermostable antigen delivery and advanced formulations for local immunization." /></p>
                   <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-indigo-400 group-hover:text-white transition-colors">
-                    View Pipeline <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform duration-300" />
+                    <Tr text="View Pipeline" /> <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform duration-300" />
                   </div>
                 </div>
               </div>
@@ -182,8 +183,8 @@ const Home: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-12">
               <div>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-ug-navy tracking-tight">Market-Ready Innovations</h2>
-                <p className="mt-2 text-gray-500 font-medium text-sm">Validated and ready for deployment or licensing.</p>
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-ug-navy tracking-tight"><Tr text="Market-Ready Innovations" /></h2>
+                <p className="mt-2 text-gray-500 font-medium text-sm"><Tr text="Validated and ready for deployment or licensing." /></p>
               </div>
               {isLoading && <Loader2 className="animate-spin text-ug-teal" />}
            </div>
@@ -196,9 +197,9 @@ const Home: React.FC = () => {
                       <img src={getThumbnail(product.image_url)} alt={product.title} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" />
                    </div>
                    <div className="p-8 md:w-3/5 flex flex-col justify-center">
-                      <h3 className="text-2xl font-black text-gray-900 mb-3 leading-tight group-hover:text-ug-teal transition-colors">{product.title}</h3>
-                      <p className="text-gray-500 text-sm mb-6 font-medium line-clamp-2 leading-relaxed">{product.description}</p>
-                      <button onClick={() => navigate(`/projects/${product.id}`)} className="self-start text-xs font-black text-ug-navy border-b-2 border-ug-navy pb-1 hover:text-ug-teal hover:border-ug-teal transition uppercase tracking-widest">Detail Brief</button>
+                      <h3 className="text-2xl font-black text-gray-900 mb-3 leading-tight group-hover:text-ug-teal transition-colors"><Tr text={product.title} /></h3>
+                      <p className="text-gray-500 text-sm mb-6 font-medium line-clamp-2 leading-relaxed"><Tr text={product.description} /></p>
+                      <button onClick={() => navigate(`/projects/${product.id}`)} className="self-start text-xs font-black text-ug-navy border-b-2 border-ug-navy pb-1 hover:text-ug-teal hover:border-ug-teal transition uppercase tracking-widest"><Tr text="Detail Brief" /></button>
                    </div>
                  </div>
                ))}
@@ -206,8 +207,8 @@ const Home: React.FC = () => {
            ) : !isLoading && (
              <div className="bg-white p-12 rounded-[2.5rem] text-center border border-gray-100">
                <BookOpen size={48} className="mx-auto text-gray-200 mb-4" />
-               <h4 className="font-black text-lg text-ug-navy mb-1">Catalog Update Pending</h4>
-               <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Check back soon for new commercializations.</p>
+               <h4 className="font-black text-lg text-ug-navy mb-1"><Tr text="Catalog Update Pending" /></h4>
+               <p className="text-gray-400 text-xs font-bold uppercase tracking-widest"><Tr text="Check back soon for new commercializations." /></p>
              </div>
            )}
         </div>
@@ -218,11 +219,11 @@ const Home: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-12">
               <div>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-ug-navy tracking-tight">Active Research Pipeline</h2>
-                <p className="mt-2 text-gray-500 font-medium text-sm">Pioneering discoveries from University of Ghana laboratories.</p>
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-ug-navy tracking-tight"><Tr text="Active Research Pipeline" /></h2>
+                <p className="mt-2 text-gray-500 font-medium text-sm"><Tr text="Pioneering discoveries from University of Ghana laboratories." /></p>
               </div>
               <Link to="/projects" className="text-xs font-black text-ug-teal uppercase tracking-widest flex items-center gap-2 hover:text-ug-navy transition-colors">
-                View Entire Pipeline <ArrowRight size={16} />
+                <Tr text="View Entire Pipeline" /> <ArrowRight size={16} />
               </Link>
            </div>
 
@@ -233,17 +234,17 @@ const Home: React.FC = () => {
                    <div className="h-48 overflow-hidden relative shrink-0">
                       <img src={getThumbnail(project.image_url)} alt={project.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
                       <div className="absolute top-4 left-4 bg-ug-teal text-white text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
-                        {project.status}
+                        <Tr text={project.status} />
                       </div>
                    </div>
                    <div className="p-8 flex-1 flex flex-col justify-between">
                      <div>
-                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">{project.department}</span>
-                       <h3 className="text-xl font-black text-gray-900 mb-3 leading-tight group-hover:text-ug-teal transition-colors line-clamp-2">{project.title}</h3>
-                       <p className="text-gray-500 text-xs font-medium leading-relaxed mb-6 line-clamp-3">{project.description}</p>
+                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2"><Tr text={project.department} /></span>
+                       <h3 className="text-xl font-black text-gray-900 mb-3 leading-tight group-hover:text-ug-teal transition-colors line-clamp-2"><Tr text={project.title} /></h3>
+                       <p className="text-gray-500 text-xs font-medium leading-relaxed mb-6 line-clamp-3"><Tr text={project.description} /></p>
                      </div>
                      <button onClick={() => navigate(`/projects/${project.id}`)} className="w-full py-3.5 bg-ug-navy text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-ug-teal transition flex items-center justify-center gap-2">
-                       Explore Case <ArrowRight size={14} />
+                       <Tr text="Explore Case" /> <ArrowRight size={14} />
                      </button>
                    </div>
                  </div>
@@ -252,8 +253,8 @@ const Home: React.FC = () => {
            ) : !isLoading && (
              <div className="bg-gray-50 p-12 rounded-[2.5rem] text-center border border-gray-100">
                <BookOpen size={48} className="mx-auto text-gray-200 mb-4" />
-               <h4 className="font-black text-lg text-ug-navy mb-1">Pipeline update in progress</h4>
-               <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Academic blueprints are currently undergoing security review.</p>
+               <h4 className="font-black text-lg text-ug-navy mb-1"><Tr text="Pipeline update in progress" /></h4>
+               <p className="text-gray-400 text-xs font-bold uppercase tracking-widest"><Tr text="Academic blueprints are currently undergoing security review." /></p>
              </div>
            )}
         </div>
@@ -264,11 +265,11 @@ const Home: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-12">
               <div>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-ug-navy tracking-tight">Discovery Feed</h2>
-                <p className="mt-2 text-gray-500 font-medium text-sm">Autonomous news and live updates on regional health innovations.</p>
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-ug-navy tracking-tight"><Tr text="Discovery Feed" /></h2>
+                <p className="mt-2 text-gray-500 font-medium text-sm"><Tr text="Autonomous news and live updates on regional health innovations." /></p>
               </div>
               <Link to="/news" className="text-xs font-black text-ug-navy uppercase tracking-widest flex items-center gap-2 hover:text-ug-teal transition-colors">
-                Explore Discovery Feed <ArrowRight size={16} />
+                <Tr text="Explore Discovery Feed" /> <ArrowRight size={16} />
               </Link>
            </div>
 
@@ -283,17 +284,17 @@ const Home: React.FC = () => {
                      <div>
                        <div className="flex items-center gap-3 mb-3">
                          <span className="text-[9px] font-black bg-ug-navy/5 text-ug-navy px-2.5 py-1 rounded-full uppercase tracking-wider">
-                           {item.category}
+                           <Tr text={item.category} />
                          </span>
                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
                            <Calendar size={12} /> {item.published_at}
                          </span>
                        </div>
-                       <h3 className="text-lg font-black text-gray-900 mb-3 leading-tight group-hover:text-ug-teal transition-colors line-clamp-2">{item.title}</h3>
-                       <p className="text-gray-500 text-xs font-medium leading-relaxed mb-6 line-clamp-3">{item.summary}</p>
+                       <h3 className="text-lg font-black text-gray-900 mb-3 leading-tight group-hover:text-ug-teal transition-colors line-clamp-2"><Tr text={item.title} /></h3>
+                       <p className="text-gray-500 text-xs font-medium leading-relaxed mb-6 line-clamp-3"><Tr text={item.summary} /></p>
                      </div>
                      <span className="text-[10px] font-black text-ug-teal uppercase tracking-widest group-hover:translate-x-2 transition-transform inline-flex items-center gap-1.5 mt-auto">
-                       Read Discovery <ChevronRight size={16} />
+                       <Tr text="Read Discovery" /> <ChevronRight size={16} />
                      </span>
                    </div>
                  </div>
@@ -302,8 +303,8 @@ const Home: React.FC = () => {
            ) : !isLoading && (
              <div className="bg-white p-12 rounded-[2.5rem] text-center border border-gray-100">
                <Newspaper size={48} className="mx-auto text-gray-200 mb-4" />
-               <h4 className="font-black text-lg text-ug-navy mb-1">Autonomous Sync Pending</h4>
-               <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Awaiting scheduled background intelligence scouting.</p>
+               <h4 className="font-black text-lg text-ug-navy mb-1"><Tr text="Autonomous Sync Pending" /></h4>
+               <p className="text-gray-400 text-xs font-bold uppercase tracking-widest"><Tr text="Awaiting scheduled background intelligence scouting." /></p>
              </div>
            )}
         </div>

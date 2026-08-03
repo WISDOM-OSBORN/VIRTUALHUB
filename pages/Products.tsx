@@ -133,10 +133,10 @@ const Products: React.FC = () => {
         <div className="mb-12">
           <div className="flex items-center gap-3 mb-4">
             <ShoppingBag className="text-ug-teal" size={32} />
-            <h1 className="text-4xl font-black text-ug-navy">Innovation Catalog</h1>
+            <h1 className="text-4xl font-black text-ug-navy"><Tr text="Innovation Catalog" /></h1>
           </div>
           <p className="text-gray-600 max-w-2xl text-lg font-medium">
-            Discover commercially validated technologies and products developed by University of Ghana researchers, ready for licensing and deployment.
+            <Tr text="Discover commercially validated technologies and products developed by University of Ghana researchers, ready for licensing and deployment." />
           </p>
         </div>
 
@@ -264,17 +264,17 @@ const Products: React.FC = () => {
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   className="px-6 py-3.5 bg-white hover:bg-gray-100 rounded-xl border border-gray-200 text-gray-700 hover:text-ug-teal font-black text-xs uppercase tracking-widest disabled:opacity-40 transition shadow-sm"
                 >
-                  Previous
+                  <Tr text="Previous" />
                 </button>
                 <span className="text-xs font-black text-ug-navy uppercase tracking-widest">
-                  Page {currentPage} of {totalPages}
+                  <Tr text="Page" /> {currentPage} <Tr text="of" /> {totalPages}
                 </span>
                 <button 
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                   className="px-6 py-3.5 bg-white hover:bg-gray-100 rounded-xl border border-gray-200 text-gray-700 hover:text-ug-teal font-black text-xs uppercase tracking-widest disabled:opacity-40 transition shadow-sm"
                 >
-                  Next
+                  <Tr text="Next" />
                 </button>
               </div>
             )}
@@ -283,8 +283,8 @@ const Products: React.FC = () => {
             {sortedProducts.length === 0 && (
               <div className="bg-white p-20 rounded-[3rem] text-center border border-gray-200 shadow-sm">
                 <ShoppingBag size={64} className="mx-auto text-gray-200 mb-6" />
-                <h3 className="text-2xl font-black text-ug-navy">No products matched criteria.</h3>
-                <p className="text-gray-500 mt-2 font-medium">Try checking other tracks or clearing search terms.</p>
+                <h3 className="text-2xl font-black text-ug-navy"><Tr text="No products matched criteria." /></h3>
+                <p className="text-gray-500 mt-2 font-medium"><Tr text="Try checking other tracks or clearing search terms." /></p>
               </div>
             )}
           </>

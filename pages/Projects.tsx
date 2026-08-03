@@ -136,8 +136,8 @@ const Projects: React.FC = () => {
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-10">
-          <h1 className="text-4xl font-black text-ug-navy tracking-tight">Research Pipeline</h1>
-          <p className="mt-2 text-gray-600 font-medium text-lg">Browse groundbreaking research from University of Ghana scholars.</p>
+          <h1 className="text-4xl font-black text-ug-navy tracking-tight"><Tr text="Research Pipeline" /></h1>
+          <p className="mt-2 text-gray-600 font-medium text-lg"><Tr text="Browse groundbreaking research from University of Ghana scholars." /></p>
         </div>
 
         {/* Filters & Search */}
@@ -161,7 +161,7 @@ const Projects: React.FC = () => {
               }`}
             >
               <Filter size={14} className={showFilters ? 'scale-110' : ''} />
-              <span className="hidden sm:inline">Filters</span>
+              <span className="hidden sm:inline"><Tr text="Filters" /></span>
               {(selectedArea !== 'All' || selectedStatus !== 'All' || sortBy !== 'newest') && (
                 <span className="w-4 h-4 bg-white text-ug-navy rounded-full flex items-center justify-center text-[9px] font-black leading-none shrink-0">
                   { [selectedArea !== 'All', selectedStatus !== 'All', sortBy !== 'newest'].filter(Boolean).length }
@@ -174,7 +174,7 @@ const Projects: React.FC = () => {
           {showFilters && (
             <div className="absolute right-4 md:right-6 top-full mt-3 w-[calc(100%-2rem)] sm:w-[450px] bg-white rounded-2xl shadow-xl border border-gray-200 p-5 z-50 transition-all duration-200">
               <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-100">
-                <span className="text-xs font-black uppercase tracking-widest text-ug-navy">Filter Research Pipeline</span>
+                <span className="text-xs font-black uppercase tracking-widest text-ug-navy"><Tr text="Filter Research Pipeline" /></span>
                 <div className="flex items-center gap-2">
                   {(selectedArea !== 'All' || selectedStatus !== 'All' || sortBy !== 'newest') && (
                     <button 
@@ -186,7 +186,7 @@ const Projects: React.FC = () => {
                       className="text-[10px] font-bold text-gray-400 hover:text-red-500 uppercase tracking-wider flex items-center gap-1 transition-colors"
                     >
                       <RotateCcw size={10} />
-                      Reset
+                      <Tr text="Reset" />
                     </button>
                   )}
                   <button 
@@ -201,7 +201,7 @@ const Projects: React.FC = () => {
               <div className="space-y-4">
                 {/* Research track */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Research Track</label>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block"><Tr text="Research Track" /></label>
                   <div className="relative">
                     <select 
                       className="appearance-none w-full bg-gray-50 border border-gray-200 text-gray-700 py-2.5 px-4 pr-10 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
@@ -221,7 +221,7 @@ const Projects: React.FC = () => {
 
                 {/* Development stage */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Development Stage</label>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block"><Tr text="Development Stage" /></label>
                   <div className="relative">
                     <select 
                       className="appearance-none w-full bg-gray-50 border border-gray-200 text-gray-700 py-2.5 px-4 pr-10 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
@@ -241,7 +241,7 @@ const Projects: React.FC = () => {
 
                 {/* Sort order */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Sort Projects</label>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block"><Tr text="Sort Projects" /></label>
                   <div className="relative">
                     <select 
                       className="appearance-none w-full bg-gray-50 border border-gray-200 text-gray-700 py-2.5 px-4 pr-10 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-ug-teal transition-all cursor-pointer"
@@ -264,7 +264,7 @@ const Projects: React.FC = () => {
                   onClick={() => setShowFilters(false)}
                   className="w-full bg-ug-navy hover:bg-ug-teal text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-colors shadow-sm"
                 >
-                  Apply Filters
+                  <Tr text="Apply Filters" />
                 </button>
               </div>
             </div>
@@ -275,7 +275,7 @@ const Projects: React.FC = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-40">
              <Loader2 className="animate-spin text-ug-teal mb-4" size={48} />
-             <p className="text-gray-400 text-xs font-black uppercase tracking-widest">Loading scientific database...</p>
+             <p className="text-gray-400 text-xs font-black uppercase tracking-widest"><Tr text="Loading scientific database..." /></p>
           </div>
         ) : (
           <>
@@ -350,17 +350,17 @@ const Projects: React.FC = () => {
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   className="px-6 py-3.5 bg-white hover:bg-gray-100 rounded-xl border border-gray-200 text-gray-700 hover:text-ug-teal font-black text-xs uppercase tracking-widest disabled:opacity-40 transition shadow-sm"
                 >
-                  Previous
+                  <Tr text="Previous" />
                 </button>
                 <span className="text-xs font-black text-ug-navy uppercase tracking-widest">
-                  Page {currentPage} of {totalPages}
+                  <Tr text="Page" /> {currentPage} <Tr text="of" /> {totalPages}
                 </span>
                 <button 
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                   className="px-6 py-3.5 bg-white hover:bg-gray-100 rounded-xl border border-gray-200 text-gray-700 hover:text-ug-teal font-black text-xs uppercase tracking-widest disabled:opacity-40 transition shadow-sm"
                 >
-                  Next
+                  <Tr text="Next" />
                 </button>
               </div>
             )}
@@ -371,8 +371,8 @@ const Projects: React.FC = () => {
                   <div className="inline-block p-8 rounded-[2rem] bg-gray-100 mb-6 shadow-inner">
                      <Search size={48} className="text-gray-400" />
                   </div>
-                  <h3 className="text-2xl font-black text-ug-navy">No results found</h3>
-                  <p className="text-gray-500 mt-2 font-medium">Try refining your research keywords or changing filters.</p>
+                  <h3 className="text-2xl font-black text-ug-navy"><Tr text="No results found" /></h3>
+                  <p className="text-gray-500 mt-2 font-medium"><Tr text="Try refining your research keywords or changing filters." /></p>
                </div>
             )}
           </>
