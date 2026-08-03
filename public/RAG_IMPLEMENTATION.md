@@ -11,13 +11,7 @@ Instead of relying solely on keyword searches or ungrounded LLM completions, UG-
 1. **Stage 1 (Dense Vector Retrieval)**: Powered by Google Gemini `text-embedding-004` (768 dimensions) and PostgreSQL `pgvector` similarity functions (`match_profiles` and `match_projects`).
 2. **Stage 2 (Generative Synthesis & Re-ranking)**: Powered by `gemini-3.6-flash`, evaluating top candidate matches for qualitative synergy, skills overlap, and strategic alignment.
 
-![UG-VIH RAG Architecture Diagram](./rag_architecture.jpg)
-
-<p center>
-  <img src="./rag_architecture.jpg" alt="UG-VIH RAG Architecture Diagram" width="100%" style="border-radius: 12px; max-width: 900px;" />
-</p>
-
-### High-Resolution Architectural SVG Visual
+### Architectural Visual Diagram
 
 <svg viewBox="0 0 900 480" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="background: #0f172a; border-radius: 16px; padding: 20px; font-family: system-ui, sans-serif;">
   <defs>
