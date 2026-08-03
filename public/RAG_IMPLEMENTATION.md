@@ -11,7 +11,101 @@ Instead of relying solely on keyword searches or ungrounded LLM completions, UG-
 1. **Stage 1 (Dense Vector Retrieval)**: Powered by Google Gemini `text-embedding-004` (768 dimensions) and PostgreSQL `pgvector` similarity functions (`match_profiles` and `match_projects`).
 2. **Stage 2 (Generative Synthesis & Re-ranking)**: Powered by `gemini-3.6-flash`, evaluating top candidate matches for qualitative synergy, skills overlap, and strategic alignment.
 
-![UG-VIH RAG Architecture Diagram](/rag_architecture.jpg)
+![UG-VIH RAG Architecture Diagram](./rag_architecture.jpg)
+
+<p center>
+  <img src="./rag_architecture.jpg" alt="UG-VIH RAG Architecture Diagram" width="100%" style="border-radius: 12px; max-width: 900px;" />
+</p>
+
+### High-Resolution Architectural SVG Visual
+
+<svg viewBox="0 0 900 480" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="background: #0f172a; border-radius: 16px; padding: 20px; font-family: system-ui, sans-serif;">
+  <defs>
+    <linearGradient id="gradTeal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d9488" />
+      <stop offset="100%" stop-color="#14b8a6" />
+    </linearGradient>
+    <linearGradient id="gradNavy" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#334155" />
+    </linearGradient>
+    <linearGradient id="gradGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d97706" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+    <linearGradient id="gradPurple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6d28d9" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Title -->
+  <text x="450" y="38" text-anchor="middle" fill="#f8fafc" font-size="20" font-weight="800" letter-spacing="1">UG-VIH HYBRID RAG ARCHITECTURE</text>
+  <text x="450" y="58" text-anchor="middle" fill="#94a3b8" font-size="12" font-weight="600">2-Stage Retrieval &amp; Synthesis Pipeline</text>
+
+  <!-- Flow Lines -->
+  <path d="M 180 180 L 250 180" stroke="#0d9488" stroke-width="3" stroke-dasharray="6 4"/>
+  <path d="M 430 180 L 490 180" stroke="#0d9488" stroke-width="3"/>
+  <path d="M 670 180 L 730 180" stroke="#8b5cf6" stroke-width="3"/>
+  
+  <path d="M 340 230 L 340 310" stroke="#38bdf8" stroke-width="2" stroke-dasharray="4 4"/>
+  <path d="M 580 230 L 580 310" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 4"/>
+
+  <!-- Stage 1 Box: Input & Vectorization -->
+  <g filter="url(#shadow)">
+    <rect x="30" y="120" width="150" height="110" rx="12" fill="url(#gradNavy)" stroke="#334155" stroke-width="2"/>
+    <text x="105" y="150" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="700">USER INQUIRY</text>
+    <text x="105" y="172" text-anchor="middle" fill="#e2e8f0" font-size="11">Profile / Proposal</text>
+    <text x="105" y="192" text-anchor="middle" fill="#94a3b8" font-size="10">Research Query</text>
+  </g>
+
+  <!-- Vectorization Node -->
+  <g filter="url(#shadow)">
+    <rect x="250" y="120" width="180" height="110" rx="12" fill="url(#gradTeal)" stroke="#5eead4" stroke-width="2"/>
+    <text x="340" y="150" text-anchor="middle" fill="#ffffff" font-size="13" font-weight="800">1. VECTOR EMBEDDING</text>
+    <text x="340" y="172" text-anchor="middle" fill="#f0fdfa" font-size="11">text-embedding-004</text>
+    <rect x="275" y="185" width="130" height="24" rx="6" fill="#0f766e"/>
+    <text x="340" y="201" text-anchor="middle" fill="#ccfbf1" font-size="11" font-weight="700">768-D Vector Space</text>
+  </g>
+
+  <!-- PgVector Database -->
+  <g filter="url(#shadow)">
+    <rect x="490" y="120" width="180" height="110" rx="12" fill="url(#gradNavy)" stroke="#0284c7" stroke-width="2"/>
+    <text x="580" y="150" text-anchor="middle" fill="#38bdf8" font-size="13" font-weight="800">2. VECTOR RETRIEVAL</text>
+    <text x="580" y="172" text-anchor="middle" fill="#e2e8f0" font-size="11">PostgreSQL pgvector</text>
+    <text x="580" y="192" text-anchor="middle" fill="#a5f3fc" font-size="10" font-weight="600">match_projects / profiles</text>
+    <text x="580" y="212" text-anchor="middle" fill="#94a3b8" font-size="10">Cosine Distance &lt; 0.3</text>
+  </g>
+
+  <!-- Stage 2: Gemini Re-ranker -->
+  <g filter="url(#shadow)">
+    <rect x="730" y="120" width="140" height="110" rx="12" fill="url(#gradPurple)" stroke="#c084fc" stroke-width="2"/>
+    <text x="800" y="150" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="800">3. RE-RANKER</text>
+    <text x="800" y="172" text-anchor="middle" fill="#f3e8ff" font-size="11">Gemini 3.6 Flash</text>
+    <text x="800" y="192" text-anchor="middle" fill="#e9d5ff" font-size="10">Synergy &amp; Rationale</text>
+  </g>
+
+  <!-- Bottom Detailed Subsystems -->
+  <g filter="url(#shadow)">
+    <rect x="230" y="310" width="220" height="110" rx="12" fill="url(#gradNavy)" stroke="#475569" stroke-width="1.5"/>
+    <text x="340" y="338" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="700">DOCUMENT PARSER</text>
+    <text x="340" y="360" text-anchor="middle" fill="#cbd5e1" font-size="10">DOCX / PDF Text Extraction</text>
+    <text x="340" y="380" text-anchor="middle" fill="#cbd5e1" font-size="10">Automatic Structural JSON</text>
+    <text x="340" y="400" text-anchor="middle" fill="#64748b" font-size="9">documentExtractionService.ts</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="470" y="310" width="220" height="110" rx="12" fill="url(#gradGold)" stroke="#fde68a" stroke-width="1.5"/>
+    <text x="580" y="338" text-anchor="middle" fill="#78350f" font-size="12" font-weight="800">HYBRID SCORE FUSION</text>
+    <text x="580" y="360" text-anchor="middle" fill="#451a03" font-size="11" font-weight="700">S = α · S_LLM + (1 - α) · S_Vec</text>
+    <text x="580" y="380" text-anchor="middle" fill="#78350f" font-size="10">Weighted Qualitative &amp; Distance</text>
+    <text x="580" y="400" text-anchor="middle" fill="#92400e" font-size="9">matchingService.ts</text>
+  </g>
+
+</svg>
 
 ---
 
