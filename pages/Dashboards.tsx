@@ -8,7 +8,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { 
   TrendingUp, Users, Plus, FileText, 
   Settings, Bell, ShieldCheck, Download, 
-  ChevronRight, ChevronDown, ChevronUp, Globe, Lock, X, Check, Award, GraduationCap, Eye, Search, Loader2, Star, Trash, Inbox, Archive, MoreVertical, CornerUpLeft, Paperclip, Maximize2, Minimize2, ChevronLeft,
+  ChevronRight, ChevronDown, ChevronUp, Globe, Lock, X, Check, Award, GraduationCap, Eye, Search, Loader2, Star, Trash, Inbox, Archive, MoreVertical, CornerUpLeft, Paperclip, Maximize2, Minimize2, ChevronLeft, UserPlus,
   Briefcase, BookOpen, Handshake, Image as ImageIcon, Upload, DollarSign, FileCode,
   Home as HomeIcon,
   ShoppingBag, Bookmark, ArrowRight, User as UserIcon, Link as LinkIcon, Camera, AlertCircle, AlertTriangle, Info,
@@ -2229,6 +2229,233 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
 );
 };
 
+// --- RESEARCHER STUDENT OPPORTUNITIES MANAGER ---
+const ResearcherStudentOpportunitiesManager = ({ user, onUpdate }: { user: User | null; onUpdate: () => void }) => {
+  const { showToast } = useToast();
+  const [openGrants, setOpenGrants] = useState<boolean>(!!user?.ai_profile?.open_grants || !!user?.answers?.open_grants);
+  const [grantDetails, setGrantDetails] = useState<string>(user?.ai_profile?.grant_details || user?.answers?.grant_details || '');
+  const [openFellowships, setOpenFellowships] = useState<boolean>(!!user?.ai_profile?.open_fellowships || !!user?.answers?.open_fellowships);
+  const [fellowshipDetails, setFellowshipDetails] = useState<string>(user?.ai_profile?.fellowship_details || user?.answers?.fellowship_details || '');
+  const [openScholarships, setOpenScholarships] = useState<boolean>(!!user?.ai_profile?.open_scholarships || !!user?.answers?.open_scholarships);
+  const [scholarshipDetails, setScholarshipDetails] = useState<string>(user?.ai_profile?.scholarship_details || user?.answers?.scholarship_details || '');
+  const [needsStudents, setNeedsStudents] = useState<boolean>(!!user?.needs_students || !!user?.ai_profile?.needs_students || !!user?.answers?.needs_students);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setOpenGrants(!!user.ai_profile?.open_grants || !!user.answers?.open_grants);
+      setGrantDetails(user.ai_profile?.grant_details || user.answers?.grant_details || '');
+      setOpenFellowships(!!user.ai_profile?.open_fellowships || !!user.answers?.open_fellowships);
+      setFellowshipDetails(user.ai_profile?.fellowship_details || user.answers?.fellowship_details || '');
+      setOpenScholarships(!!user.ai_profile?.open_scholarships || !!user.answers?.open_scholarships);
+      setScholarshipDetails(user.ai_profile?.scholarship_details || user.answers?.scholarship_details || '');
+      setNeedsStudents(!!user.needs_students || !!user.ai_profile?.needs_students || !!user.answers?.needs_students);
+    }
+  }, [user]);
+
+  const handleSaveOpportunities = async () => {
+    if (!user?.id) return;
+    setSaving(true);
+    try {
+      const updatedAnswers = {
+        ...(user.answers || {}),
+        open_grants: openGrants,
+        grant_details: grantDetails,
+        open_fellowships: openFellowships,
+        fellowship_details: fellowshipDetails,
+        open_scholarships: openScholarships,
+        scholarship_details: scholarshipDetails,
+        needs_students: needsStudents
+      };
+
+      const updatedAIProfile = {
+        ...(user.ai_profile || {}),
+        open_grants: openGrants,
+        grant_details: grantDetails,
+        open_fellowships: openFellowships,
+        fellowship_details: fellowshipDetails,
+        open_scholarships: openScholarships,
+        scholarship_details: scholarshipDetails,
+        needs_students: needsStudents
+      };
+
+      await StorageService.updateProfile({
+        id: user.id,
+        role: user.role,
+        email: user.email,
+        needs_students: needsStudents,
+        answers: updatedAnswers,
+        ai_profile: updatedAIProfile
+      });
+
+      showToast("Student Funding & Opportunities updated successfully!", "success");
+      onUpdate();
+    } catch (err: any) {
+      showToast(`Failed to update opportunities: ${err.message}`, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="bg-white p-5 md:p-8 rounded-2xl md:rounded-[2rem] border border-gray-100 shadow-sm space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-extrabold text-ug-teal uppercase tracking-widest mb-1">
+            <GraduationCap size={16} /> Student Collaborator Recruitment & Funding
+          </div>
+          <h3 className="text-lg md:text-xl font-black text-ug-navy">Open Grants, Fellowships & Scholarships</h3>
+          <p className="text-xs text-gray-500 font-medium">
+            Toggle open funding, grants, fellowships, or scholarships for students working with your laboratory.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSaveOpportunities}
+          disabled={saving}
+          className="bg-ug-navy hover:bg-ug-teal text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-md shrink-0 disabled:opacity-50 cursor-pointer"
+        >
+          {saving ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+          Save Opportunities
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Open Grants */}
+        <div className={`p-4 md:p-5 rounded-2xl border transition-all ${openGrants ? 'bg-blue-50/40 border-blue-200' : 'bg-gray-50/60 border-gray-100'}`}>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${openGrants ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                <Award size={16} />
+              </div>
+              <div>
+                <h4 className="text-xs font-black text-ug-navy uppercase tracking-wider">Open Grants & Stipends</h4>
+                <p className="text-[10px] text-gray-500 font-medium">Funded research assistant grants</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpenGrants(!openGrants)}
+              className={`w-11 h-6 rounded-full relative p-0.5 transition-colors duration-300 focus:outline-none cursor-pointer shrink-0 ${openGrants ? 'bg-blue-600' : 'bg-gray-300'}`}
+            >
+              <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${openGrants ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+
+          {openGrants && (
+            <div className="mt-3 pt-3 border-t border-blue-100/80 space-y-1.5 animate-fade-in">
+              <label className="text-[9px] font-black uppercase tracking-wider text-blue-900 block">Grant Details & Stipend Info</label>
+              <input
+                type="text"
+                placeholder="e.g. $2,000/term grant stipend for MPhil lab assistant in Diagnostics"
+                value={grantDetails}
+                onChange={e => setGrantDetails(e.target.value)}
+                className="w-full px-3.5 py-2 bg-white border border-blue-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Open Fellowships */}
+        <div className={`p-4 md:p-5 rounded-2xl border transition-all ${openFellowships ? 'bg-purple-50/40 border-purple-200' : 'bg-gray-50/60 border-gray-100'}`}>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${openFellowships ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                <Briefcase size={16} />
+              </div>
+              <div>
+                <h4 className="text-xs font-black text-ug-navy uppercase tracking-wider">Graduate Fellowships</h4>
+                <p className="text-[10px] text-gray-500 font-medium">Postgrad research fellowships</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpenFellowships(!openFellowships)}
+              className={`w-11 h-6 rounded-full relative p-0.5 transition-colors duration-300 focus:outline-none cursor-pointer shrink-0 ${openFellowships ? 'bg-purple-600' : 'bg-gray-300'}`}
+            >
+              <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${openFellowships ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+
+          {openFellowships && (
+            <div className="mt-3 pt-3 border-t border-purple-100/80 space-y-1.5 animate-fade-in">
+              <label className="text-[9px] font-black uppercase tracking-wider text-purple-900 block">Fellowship Scope & Requirements</label>
+              <input
+                type="text"
+                placeholder="e.g. 1-Year MPhil/PhD Fellowships in Genomics"
+                value={fellowshipDetails}
+                onChange={e => setFellowshipDetails(e.target.value)}
+                className="w-full px-3.5 py-2 bg-white border border-purple-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Open Scholarships */}
+        <div className={`p-4 md:p-5 rounded-2xl border transition-all ${openScholarships ? 'bg-amber-50/40 border-amber-200' : 'bg-gray-50/60 border-gray-100'}`}>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${openScholarships ? 'bg-amber-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                <GraduationCap size={16} />
+              </div>
+              <div>
+                <h4 className="text-xs font-black text-ug-navy uppercase tracking-wider">Student Scholarships</h4>
+                <p className="text-[10px] text-gray-500 font-medium">Tuition waivers & academic support</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpenScholarships(!openScholarships)}
+              className={`w-11 h-6 rounded-full relative p-0.5 transition-colors duration-300 focus:outline-none cursor-pointer shrink-0 ${openScholarships ? 'bg-amber-600' : 'bg-gray-300'}`}
+            >
+              <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${openScholarships ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+
+          {openScholarships && (
+            <div className="mt-3 pt-3 border-t border-amber-100/80 space-y-1.5 animate-fade-in">
+              <label className="text-[9px] font-black uppercase tracking-wider text-amber-900 block">Scholarship Criteria & Benefits</label>
+              <input
+                type="text"
+                placeholder="e.g. Full tuition coverage + monthly allowance for STEM student researchers"
+                value={scholarshipDetails}
+                onChange={e => setScholarshipDetails(e.target.value)}
+                className="w-full px-3.5 py-2 bg-white border border-amber-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* General Student Recruitment */}
+        <div className={`p-4 md:p-5 rounded-2xl border transition-all ${needsStudents ? 'bg-teal-50/40 border-teal-200' : 'bg-gray-50/60 border-gray-100'}`}>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${needsStudents ? 'bg-ug-teal text-white' : 'bg-gray-200 text-gray-500'}`}>
+                <UserPlus size={16} />
+              </div>
+              <div>
+                <h4 className="text-xs font-black text-ug-navy uppercase tracking-wider">Actively Recruiting Students</h4>
+                <p className="text-[10px] text-gray-500 font-medium">Accepting student assistant applications</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setNeedsStudents(!needsStudents)}
+              className={`w-11 h-6 rounded-full relative p-0.5 transition-colors duration-300 focus:outline-none cursor-pointer shrink-0 ${needsStudents ? 'bg-ug-teal' : 'bg-gray-300'}`}
+            >
+              <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${needsStudents ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-500 mt-2 italic font-medium">
+            When enabled, students searching for research opportunities can discover your lab and submit direct applications.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 // --- SUB-DASHBOARDS ---
 
 const ResearcherDashboard = ({ 
@@ -2460,6 +2687,8 @@ const ResearcherDashboard = ({
           <StatCard label="Total Hub Views" value={totalViews >= 1000 ? `${(totalViews/1000).toFixed(1)}k` : totalViews} trend="+8%" icon={Eye} />
           <StatCard label="Interactions" value={totalInteractions} trend="+12%" icon={Handshake} />
         </div>
+
+        <ResearcherStudentOpportunitiesManager user={user} onUpdate={onUpdate} />
 
         {activeProject && (
           <ActiveProjectHero project={activeProject} />

@@ -19,6 +19,13 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS website_url_4 TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS company TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS department TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS user_type TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS needs_students BOOLEAN DEFAULT false;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS open_grants BOOLEAN DEFAULT false;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS grant_details TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS open_fellowships BOOLEAN DEFAULT false;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS fellowship_details TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS open_scholarships BOOLEAN DEFAULT false;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS scholarship_details TEXT;
 
 -- Projects table schema enhancements
 ALTER TABLE projects DROP COLUMN IF EXISTS embedding;
@@ -316,7 +323,13 @@ CREATE TABLE IF NOT EXISTS researcher_profiles (
   user_id uuid REFERENCES profiles(id) ON DELETE CASCADE PRIMARY KEY,
   research_stage text,
   funding_needed boolean DEFAULT false,
-  needs_students boolean DEFAULT false
+  needs_students boolean DEFAULT false,
+  open_grants boolean DEFAULT false,
+  grant_details text,
+  open_fellowships boolean DEFAULT false,
+  fellowship_details text,
+  open_scholarships boolean DEFAULT false,
+  scholarship_details text
 );
 
 -- Investor profiles
