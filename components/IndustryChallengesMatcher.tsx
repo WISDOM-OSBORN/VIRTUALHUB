@@ -224,10 +224,23 @@ ${user?.name}`);
     if (!selectedMatch) return;
     setIsSubmittingProposal(true);
     try {
-      const fullText = `[INDUSTRY_CHALLENGE_PROPOSAL]Subject: ${proposalSubject}\n\n${proposalText}`;
-      
+      const matchScore = selectedMatch.totalScore || 0;
+      const portfolioPath = user?.id ? `/researcher/${user.id}` : '';
+      const challengeTitle = selectedMatch.challenge?.title || 'Industry Challenge';
+      const fullText = `[INDUSTRY_CHALLENGE_PROPOSAL][MATCH_SCORE: ${matchScore}%][RESEARCHER_PORTFOLIO: ${portfolioPath}]
+
+Subject: ${proposalSubject}
+
+Target Challenge: ${challengeTitle}
+Applicant Researcher: ${user?.name || 'Researcher'}
+Hub Compatibility Match Score: ${matchScore}%
+Applicant Portfolio: ${window.location.origin}/#${portfolioPath}
+
+--- Proposal & Solution Outline ---
+${proposalText}`;
+
       await StorageService.submitEOI(
-        selectedMatch.challengeId,
+        null,
         user?.name || 'Researcher',
         fullText,
         selectedMatch.partnerUserId,
@@ -239,7 +252,7 @@ ${user?.name}`);
 
       // Update local state
       setChallengeMatches(prev => prev.map(m => m.id === selectedMatch.id ? { ...m, status: 'interested' } : m));
-      showToast('Proposal and Solution Outline submitted successfully!', 'success');
+      showToast('Proposal & Solution Outline transmitted directly to Partner!', 'success');
       setIsProposalModalOpen(false);
     } catch (err: any) {
       showToast(err.message || 'Failed to submit proposal.', 'error');

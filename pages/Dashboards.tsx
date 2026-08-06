@@ -2229,233 +2229,6 @@ const Dashboards: React.FC<DashboardsProps> = ({ role, user, initialThreadId, on
 );
 };
 
-// --- RESEARCHER STUDENT OPPORTUNITIES MANAGER ---
-const ResearcherStudentOpportunitiesManager = ({ user, onUpdate }: { user: User | null; onUpdate: () => void }) => {
-  const { showToast } = useToast();
-  const [openGrants, setOpenGrants] = useState<boolean>(!!user?.ai_profile?.open_grants || !!user?.answers?.open_grants);
-  const [grantDetails, setGrantDetails] = useState<string>(user?.ai_profile?.grant_details || user?.answers?.grant_details || '');
-  const [openFellowships, setOpenFellowships] = useState<boolean>(!!user?.ai_profile?.open_fellowships || !!user?.answers?.open_fellowships);
-  const [fellowshipDetails, setFellowshipDetails] = useState<string>(user?.ai_profile?.fellowship_details || user?.answers?.fellowship_details || '');
-  const [openScholarships, setOpenScholarships] = useState<boolean>(!!user?.ai_profile?.open_scholarships || !!user?.answers?.open_scholarships);
-  const [scholarshipDetails, setScholarshipDetails] = useState<string>(user?.ai_profile?.scholarship_details || user?.answers?.scholarship_details || '');
-  const [needsStudents, setNeedsStudents] = useState<boolean>(!!user?.needs_students || !!user?.ai_profile?.needs_students || !!user?.answers?.needs_students);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      setOpenGrants(!!user.ai_profile?.open_grants || !!user.answers?.open_grants);
-      setGrantDetails(user.ai_profile?.grant_details || user.answers?.grant_details || '');
-      setOpenFellowships(!!user.ai_profile?.open_fellowships || !!user.answers?.open_fellowships);
-      setFellowshipDetails(user.ai_profile?.fellowship_details || user.answers?.fellowship_details || '');
-      setOpenScholarships(!!user.ai_profile?.open_scholarships || !!user.answers?.open_scholarships);
-      setScholarshipDetails(user.ai_profile?.scholarship_details || user.answers?.scholarship_details || '');
-      setNeedsStudents(!!user.needs_students || !!user.ai_profile?.needs_students || !!user.answers?.needs_students);
-    }
-  }, [user]);
-
-  const handleSaveOpportunities = async () => {
-    if (!user?.id) return;
-    setSaving(true);
-    try {
-      const updatedAnswers = {
-        ...(user.answers || {}),
-        open_grants: openGrants,
-        grant_details: grantDetails,
-        open_fellowships: openFellowships,
-        fellowship_details: fellowshipDetails,
-        open_scholarships: openScholarships,
-        scholarship_details: scholarshipDetails,
-        needs_students: needsStudents
-      };
-
-      const updatedAIProfile = {
-        ...(user.ai_profile || {}),
-        open_grants: openGrants,
-        grant_details: grantDetails,
-        open_fellowships: openFellowships,
-        fellowship_details: fellowshipDetails,
-        open_scholarships: openScholarships,
-        scholarship_details: scholarshipDetails,
-        needs_students: needsStudents
-      };
-
-      await StorageService.updateProfile({
-        id: user.id,
-        role: user.role,
-        email: user.email,
-        needs_students: needsStudents,
-        answers: updatedAnswers,
-        ai_profile: updatedAIProfile
-      });
-
-      showToast("Student Funding & Opportunities updated successfully!", "success");
-      onUpdate();
-    } catch (err: any) {
-      showToast(`Failed to update opportunities: ${err.message}`, "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <section className="bg-white p-5 md:p-8 rounded-2xl md:rounded-[2rem] border border-gray-100 shadow-sm space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-extrabold text-ug-teal uppercase tracking-widest mb-1">
-            <GraduationCap size={16} /> Student Collaborator Recruitment & Funding
-          </div>
-          <h3 className="text-lg md:text-xl font-black text-ug-navy">Open Grants, Fellowships & Scholarships</h3>
-          <p className="text-xs text-gray-500 font-medium">
-            Toggle open funding, grants, fellowships, or scholarships for students working with your laboratory.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleSaveOpportunities}
-          disabled={saving}
-          className="bg-ug-navy hover:bg-ug-teal text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-md shrink-0 disabled:opacity-50 cursor-pointer"
-        >
-          {saving ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
-          Save Opportunities
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Open Grants */}
-        <div className={`p-4 md:p-5 rounded-2xl border transition-all ${openGrants ? 'bg-blue-50/40 border-blue-200' : 'bg-gray-50/60 border-gray-100'}`}>
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="flex items-center gap-2.5">
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${openGrants ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                <Award size={16} />
-              </div>
-              <div>
-                <h4 className="text-xs font-black text-ug-navy uppercase tracking-wider">Open Grants & Stipends</h4>
-                <p className="text-[10px] text-gray-500 font-medium">Funded research assistant grants</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setOpenGrants(!openGrants)}
-              className={`w-11 h-6 rounded-full relative p-0.5 transition-colors duration-300 focus:outline-none cursor-pointer shrink-0 ${openGrants ? 'bg-blue-600' : 'bg-gray-300'}`}
-            >
-              <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${openGrants ? 'translate-x-5' : 'translate-x-0'}`} />
-            </button>
-          </div>
-
-          {openGrants && (
-            <div className="mt-3 pt-3 border-t border-blue-100/80 space-y-1.5 animate-fade-in">
-              <label className="text-[9px] font-black uppercase tracking-wider text-blue-900 block">Grant Details & Stipend Info</label>
-              <input
-                type="text"
-                placeholder="e.g. $2,000/term grant stipend for MPhil lab assistant in Diagnostics"
-                value={grantDetails}
-                onChange={e => setGrantDetails(e.target.value)}
-                className="w-full px-3.5 py-2 bg-white border border-blue-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Open Fellowships */}
-        <div className={`p-4 md:p-5 rounded-2xl border transition-all ${openFellowships ? 'bg-purple-50/40 border-purple-200' : 'bg-gray-50/60 border-gray-100'}`}>
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="flex items-center gap-2.5">
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${openFellowships ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                <Briefcase size={16} />
-              </div>
-              <div>
-                <h4 className="text-xs font-black text-ug-navy uppercase tracking-wider">Graduate Fellowships</h4>
-                <p className="text-[10px] text-gray-500 font-medium">Postgrad research fellowships</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setOpenFellowships(!openFellowships)}
-              className={`w-11 h-6 rounded-full relative p-0.5 transition-colors duration-300 focus:outline-none cursor-pointer shrink-0 ${openFellowships ? 'bg-purple-600' : 'bg-gray-300'}`}
-            >
-              <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${openFellowships ? 'translate-x-5' : 'translate-x-0'}`} />
-            </button>
-          </div>
-
-          {openFellowships && (
-            <div className="mt-3 pt-3 border-t border-purple-100/80 space-y-1.5 animate-fade-in">
-              <label className="text-[9px] font-black uppercase tracking-wider text-purple-900 block">Fellowship Scope & Requirements</label>
-              <input
-                type="text"
-                placeholder="e.g. 1-Year MPhil/PhD Fellowships in Genomics"
-                value={fellowshipDetails}
-                onChange={e => setFellowshipDetails(e.target.value)}
-                className="w-full px-3.5 py-2 bg-white border border-purple-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Open Scholarships */}
-        <div className={`p-4 md:p-5 rounded-2xl border transition-all ${openScholarships ? 'bg-amber-50/40 border-amber-200' : 'bg-gray-50/60 border-gray-100'}`}>
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="flex items-center gap-2.5">
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${openScholarships ? 'bg-amber-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                <GraduationCap size={16} />
-              </div>
-              <div>
-                <h4 className="text-xs font-black text-ug-navy uppercase tracking-wider">Student Scholarships</h4>
-                <p className="text-[10px] text-gray-500 font-medium">Tuition waivers & academic support</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setOpenScholarships(!openScholarships)}
-              className={`w-11 h-6 rounded-full relative p-0.5 transition-colors duration-300 focus:outline-none cursor-pointer shrink-0 ${openScholarships ? 'bg-amber-600' : 'bg-gray-300'}`}
-            >
-              <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${openScholarships ? 'translate-x-5' : 'translate-x-0'}`} />
-            </button>
-          </div>
-
-          {openScholarships && (
-            <div className="mt-3 pt-3 border-t border-amber-100/80 space-y-1.5 animate-fade-in">
-              <label className="text-[9px] font-black uppercase tracking-wider text-amber-900 block">Scholarship Criteria & Benefits</label>
-              <input
-                type="text"
-                placeholder="e.g. Full tuition coverage + monthly allowance for STEM student researchers"
-                value={scholarshipDetails}
-                onChange={e => setScholarshipDetails(e.target.value)}
-                className="w-full px-3.5 py-2 bg-white border border-amber-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* General Student Recruitment */}
-        <div className={`p-4 md:p-5 rounded-2xl border transition-all ${needsStudents ? 'bg-teal-50/40 border-teal-200' : 'bg-gray-50/60 border-gray-100'}`}>
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="flex items-center gap-2.5">
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${needsStudents ? 'bg-ug-teal text-white' : 'bg-gray-200 text-gray-500'}`}>
-                <UserPlus size={16} />
-              </div>
-              <div>
-                <h4 className="text-xs font-black text-ug-navy uppercase tracking-wider">Actively Recruiting Students</h4>
-                <p className="text-[10px] text-gray-500 font-medium">Accepting student assistant applications</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setNeedsStudents(!needsStudents)}
-              className={`w-11 h-6 rounded-full relative p-0.5 transition-colors duration-300 focus:outline-none cursor-pointer shrink-0 ${needsStudents ? 'bg-ug-teal' : 'bg-gray-300'}`}
-            >
-              <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${needsStudents ? 'translate-x-5' : 'translate-x-0'}`} />
-            </button>
-          </div>
-          <p className="text-[10px] text-gray-500 mt-2 italic font-medium">
-            When enabled, students searching for research opportunities can discover your lab and submit direct applications.
-          </p>
-        </div>
-      </div>
-    </section>
-  );
-};
-
 // --- SUB-DASHBOARDS ---
 
 const ResearcherDashboard = ({ 
@@ -2687,8 +2460,6 @@ const ResearcherDashboard = ({
           <StatCard label="Total Hub Views" value={totalViews >= 1000 ? `${(totalViews/1000).toFixed(1)}k` : totalViews} trend="+8%" icon={Eye} />
           <StatCard label="Interactions" value={totalInteractions} trend="+12%" icon={Handshake} />
         </div>
-
-        <ResearcherStudentOpportunitiesManager user={user} onUpdate={onUpdate} />
 
         {activeProject && (
           <ActiveProjectHero project={activeProject} />
@@ -3155,14 +2926,30 @@ const ResearcherDashboard = ({
                       const isScholarship = eoi.message?.includes('[SCHOLARSHIP_APPLICATION]');
                       const isLabAccess = eoi.message?.includes('[LAB_WORKSPACE_ACCESS]');
                       const isCollabProposal = eoi.message?.includes('[COLLABORATION_PROPOSAL]');
+                      const isIndustryProposal = eoi.message?.includes('[INDUSTRY_CHALLENGE_PROPOSAL]');
                       const isExpressionOfInterest = eoi.message?.includes('[EXPRESSION_OF_INTEREST]');
                       
+                      const matchScoreMatch = eoi.message?.match(/\[MATCH_SCORE:\s*(\d+%)\]/);
+                      const matchScoreVal = matchScoreMatch ? matchScoreMatch[1] : null;
+
+                      const portfolioPathMatch = eoi.message?.match(/\[RESEARCHER_PORTFOLIO:\s*([^\]]+)\]/);
+                      const portfolioPathVal = portfolioPathMatch && portfolioPathMatch[1]?.trim() ? portfolioPathMatch[1].trim() : (eoi.sender_id ? `/researcher/${eoi.sender_id}` : null);
+
                       let typeLabel = "Inquiry";
                       let badgeColor = "bg-gray-100 text-gray-700 border-gray-200";
                       let IconComponent = FileText;
                       let cleanMessage = eoi.message || '';
 
-                      if (isReveal) {
+                      if (isIndustryProposal) {
+                        typeLabel = "Industry Challenge Proposal";
+                        badgeColor = "bg-indigo-50 text-indigo-700 border-indigo-200/80";
+                        IconComponent = Briefcase;
+                        cleanMessage = cleanMessage
+                          .replace(/\[INDUSTRY_CHALLENGE_PROPOSAL\]/g, '')
+                          .replace(/\[MATCH_SCORE:[^\]]+\]/g, '')
+                          .replace(/\[RESEARCHER_PORTFOLIO:[^\]]+\]/g, '')
+                          .trim();
+                      } else if (isReveal) {
                         typeLabel = "Disclosure Request";
                         badgeColor = "bg-pink-50 text-pink-700 border-pink-200/80";
                         IconComponent = Lock;
@@ -3221,6 +3008,12 @@ const ResearcherDashboard = ({
                                   {typeLabel}
                                 </span>
 
+                                {matchScoreVal && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-md shadow-2xs">
+                                    ⚡ {matchScoreVal} Match Score
+                                  </span>
+                                )}
+
                                 {eoi.created_at && (
                                   <span className="text-[11px] text-gray-400 font-medium flex items-center gap-1">
                                     <Clock size={11} />
@@ -3278,20 +3071,21 @@ const ResearcherDashboard = ({
                                   <p className="text-gray-400 font-bold uppercase text-[10px] tracking-wider mb-0.5">Applicant / Sender</p>
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className="font-black text-ug-navy text-xs">{eoi.user_name}</span>
-                                    {eoi.sender_id && (
+                                    {portfolioPathVal && (
                                       <Link 
-                                        to={`/researcher/${eoi.sender_id}`}
-                                        className="inline-flex items-center gap-1 text-ug-teal hover:underline font-bold text-[10px] bg-ug-teal/5 px-2 py-0.5 rounded-md border border-ug-teal/20"
+                                        to={portfolioPathVal}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="inline-flex items-center gap-1 text-ug-teal hover:underline font-extrabold text-[10px] bg-ug-teal/10 px-2.5 py-1 rounded-md border border-ug-teal/30"
                                       >
-                                        <UserIcon size={10} /> Profile
+                                        <UserIcon size={11} /> View Researcher Portfolio
                                       </Link>
                                     )}
                                   </div>
                                 </div>
 
                                 <div>
-                                  <p className="text-gray-400 font-bold uppercase text-[10px] tracking-wider mb-0.5">Associated Research Asset</p>
-                                  <p className="font-bold text-ug-navy text-xs truncate">{eoi.projects?.title || 'Direct/Hub'}</p>
+                                  <p className="text-gray-400 font-bold uppercase text-[10px] tracking-wider mb-0.5">Associated Research Asset / Challenge</p>
+                                  <p className="font-bold text-ug-navy text-xs truncate">{eoi.projects?.title || 'Industry Challenge Match'}</p>
                                 </div>
 
                                 {eoi.created_at && (

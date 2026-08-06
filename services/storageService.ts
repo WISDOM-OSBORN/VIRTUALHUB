@@ -919,14 +919,24 @@ export const StorageService = {
     }
 
     let target_recipient = recipient_id;
+    let validProjectId: string | null = null;
 
-    // Resolve project owner as recipient if not provided
-    if (project_id && !target_recipient) {
-      const { data: proj, error: projError } = await supabase.from('projects').select('owner_id').eq('id', project_id).single();
-      if (projError || !proj?.owner_id) {
+    // Resolve project owner as recipient if not provided, and ensure project_id exists in public.projects
+    if (project_id) {
+      const { data: proj } = await supabase
+        .from('projects')
+        .select('id, owner_id')
+        .eq('id', project_id)
+        .maybeSingle();
+
+      if (proj) {
+        validProjectId = proj.id;
+        if (!target_recipient) {
+          target_recipient = proj.owner_id;
+        }
+      } else if (!target_recipient) {
         throw new Error("Recipient Error: Could not resolve Project Investigator.");
       }
-      target_recipient = proj.owner_id;
     }
 
     if (!target_recipient) {
@@ -939,7 +949,7 @@ export const StorageService = {
     const { error } = await supabase
       .from('eois')
       .insert([{ 
-        project_id: project_id, 
+        project_id: validProjectId, 
         user_name: finalUserName, 
         message: encryptedPayload,
         read: false,
@@ -953,9 +963,9 @@ export const StorageService = {
       throw new Error(error.message || "Database Error: Transmission failed.");
     }
 
-    // Increment specified metric if project_id is present
-    if (project_id) {
-      StorageService.incrementProjectMetric(project_id, metric);
+    // Increment specified metric if validProjectId is present
+    if (validProjectId) {
+      StorageService.incrementProjectMetric(validProjectId, metric);
     }
   },
 
